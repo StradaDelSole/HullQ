@@ -9,6 +9,7 @@ import {
   SEARCH_COCKPIT_POSITION_VALUES,
   SEARCH_DECK_SALOON_VALUES,
   SEARCH_HULL_CONFIGURATION_VALUES,
+  SEARCH_HULL_MATERIAL_VALUES,
   SEARCH_KEEL_CONFIGURATION_VALUES,
   SEARCH_RUDDER_CONFIGURATION_VALUES,
 } from "../searchApi.ts";
@@ -200,6 +201,52 @@ test("SLICE-0086 requirement phrases and resolved-evidence text interpolate thei
     assert.ok(
       t.resolvedDeckSaloonText("Deck saloon").includes("Deck saloon"),
       `${locale}.resolvedDeckSaloonText`,
+    );
+  }
+});
+
+// SLICE-0087: beam (min/max) + hull_material presentation text -- every
+// supported locale has complete non-empty labels, complete value-label
+// mappings, and every new interpolating function interpolates.
+test("every supported locale has complete non-empty SLICE-0087 beam/hull-material text", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.beamMinLabel.length > 0, `${locale}.beamMinLabel`);
+    assert.ok(t.beamMaxLabel.length > 0, `${locale}.beamMaxLabel`);
+    assert.ok(t.beamMinPlaceholder.length > 0, `${locale}.beamMinPlaceholder`);
+    assert.ok(t.beamMaxPlaceholder.length > 0, `${locale}.beamMaxPlaceholder`);
+    assert.ok(t.hullMaterialLabel.length > 0, `${locale}.hullMaterialLabel`);
+    assert.ok(t.hullMaterialAnyOption.length > 0, `${locale}.hullMaterialAnyOption`);
+  }
+});
+
+test("every supported locale has a complete hullMaterialLabels mapping", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    for (const value of SEARCH_HULL_MATERIAL_VALUES) {
+      assert.ok(t.hullMaterialLabels[value].length > 0, `${locale}.hullMaterialLabels.${value}`);
+    }
+  }
+});
+
+test("SLICE-0087 beam/hull-material requirement phrases and resolved-evidence text interpolate their arguments", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.requirementPhraseBeamMin("3.2").includes("3.2"), `${locale}.requirementPhraseBeamMin`);
+    assert.ok(t.requirementPhraseBeamMax("4.4").includes("4.4"), `${locale}.requirementPhraseBeamMax`);
+    assert.ok(
+      t.requirementPhraseBeamRange("3.2", "4.4").includes("3.2") &&
+        t.requirementPhraseBeamRange("3.2", "4.4").includes("4.4"),
+      `${locale}.requirementPhraseBeamRange`,
+    );
+    assert.ok(
+      t.requirementPhraseHullMaterial("Wood").includes("Wood"),
+      `${locale}.requirementPhraseHullMaterial`,
+    );
+    assert.ok(t.resolvedBeamText("3.80").includes("3.80"), `${locale}.resolvedBeamText`);
+    assert.ok(
+      t.resolvedHullMaterialText("Wood").includes("Wood"),
+      `${locale}.resolvedHullMaterialText`,
     );
   }
 });

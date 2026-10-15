@@ -43,6 +43,7 @@ from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BeamClaim,
     BuildYearClaim,
     CockpitPosition,
     CockpitPositionClaim,
@@ -51,6 +52,8 @@ from hullq.domain.physical_boat_claims import (
     DraftClaim,
     HullConfiguration,
     HullConfigurationClaim,
+    HullMaterial,
+    HullMaterialClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -96,10 +99,15 @@ from hullq.persistence.physical_boat_claims import (
     fetch_current_physical_boat_claim,
     write_physical_boat_claim_revision,
 )
+from hullq.search.beam_design_bridge import BEAM_FIELD_POINTER, lookup_beam_canonical_value
 from hullq.search.cockpit_design_bridge import lookup_cockpit_position_canonical_value
 from hullq.search.deck_saloon_design_bridge import lookup_deck_saloon_canonical_value
 from hullq.search.draft_max_design_bridge import DRAFT_MAX_FIELD_POINTER
 from hullq.search.hull_design_bridge import lookup_hull_configuration_canonical_value
+from hullq.search.hull_material_design_bridge import (
+    HULL_MATERIAL_FIELD_POINTER,
+    lookup_hull_material_canonical_value,
+)
 from hullq.search.keel_design_bridge import KEEL_TYPE_FIELD_POINTER, lookup_keel_canonical_value
 from hullq.search.loa_design_bridge import LOA_FIELD_POINTER, lookup_loa_canonical_value
 from hullq.search.rudder_design_bridge import lookup_rudder_canonical_value
@@ -241,6 +249,8 @@ def _insert_boat_design(
     baseline_hull_configuration: str | None = None,
     baseline_cockpit_position: str | None = None,
     baseline_deck_saloon: str | None = None,
+    baseline_beam_m: float | None = None,
+    baseline_hull_material: str | None = None,
 ) -> None:
     with conn.cursor() as cur:
         cur.execute(
@@ -249,7 +259,11 @@ def _insert_boat_design(
         )
         baseline_json = json.dumps(
             {
-                "dimensions": {"draft_max_m": baseline_draft_max_m, "loa_m": baseline_loa_m},
+                "dimensions": {
+                    "draft_max_m": baseline_draft_max_m,
+                    "loa_m": baseline_loa_m,
+                    "beam_m": baseline_beam_m,
+                },
                 "configuration": {"hull_configuration": baseline_hull_configuration},
                 "appendages": {
                     "keel_type": baseline_keel_type,
@@ -259,6 +273,7 @@ def _insert_boat_design(
                     "cockpit_position": baseline_cockpit_position,
                     "deck_saloon": baseline_deck_saloon,
                 },
+                "construction": {"hull_material": baseline_hull_material},
             }
         )
         cur.execute(
@@ -282,6 +297,8 @@ def _admit_design_keel_and_draft(
     hull_configuration: str | None = None,
     cockpit_position: str | None = None,
     deck_saloon: str | None = None,
+    beam_m: Decimal | None = None,
+    hull_material: str | None = None,
 ) -> None:
     admit_resolved_draft_max(
         conn,
@@ -349,6 +366,26 @@ def _admit_design_keel_and_draft(
             value=deck_saloon,
             resolution_id=f"FR-DECKSALOON-{design_id}",
             fetch_canonical_value=lookup_deck_saloon_canonical_value,
+        )
+    if beam_m is not None:
+        admit_resolved_draft_max(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer=BEAM_FIELD_POINTER,
+            value=beam_m,
+            resolution_id=f"FR-BEAM-{design_id}",
+            fetch_canonical_value=lookup_beam_canonical_value,
+        )
+    if hull_material is not None:
+        admit_resolved_categorical_field(
+            conn,
+            subject_kind=SubjectKind.BOAT_DESIGN,
+            subject_id=design_id,
+            field_pointer=HULL_MATERIAL_FIELD_POINTER,
+            value=hull_material,
+            resolution_id=f"FR-HULLMAT-{design_id}",
+            fetch_canonical_value=lookup_hull_material_canonical_value,
         )
 
 
@@ -448,6 +485,16 @@ def _deck_saloon_value(value: str) -> DeckSaloonClaim:
     return DeckSaloonClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=DeckSaloon(value))
 
 
+def _beam_value(value: Decimal) -> BeamClaim:
+    return BeamClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=value)
+
+
+def _hull_material_value(value: str) -> HullMaterialClaim:
+    return HullMaterialClaim(
+        assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullMaterial(value)
+    )
+
+
 def _write_claim(
     api_url: str,
     *,
@@ -462,6 +509,8 @@ def _write_claim(
     hull_configuration: HullConfigurationClaim | None = None,
     cockpit_position: CockpitPositionClaim | None = None,
     deck_saloon: DeckSaloonClaim | None = None,
+    beam: BeamClaim | None = None,
+    hull_material: HullMaterialClaim | None = None,
 ) -> None:
     conn = psycopg.connect(api_url)
     try:
@@ -507,6 +556,8 @@ def _write_claim(
                 hull_configuration=hull_configuration,
                 cockpit_position=cockpit_position,
                 deck_saloon=deck_saloon,
+                beam=beam,
+                hull_material=hull_material,
             ),
         )
         assert result.status.value in ("created", "revised"), result
@@ -719,14 +770,14 @@ class TestSearchFitScenarioValidation:
         assert response.status_code == 400
 
     def test_unknown_parameter_is_invalid(self, client: TestClient, api_url: str) -> None:
-        # SLICE-0085: `loa_max` is now an accepted scenario key -- this test's
-        # "unknown parameter" case is updated to a genuinely unsupported key
-        # (`beam_max`, not part of the accepted whitelist) so it still proves
-        # the fail-closed unknown-key rejection it was written for.
+        # SLICE-0087: `beam_max` is now an accepted scenario key -- this
+        # test's "unknown parameter" case is updated to a genuinely
+        # unsupported key (not part of the accepted whitelist) so it still
+        # proves the fail-closed unknown-key rejection it was written for.
         self._setup(api_url, client, "UNKNOWNPARAM")
         response = client.get(
             _search_fit_path("ORG-SF-UNKNOWNPARAM", "NL-SF-UNKNOWNPARAM"),
-            params={"beam_max": "10"},
+            params={"displacement_kg": "5000"},
         )
         assert response.status_code == 400
 
@@ -1599,5 +1650,138 @@ class TestSearchFitSlice0086Facets:
         # scenario value.
         response = client.get(
             _search_fit_path("ORG-SF-S86C", "NL-SF-S86C"), params={"deck_saloon": "NONE"}
+        )
+        assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0087: beam / hull_material
+# ---------------------------------------------------------------------------
+
+
+class TestSearchFitSlice0087Facets:
+    def test_confirmed_match_beam_and_hull_material_combined(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-S87A", account_id="ACC-SF-S87A", membership_id="OM-SF-S87A"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn,
+                "BD-SF-S87A",
+                "BM-SF-S87A",
+                baseline_keel_type="fin",
+                baseline_beam_m=3.80,
+                baseline_hull_material="grp_fiberglass",
+            )
+            _admit_design_keel_and_draft(
+                conn,
+                "BD-SF-S87A",
+                keel_type="fin",
+                beam_m=Decimal("3.80"),
+                hull_material="grp_fiberglass",
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-S87A",
+            org_id="ORG-SF-S87A",
+            account_id="ACC-SF-S87A",
+            membership_id="OM-SF-S87A",
+            physical_boat_id="PB-SF-S87A",
+            market_episode_id="ME-SF-S87A",
+            boat_design_id="BD-SF-S87A",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-SF-S87A",
+            org_id="ORG-SF-S87A",
+            account_id="ACC-SF-S87A",
+            revision_id="PBCREV-SF-S87A",
+            beam=_beam_value(Decimal("3.80")),
+            hull_material=_hull_material_value("GRP_FIBERGLASS"),
+        )
+        _log_in(client, "ACC-SF-S87A")
+        response = client.get(
+            _search_fit_path("ORG-SF-S87A", "NL-SF-S87A"),
+            params={"beam_min": "3.2", "beam_max": "4.4", "hull_material": "GRP_FIBERGLASS"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "CONFIRMED_MATCH"
+        assert body["blockers"] == []
+        assert body["active_requirement"] == {
+            "beam_max": "4.4",
+            "beam_min": "3.2",
+            "hull_material": "GRP_FIBERGLASS",
+        }
+        fields = {ce["field"] for ce in body["criterion_evidence"]}
+        assert fields == {"beam_m", "hull_material"}
+
+    def test_insufficient_data_produces_hull_material_unconfirmed_blocker(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """The design side is CONFIRMED_MATCH for hull_material, but the
+        broker's own concrete claim never confirms it -- INSUFFICIENT_DATA
+        with the exact actionable blocker, never a false CONFIRMED_MATCH."""
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-S87B", account_id="ACC-SF-S87B", membership_id="OM-SF-S87B"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn,
+                "BD-SF-S87B",
+                "BM-SF-S87B",
+                baseline_keel_type="fin",
+                baseline_hull_material="steel",
+            )
+            _admit_design_keel_and_draft(conn, "BD-SF-S87B", keel_type="fin", hull_material="steel")
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-S87B",
+            org_id="ORG-SF-S87B",
+            account_id="ACC-SF-S87B",
+            membership_id="OM-SF-S87B",
+            physical_boat_id="PB-SF-S87B",
+            market_episode_id="ME-SF-S87B",
+            boat_design_id="BD-SF-S87B",
+        )
+        # Deliberately no _write_claim call for hull_material: the broker's
+        # own concrete claim stays unconfirmed.
+        _log_in(client, "ACC-SF-S87B")
+        response = client.get(
+            _search_fit_path("ORG-SF-S87B", "NL-SF-S87B"), params={"hull_material": "STEEL"}
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "INSUFFICIENT_DATA"
+        assert body["blockers"] == ["HULL_MATERIAL_UNCONFIRMED"]
+
+    def test_invalid_hull_material_ferrocement_scenario_value_400(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-S87C", account_id="ACC-SF-S87C", membership_id="OM-SF-S87C"
+        )
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-S87C",
+            org_id="ORG-SF-S87C",
+            account_id="ACC-SF-S87C",
+            membership_id="OM-SF-S87C",
+            physical_boat_id="PB-SF-S87C",
+            market_episode_id="ME-SF-S87C",
+        )
+        _log_in(client, "ACC-SF-S87C")
+        # FERROCEMENT is a real claim value but never an accepted public
+        # Search-fit scenario value.
+        response = client.get(
+            _search_fit_path("ORG-SF-S87C", "NL-SF-S87C"), params={"hull_material": "FERROCEMENT"}
         )
         assert response.status_code == 400

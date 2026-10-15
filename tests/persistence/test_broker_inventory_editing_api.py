@@ -551,6 +551,14 @@ class TestEditDetailRead:
             "assertion_kind": "VALUE_ASSERTION",
             "value": "NONE",
         }
+        full_claim_body["physical_boat.beam"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "3.80",
+        }
+        full_claim_body["physical_boat.hull_material"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "GRP_FIBERGLASS",
+        }
         claim_response = client.post(
             _claim_path("ORG-READ-FULL", "NL-READ-FULL"),
             json=full_claim_body,
@@ -610,6 +618,14 @@ class TestEditDetailRead:
         assert claim["physical_boat.deck_saloon"] == {
             "assertion_kind": "VALUE_ASSERTION",
             "value": "NONE",
+        }
+        assert claim["physical_boat.beam"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "3.80",
+        }
+        assert claim["physical_boat.hull_material"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "GRP_FIBERGLASS",
         }
 
 

@@ -68,13 +68,28 @@ export const SEARCH_DECK_SALOON_VALUES = ["DECK_SALOON", "PILOTHOUSE"] as const;
 
 export type SearchDeckSaloonValue = (typeof SEARCH_DECK_SALOON_VALUES)[number];
 
+// SLICE-0087: the exact accepted public `hull_material` query/display values
+// (`hullq.search.hull_material_design_bridge.SEARCH_HULL_MATERIAL_VALUES`).
+// Technical values, language-neutral -- never localized, never remapped.
+// `FERROCEMENT`/`CARBON_COMPOSITE`/`OTHER` are real PhysicalBoat claim
+// values but never public Search filter values in this slice.
+export const SEARCH_HULL_MATERIAL_VALUES = [
+  "GRP_FIBERGLASS",
+  "STEEL",
+  "ALUMINUM",
+  "WOOD",
+] as const;
+
+export type SearchHullMaterialValue = (typeof SEARCH_HULL_MATERIAL_VALUES)[number];
+
 // Mirrors `src/hullq/application/search_read.py`'s sparse
 // `active_requirement` construction (SLICE-0051/0056, extended SLICE-0085/
-// SLICE-0086): any non-empty subset of `draft_max`/`keel_configuration`/
-// `loa_min`/`loa_max`/`rudder_configuration`/`hull_configuration`/
-// `cockpit_position`/`deck_saloon`, never none (a `null` `active_requirement`
-// is the base state, represented separately below). TypeScript cannot
-// mechanically enforce "at least one of eight" any more cheaply than at
+// SLICE-0086/SLICE-0087): any non-empty subset of `draft_max`/
+// `keel_configuration`/`loa_min`/`loa_max`/`rudder_configuration`/
+// `hull_configuration`/`cockpit_position`/`deck_saloon`/`beam_min`/
+// `beam_max`/`hull_material`, never none (a `null` `active_requirement` is
+// the base state, represented separately below). TypeScript cannot
+// mechanically enforce "at least one of eleven" any more cheaply than at
 // runtime -- FastAPI is the actual source of truth for that invariant.
 export interface SearchActiveRequirement {
   draft_max?: string;
@@ -85,6 +100,9 @@ export interface SearchActiveRequirement {
   hull_configuration?: string;
   cockpit_position?: string;
   deck_saloon?: string;
+  beam_min?: string;
+  beam_max?: string;
+  hull_material?: string;
 }
 
 /** SLICE-0051 draft-only confirmed match, unchanged (contract §8 non-regression). */

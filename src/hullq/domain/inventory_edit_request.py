@@ -41,6 +41,7 @@ from hullq.domain.native_listing_offer import (
     VatTaxStatusValue,
 )
 from hullq.domain.physical_boat_claims import (
+    BeamClaim,
     BoatNameClaim,
     BuildYearClaim,
     CockpitPosition,
@@ -50,6 +51,8 @@ from hullq.domain.physical_boat_claims import (
     DraftClaim,
     HullConfiguration,
     HullConfigurationClaim,
+    HullMaterial,
+    HullMaterialClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -365,6 +368,8 @@ _CLAIM_KEYS = frozenset(
         "physical_boat.hull_configuration",
         "physical_boat.cockpit_position",
         "physical_boat.deck_saloon",
+        "physical_boat.beam",
+        "physical_boat.hull_material",
     }
 )
 
@@ -520,6 +525,40 @@ def _parse_deck_saloon(raw: Any) -> DeckSaloonClaim:
     )
 
 
+def _parse_beam(raw: Any) -> BeamClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.beam")
+    kind = _assertion_kind(raw_kind, "physical_boat.beam")
+    value: Decimal | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        value = _decimal_meters_value(raw_value, "physical_boat.beam")
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            f"physical_boat.beam.value must be omitted/null when assertion_kind is {kind.value}"
+        )
+    return _construct(lambda: BeamClaim(assertion_kind=kind, value=value), "physical_boat.beam")
+
+
+def _parse_hull_material(raw: Any) -> HullMaterialClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.hull_material")
+    kind = _assertion_kind(raw_kind, "physical_boat.hull_material")
+    value: HullMaterial | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        if not isinstance(raw_value, str) or raw_value not in {k.value for k in HullMaterial}:
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.hull_material.value must be a recognized hull material"
+            )
+        value = HullMaterial(raw_value)
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.hull_material.value must be omitted/null when assertion_kind is "
+            f"{kind.value}"
+        )
+    return _construct(
+        lambda: HullMaterialClaim(assertion_kind=kind, value=value),
+        "physical_boat.hull_material",
+    )
+
+
 def _parse_boat_name(raw: Any) -> BoatNameClaim:
     raw_kind, raw_value = _assertion_object(raw, "physical_boat.boat_name")
     kind = _assertion_kind(raw_kind, "physical_boat.boat_name")
@@ -609,6 +648,12 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
         if "physical_boat.deck_saloon" in raw
         else None
     )
+    beam = _parse_beam(raw["physical_boat.beam"]) if "physical_boat.beam" in raw else None
+    hull_material = (
+        _parse_hull_material(raw["physical_boat.hull_material"])
+        if "physical_boat.hull_material" in raw
+        else None
+    )
 
     claims = _construct(
         lambda: PhysicalBoatClaimSnapshot(
@@ -623,6 +668,8 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
             hull_configuration=hull_configuration,
             cockpit_position=cockpit_position,
             deck_saloon=deck_saloon,
+            beam=beam,
+            hull_material=hull_material,
         ),
         "physical_boat",
     )

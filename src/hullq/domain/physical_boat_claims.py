@@ -30,6 +30,23 @@ also separately permits an entirely omitted optional wrapper (never asked)
 and an explicit `UNKNOWN` assertion -- the same three-state shape every other
 optional claim field in this module already has.
 
+SLICE-0087 adds two further optional fields, the bounded qualified Beam &
+Hull-Material Buyer Search bundle (`docs/slices/
+SLICE-0087-qualified-beam-hull-material-search.md`):
+
+    physical_boat.beam
+    physical_boat.hull_material
+
+`beam` mirrors `loa_length`/`draft`'s identical two-state shape (VALUE_ASSERTION
+of a positive finite exact Decimal SI metres, or explicit UNKNOWN; no ABSENT).
+`hull_material` carries the existing marketplace registry's full seven-value
+actual-boat claim vocabulary (`GRP_FIBERGLASS`/`STEEL`/`ALUMINUM`/`WOOD`/
+`FERROCEMENT`/`CARBON_COMPOSITE`/`OTHER`) -- broader than the four public
+Search filter tokens the slice authorizes (`hullq.search.
+hull_material_design_bridge.SEARCH_HULL_MATERIAL_VALUES`): a broker may
+truthfully assert `FERROCEMENT`/`CARBON_COMPOSITE`/`OTHER` even though none of
+those three is ever a public hard-filter value in this slice.
+
 This module contains only pure, frozen value objects -- no persistence, ORM
 or network access. It does not represent any other `PHYSICAL_BOAT` field and
 does not implement a generic 38-field marketplace-fact framework: each
@@ -57,6 +74,7 @@ from hullq.domain.native_listing_offer import AssertionKind
 
 __all__ = [
     "AssertionKind",
+    "BeamClaim",
     "BoatNameClaim",
     "BuildYearClaim",
     "CockpitPosition",
@@ -66,6 +84,8 @@ __all__ = [
     "DraftClaim",
     "HullConfiguration",
     "HullConfigurationClaim",
+    "HullMaterial",
+    "HullMaterialClaim",
     "KeelConfiguration",
     "KeelConfigurationClaim",
     "LoaLengthClaim",
@@ -181,6 +201,26 @@ class DeckSaloon(StrEnum):
     PILOTHOUSE = "PILOTHOUSE"
 
 
+class HullMaterial(StrEnum):
+    """`physical_boat.hull_material` categorical values (registry v0.1,
+    SLICE-0087 Owner-confirmed vocabulary). The full seven-value actual-boat
+    claim vocabulary the existing marketplace registry already declares --
+    broader than the four public Search filter tokens this slice authorizes
+    (`hullq.search.hull_material_design_bridge.SEARCH_HULL_MATERIAL_VALUES`).
+    `OTHER` is known-other only -- never a public Search filter value and
+    never a substitute for an explicit `UNKNOWN` assertion. A hybrid/multi-
+    layer construction cannot be forced into one category from marketing
+    names; `OTHER` or `UNKNOWN` is the truthful answer instead."""
+
+    GRP_FIBERGLASS = "GRP_FIBERGLASS"
+    STEEL = "STEEL"
+    ALUMINUM = "ALUMINUM"
+    WOOD = "WOOD"
+    FERROCEMENT = "FERROCEMENT"
+    CARBON_COMPOSITE = "CARBON_COMPOSITE"
+    OTHER = "OTHER"
+
+
 def _validate_claim(
     assertion_kind: AssertionKind,
     value: object,
@@ -214,6 +254,13 @@ _RUDDER_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, Assert
 _HULL_CONFIGURATION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 _COCKPIT_POSITION_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 _DECK_SALOON_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+#: SLICE-0087: identical two-state shape to loa_length/draft above -- no ABSENT.
+_BEAM_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+#: SLICE-0087: identical two-state shape to keel/rudder/hull_configuration
+#: above -- no ABSENT. Every `HullMaterial` member (including `OTHER`) is an
+#: ordinary VALUE_ASSERTION value of its own enum, never a separate
+#: assertion_kind.
+_HULL_MATERIAL_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 #: SLICE-0065: the only PhysicalBoat/LISTING_OFFER field that allows ABSENT
 #: (registry `physical_boat.boat_name`) -- every other field's own frozenset
 #: above is untouched, so adding ABSENT to the shared `AssertionKind`
@@ -393,10 +440,49 @@ class DeckSaloonClaim:
             _require_kind(self.value, DeckSaloon, "DeckSaloonClaim.value")
 
 
+@dataclass(frozen=True)
+class BeamClaim:
+    """`physical_boat.beam`: VALUE_ASSERTION(decimal SI meters) or explicit UNKNOWN -- SLICE-0087.
+
+    A `None` `PhysicalBoatClaimSnapshot.beam` (this whole wrapper omitted) is
+    mechanically distinct from an explicit `UNKNOWN` assertion -- the same
+    rule as `loa_length`/`draft`. Never inferred from `loa_length`, an
+    advertised width or a related design/import field.
+    """
+
+    assertion_kind: AssertionKind
+    value: Decimal | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(self.assertion_kind, self.value, _BEAM_ALLOWED, "BeamClaim")
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            assert self.value is not None
+            _require_positive_finite_meters(self.value, "BeamClaim.value")
+
+
+@dataclass(frozen=True)
+class HullMaterialClaim:
+    """`physical_boat.hull_material`: VALUE_ASSERTION(HullMaterial) or
+    explicit UNKNOWN -- SLICE-0087. `OTHER`/`FERROCEMENT`/`CARBON_COMPOSITE`
+    are ordinary VALUE_ASSERTION values of their own enum, never a separate
+    assertion_kind and never silently remapped to a public Search token."""
+
+    assertion_kind: AssertionKind
+    value: HullMaterial | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(
+            self.assertion_kind, self.value, _HULL_MATERIAL_ALLOWED, "HullMaterialClaim"
+        )
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            _require_kind(self.value, HullMaterial, "HullMaterialClaim.value")
+
+
 # ---------------------------------------------------------------------------
 # The bounded seven-field claim snapshot, plus the optional SLICE-0065
-# boat-name field and the optional SLICE-0086 hull_configuration/
-# cockpit_position/deck_saloon fields
+# boat-name field, the optional SLICE-0086 hull_configuration/
+# cockpit_position/deck_saloon fields and the optional SLICE-0087
+# beam/hull_material fields
 # ---------------------------------------------------------------------------
 
 
@@ -422,6 +508,8 @@ class PhysicalBoatClaimSnapshot:
     hull_configuration: HullConfigurationClaim | None = None
     cockpit_position: CockpitPositionClaim | None = None
     deck_saloon: DeckSaloonClaim | None = None
+    beam: BeamClaim | None = None
+    hull_material: HullMaterialClaim | None = None
 
     def __post_init__(self) -> None:
         _require_kind(
@@ -471,4 +559,10 @@ class PhysicalBoatClaimSnapshot:
         if self.deck_saloon is not None:
             _require_kind(
                 self.deck_saloon, DeckSaloonClaim, "PhysicalBoatClaimSnapshot.deck_saloon"
+            )
+        if self.beam is not None:
+            _require_kind(self.beam, BeamClaim, "PhysicalBoatClaimSnapshot.beam")
+        if self.hull_material is not None:
+            _require_kind(
+                self.hull_material, HullMaterialClaim, "PhysicalBoatClaimSnapshot.hull_material"
             )

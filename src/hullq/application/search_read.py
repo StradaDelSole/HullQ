@@ -64,6 +64,9 @@ from hullq.application.native_inventory_query import (
     evaluate_native_inventory_requirements,
 )
 from hullq.search.criteria_registry import (
+    BEAM_DEFINITION,
+    BEAM_MAX_PARAM_KEY,
+    BEAM_MIN_PARAM_KEY,
     CANONICAL_PARAM_KEY_ORDER,
     COCKPIT_POSITION_DEFINITION,
     COCKPIT_POSITION_PARAM_KEY,
@@ -73,6 +76,8 @@ from hullq.search.criteria_registry import (
     DRAFT_MAX_PARAM_KEY,
     HULL_CONFIGURATION_DEFINITION,
     HULL_CONFIGURATION_PARAM_KEY,
+    HULL_MATERIAL_DEFINITION,
+    HULL_MATERIAL_PARAM_KEY,
     KEEL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_PARAM_KEY,
     LOA_DEFINITION,
@@ -101,6 +106,9 @@ _RUDDER_CONFIGURATION_KEY = RUDDER_CONFIGURATION_PARAM_KEY
 _HULL_CONFIGURATION_KEY = HULL_CONFIGURATION_PARAM_KEY
 _COCKPIT_POSITION_KEY = COCKPIT_POSITION_PARAM_KEY
 _DECK_SALOON_KEY = DECK_SALOON_PARAM_KEY
+_BEAM_MIN_KEY = BEAM_MIN_PARAM_KEY
+_BEAM_MAX_KEY = BEAM_MAX_PARAM_KEY
+_HULL_MATERIAL_KEY = HULL_MATERIAL_PARAM_KEY
 _ALLOWED_PARAM_KEYS = SUPPORTED_PARAM_KEYS
 
 
@@ -137,6 +145,9 @@ class SearchRequestOutcome:
     hull_configuration: str | None = None
     cockpit_position: str | None = None
     deck_saloon: str | None = None
+    beam_min: Decimal | None = None
+    beam_max: Decimal | None = None
+    hull_material: str | None = None
     search_outcome: DraftMaxSearchOutcome | NativeInventorySearchOutcome | None = None
 
     def __post_init__(self) -> None:
@@ -154,6 +165,9 @@ class SearchRequestOutcome:
             self.hull_configuration,
             self.cockpit_position,
             self.deck_saloon,
+            self.beam_min,
+            self.beam_max,
+            self.hull_material,
         )
         if is_result:
             if self.search_outcome is None:
@@ -177,6 +191,9 @@ def build_canonical_search_path(
     hull_configuration: str | None = None,
     cockpit_position: str | None = None,
     deck_saloon: str | None = None,
+    beam_min: Decimal | None = None,
+    beam_max: Decimal | None = None,
+    hull_material: str | None = None,
 ) -> str:
     """Build the one canonical, sparse, lexicographically-ordered public
     Direct Search path for *locale* (`docs/
@@ -195,6 +212,7 @@ def build_canonical_search_path(
     """
     assert DRAFT_MAX_DEFINITION.canonicalize_value is not None
     assert LOA_DEFINITION.canonicalize_value is not None
+    assert BEAM_DEFINITION.canonicalize_value is not None
     rendered: dict[str, str] = {}
     if draft_max is not None:
         rendered[_DRAFT_MAX_KEY] = DRAFT_MAX_DEFINITION.canonicalize_value(draft_max)
@@ -212,6 +230,12 @@ def build_canonical_search_path(
         rendered[_COCKPIT_POSITION_KEY] = cockpit_position
     if deck_saloon is not None:
         rendered[_DECK_SALOON_KEY] = deck_saloon
+    if beam_max is not None:
+        rendered[_BEAM_MAX_KEY] = BEAM_DEFINITION.canonicalize_value(beam_max)
+    if beam_min is not None:
+        rendered[_BEAM_MIN_KEY] = BEAM_DEFINITION.canonicalize_value(beam_min)
+    if hull_material is not None:
+        rendered[_HULL_MATERIAL_KEY] = hull_material
     parts = [f"{key}={rendered[key]}" for key in CANONICAL_PARAM_KEY_ORDER if key in rendered]
     if not parts:
         return f"/{locale}/search"
@@ -229,6 +253,9 @@ def evaluate_requirement_search_outcome(
     hull_configuration: str | None = None,
     cockpit_position: str | None = None,
     deck_saloon: str | None = None,
+    beam_min: Decimal | None = None,
+    beam_max: Decimal | None = None,
+    hull_material: str | None = None,
     as_of: datetime,
 ) -> DraftMaxSearchOutcome | NativeInventorySearchOutcome:
     """Evaluate one already-canonical requirement through the accepted Search
@@ -252,6 +279,9 @@ def evaluate_requirement_search_outcome(
         and hull_configuration is None
         and cockpit_position is None
         and deck_saloon is None
+        and beam_min is None
+        and beam_max is None
+        and hull_material is None
     ):
         assert draft_max is not None
         return evaluate_draft_max_requirement(conn, draft_max, as_of=as_of)
@@ -265,6 +295,9 @@ def evaluate_requirement_search_outcome(
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
         as_of=as_of,
     )
 
@@ -294,6 +327,9 @@ def evaluate_search_request(
     hull_raw_values = list(query_params.get(_HULL_CONFIGURATION_KEY, ()))
     cockpit_raw_values = list(query_params.get(_COCKPIT_POSITION_KEY, ()))
     deck_saloon_raw_values = list(query_params.get(_DECK_SALOON_KEY, ()))
+    beam_min_raw_values = list(query_params.get(_BEAM_MIN_KEY, ()))
+    beam_max_raw_values = list(query_params.get(_BEAM_MAX_KEY, ()))
+    hull_material_raw_values = list(query_params.get(_HULL_MATERIAL_KEY, ()))
 
     if not (
         draft_raw_values
@@ -304,6 +340,9 @@ def evaluate_search_request(
         or hull_raw_values
         or cockpit_raw_values
         or deck_saloon_raw_values
+        or beam_min_raw_values
+        or beam_max_raw_values
+        or hull_material_raw_values
     ):
         return SearchRequestOutcome(kind=SearchOutcomeKind.BASE)
 
@@ -379,6 +418,28 @@ def evaluate_search_request(
         return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
     deck_saloon, deck_saloon_is_single_canonical = deck_saloon_result
 
+    beam_min_result = parse_numeric_param(BEAM_DEFINITION, beam_min_raw_values)
+    if beam_min_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    beam_min, beam_min_is_single_canonical = beam_min_result
+
+    beam_max_result = parse_numeric_param(BEAM_DEFINITION, beam_max_raw_values)
+    if beam_max_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    beam_max, beam_max_is_single_canonical = beam_max_result
+
+    if beam_min is not None and beam_max is not None and beam_min > beam_max:
+        # Slice normative beam semantics: require beam_min <= beam_max
+        # whenever both supplied -- never silently swapped or clamped.
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+
+    hull_material_result = parse_categorical_param(
+        HULL_MATERIAL_DEFINITION, hull_material_raw_values
+    )
+    if hull_material_result is None:
+        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+    hull_material, hull_material_is_single_canonical = hull_material_result
+
     if not (
         draft_is_single_canonical
         and keel_is_single_canonical
@@ -388,6 +449,9 @@ def evaluate_search_request(
         and hull_is_single_canonical
         and cockpit_is_single_canonical
         and deck_saloon_is_single_canonical
+        and beam_min_is_single_canonical
+        and beam_max_is_single_canonical
+        and hull_material_is_single_canonical
         and order_is_canonical
     ):
         return SearchRequestOutcome(
@@ -402,6 +466,9 @@ def evaluate_search_request(
                 hull_configuration=hull_configuration,
                 cockpit_position=cockpit_position,
                 deck_saloon=deck_saloon,
+                beam_min=beam_min,
+                beam_max=beam_max,
+                hull_material=hull_material,
             ),
         )
 
@@ -415,6 +482,9 @@ def evaluate_search_request(
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
         as_of=as_of,
     )
     return SearchRequestOutcome(
@@ -427,5 +497,8 @@ def evaluate_search_request(
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
         search_outcome=search_outcome,
     )

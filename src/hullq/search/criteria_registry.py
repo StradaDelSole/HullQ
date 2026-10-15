@@ -69,6 +69,9 @@ from typing import Any, Final
 
 from hullq.domain.physical_boat_claims import AssertionKind
 from hullq.persistence.physical_boat_claims import CurrentPhysicalBoatClaimObservation
+from hullq.search.beam_design_bridge import BEAM_PROJECTION_FIELD as _BEAM_PROJECTION_FIELD
+from hullq.search.beam_design_bridge import build_boat_design_beam_configuration_set
+from hullq.search.beam_request import canonical_beam_str, parse_beam_decimal
 from hullq.search.cockpit_design_bridge import (
     COCKPIT_POSITION_PROJECTION_FIELD as _COCKPIT_POSITION_PROJECTION_FIELD,
 )
@@ -96,6 +99,13 @@ from hullq.search.hull_design_bridge import (
     SEARCH_HULL_CONFIGURATION_VALUES,
     build_boat_design_hull_configuration_set,
 )
+from hullq.search.hull_material_design_bridge import (
+    HULL_MATERIAL_PROJECTION_FIELD as _HULL_MATERIAL_PROJECTION_FIELD,
+)
+from hullq.search.hull_material_design_bridge import (
+    SEARCH_HULL_MATERIAL_VALUES,
+    build_boat_design_hull_material_configuration_set,
+)
 from hullq.search.keel_design_bridge import (
     KEEL_CONFIGURATION_PROJECTION_FIELD as _KEEL_CONFIGURATION_PROJECTION_FIELD,
 )
@@ -115,6 +125,9 @@ from hullq.search.rudder_design_bridge import (
 )
 
 __all__ = [
+    "BEAM_DEFINITION",
+    "BEAM_MAX_PARAM_KEY",
+    "BEAM_MIN_PARAM_KEY",
     "CANONICAL_PARAM_KEY_ORDER",
     "COCKPIT_POSITION_DEFINITION",
     "COCKPIT_POSITION_PARAM_KEY",
@@ -125,6 +138,8 @@ __all__ = [
     "DRAFT_MAX_PARAM_KEY",
     "HULL_CONFIGURATION_DEFINITION",
     "HULL_CONFIGURATION_PARAM_KEY",
+    "HULL_MATERIAL_DEFINITION",
+    "HULL_MATERIAL_PARAM_KEY",
     "KEEL_CONFIGURATION_DEFINITION",
     "KEEL_CONFIGURATION_PARAM_KEY",
     "LOA_DEFINITION",
@@ -152,6 +167,10 @@ RUDDER_CONFIGURATION_PARAM_KEY: Final = "rudder_configuration"
 HULL_CONFIGURATION_PARAM_KEY: Final = "hull_configuration"
 COCKPIT_POSITION_PARAM_KEY: Final = "cockpit_position"
 DECK_SALOON_PARAM_KEY: Final = "deck_saloon"
+#: SLICE-0087 facets #8-#9.
+BEAM_MIN_PARAM_KEY: Final = "beam_min"
+BEAM_MAX_PARAM_KEY: Final = "beam_max"
+HULL_MATERIAL_PARAM_KEY: Final = "hull_material"
 
 #: The complete bounded whitelist. Any query-parameter key outside this set
 #: is INVALID, never silently ignored (the accepted zero-non-semantic-
@@ -167,6 +186,9 @@ SUPPORTED_PARAM_KEYS: Final[frozenset[str]] = frozenset(
         HULL_CONFIGURATION_PARAM_KEY,
         COCKPIT_POSITION_PARAM_KEY,
         DECK_SALOON_PARAM_KEY,
+        BEAM_MIN_PARAM_KEY,
+        BEAM_MAX_PARAM_KEY,
+        HULL_MATERIAL_PARAM_KEY,
     }
 )
 
@@ -175,10 +197,13 @@ SUPPORTED_PARAM_KEYS: Final[frozenset[str]] = frozenset(
 #: display order"). Plain lexicographic sort of `SUPPORTED_PARAM_KEYS` --
 #: asserted below so this constant can never silently drift from that rule.
 CANONICAL_PARAM_KEY_ORDER: Final[tuple[str, ...]] = (
+    BEAM_MAX_PARAM_KEY,
+    BEAM_MIN_PARAM_KEY,
     COCKPIT_POSITION_PARAM_KEY,
     DECK_SALOON_PARAM_KEY,
     DRAFT_MAX_PARAM_KEY,
     HULL_CONFIGURATION_PARAM_KEY,
+    HULL_MATERIAL_PARAM_KEY,
     KEEL_CONFIGURATION_PARAM_KEY,
     LOA_MAX_PARAM_KEY,
     LOA_MIN_PARAM_KEY,
@@ -361,10 +386,30 @@ def _read_deck_saloon_claim(observation: CurrentPhysicalBoatClaimObservation) ->
     return claim.assertion_kind, value
 
 
+def _read_beam_claim(observation: CurrentPhysicalBoatClaimObservation) -> ClaimReadResult:
+    claim = observation.beam
+    if claim is None:
+        return None
+    value = claim.value if claim.assertion_kind is AssertionKind.VALUE_ASSERTION else None
+    return claim.assertion_kind, value
+
+
+def _read_hull_material_claim(observation: CurrentPhysicalBoatClaimObservation) -> ClaimReadResult:
+    claim = observation.hull_material
+    if claim is None:
+        return None
+    value = (
+        claim.value.value
+        if claim.assertion_kind is AssertionKind.VALUE_ASSERTION and claim.value is not None
+        else None
+    )
+    return claim.assertion_kind, value
+
+
 # ---------------------------------------------------------------------------
 # The four originally accepted criterion definitions, plus the three
 # SLICE-0086 candidate facets (hull_configuration/cockpit_position/
-# deck_saloon)
+# deck_saloon) and the two SLICE-0087 facets (beam/hull_material)
 # ---------------------------------------------------------------------------
 
 DRAFT_MAX_DEFINITION: Final = CriterionDefinition(
@@ -448,13 +493,41 @@ DECK_SALOON_DEFINITION: Final = CriterionDefinition(
     read_claim=_read_deck_saloon_claim,
 )
 
+#: SLICE-0087 facet #8. Both public parameter keys share this ONE
+#: definition/projection field (`beam_m`) -- see `hullq.search.
+#: beam_design_bridge`'s module docstring.
+BEAM_DEFINITION: Final = CriterionDefinition(
+    criterion_id="beam",
+    kind=CriterionKind.NUMERIC_MIN_MAX,
+    param_keys=(BEAM_MAX_PARAM_KEY, BEAM_MIN_PARAM_KEY),
+    projection_field=_BEAM_PROJECTION_FIELD,
+    allowed_values=None,
+    design_set_builder=build_boat_design_beam_configuration_set,
+    read_claim=_read_beam_claim,
+    parse_value=parse_beam_decimal,
+    canonicalize_value=canonical_beam_str,
+)
+
+#: SLICE-0087 facet #9.
+HULL_MATERIAL_DEFINITION: Final = CriterionDefinition(
+    criterion_id="hull_material",
+    kind=CriterionKind.CATEGORICAL,
+    param_keys=(HULL_MATERIAL_PARAM_KEY,),
+    projection_field=_HULL_MATERIAL_PROJECTION_FIELD,
+    allowed_values=SEARCH_HULL_MATERIAL_VALUES,
+    design_set_builder=build_boat_design_hull_material_configuration_set,
+    read_claim=_read_hull_material_claim,
+)
+
 #: Every accepted criterion, in the exact order its PARAM_KEY(s) first
 #: appear in `CANONICAL_PARAM_KEY_ORDER`.
 CRITERION_DEFINITIONS: Final[tuple[CriterionDefinition, ...]] = (
+    BEAM_DEFINITION,
     COCKPIT_POSITION_DEFINITION,
     DECK_SALOON_DEFINITION,
     DRAFT_MAX_DEFINITION,
     HULL_CONFIGURATION_DEFINITION,
+    HULL_MATERIAL_DEFINITION,
     KEEL_CONFIGURATION_DEFINITION,
     LOA_DEFINITION,
     RUDDER_CONFIGURATION_DEFINITION,

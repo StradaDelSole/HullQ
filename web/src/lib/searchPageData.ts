@@ -64,16 +64,16 @@ export async function loadSearchPageData(
  * `redirect`/`invalid`/`unavailable` page never has a canonical result
  * URL, so callers pass `null` for those.
  *
- * SLICE-0056 (extended SLICE-0085, SLICE-0086): mirrors
+ * SLICE-0056 (extended SLICE-0085, SLICE-0086, SLICE-0087): mirrors
  * `src/hullq/application/search_read.py`'s own canonical-query-part
  * ordering exactly (`hullq.search.criteria_registry.CANONICAL_PARAM_KEY_ORDER`:
- * `cockpit_position`, `deck_saloon`, `draft_max`, `hull_configuration`,
- * `keel_configuration`, `loa_max`, `loa_min`, `rudder_configuration` --
- * plain lexicographic order of all eight accepted keys, contract §B
- * "Canonical query ordering ... remain backend-owned") -- this never
- * independently decides canonicalization, it only echoes back the exact
- * sparse key set/order FastAPI already applied to reach a `kind: "ok"`
- * result in the first place.
+ * `beam_max`, `beam_min`, `cockpit_position`, `deck_saloon`, `draft_max`,
+ * `hull_configuration`, `hull_material`, `keel_configuration`, `loa_max`,
+ * `loa_min`, `rudder_configuration` -- plain lexicographic order of all
+ * eleven accepted keys, contract §B "Canonical query ordering ... remain
+ * backend-owned") -- this never independently decides canonicalization, it
+ * only echoes back the exact sparse key set/order FastAPI already applied
+ * to reach a `kind: "ok"` result in the first place.
  */
 export function buildSearchCanonicalPath(
   locale: SupportedLocale,
@@ -83,6 +83,12 @@ export function buildSearchCanonicalPath(
     return `/${locale}/search`;
   }
   const parts: string[] = [];
+  if (activeRequirement.beam_max !== undefined) {
+    parts.push(`beam_max=${activeRequirement.beam_max}`);
+  }
+  if (activeRequirement.beam_min !== undefined) {
+    parts.push(`beam_min=${activeRequirement.beam_min}`);
+  }
   if (activeRequirement.cockpit_position !== undefined) {
     parts.push(`cockpit_position=${activeRequirement.cockpit_position}`);
   }
@@ -94,6 +100,9 @@ export function buildSearchCanonicalPath(
   }
   if (activeRequirement.hull_configuration !== undefined) {
     parts.push(`hull_configuration=${activeRequirement.hull_configuration}`);
+  }
+  if (activeRequirement.hull_material !== undefined) {
+    parts.push(`hull_material=${activeRequirement.hull_material}`);
   }
   if (activeRequirement.keel_configuration !== undefined) {
     parts.push(`keel_configuration=${activeRequirement.keel_configuration}`);

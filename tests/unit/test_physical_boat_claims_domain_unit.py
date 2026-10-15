@@ -16,6 +16,7 @@ import pytest
 
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BeamClaim,
     BoatNameClaim,
     BuildYearClaim,
     CockpitPosition,
@@ -25,6 +26,8 @@ from hullq.domain.physical_boat_claims import (
     DraftClaim,
     HullConfiguration,
     HullConfigurationClaim,
+    HullMaterial,
+    HullMaterialClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -64,6 +67,8 @@ def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name_and_sli
         "hull_configuration",
         "cockpit_position",
         "deck_saloon",
+        "beam",
+        "hull_material",
     }
 
 
@@ -510,3 +515,115 @@ def test_adding_hull_cockpit_deck_saloon_kinds_does_not_loosen_other_fields() ->
         CockpitPositionClaim(assertion_kind=AssertionKind.ABSENT)
     with pytest.raises(ValueError, match="assertion_kind"):
         DeckSaloonClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0087: beam / hull_material
+# ---------------------------------------------------------------------------
+
+
+def test_beam_omitted_by_default() -> None:
+    assert _minimal_snapshot().beam is None
+
+
+def test_beam_value_assertion_is_lossless_decimal() -> None:
+    snapshot = _minimal_snapshot(
+        beam=BeamClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("3.75"))
+    )
+    assert snapshot.beam.value == Decimal("3.75")
+    assert isinstance(snapshot.beam.value, Decimal)
+
+
+def test_beam_explicit_unknown_is_distinct_from_omitted() -> None:
+    snapshot_omitted = _minimal_snapshot()
+    snapshot_unknown = _minimal_snapshot(beam=BeamClaim(assertion_kind=AssertionKind.UNKNOWN))
+    assert snapshot_omitted.beam is None
+    assert snapshot_unknown.beam.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.beam.value is None
+
+
+def test_beam_rejects_a_binary_float() -> None:
+    with pytest.raises(TypeError, match="Decimal"):
+        BeamClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=3.75)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("bad_value", [Decimal("0"), Decimal("-1.5")])
+def test_beam_rejects_non_positive_values(bad_value: Decimal) -> None:
+    with pytest.raises(ValueError, match="positive"):
+        BeamClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=bad_value)
+
+
+def test_beam_rejects_absent() -> None:
+    with pytest.raises(ValueError, match="assertion_kind"):
+        BeamClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+def test_hull_material_omitted_by_default() -> None:
+    assert _minimal_snapshot().hull_material is None
+
+
+def test_hull_material_value_assertion_round_trips() -> None:
+    snapshot = _minimal_snapshot(
+        hull_material=HullMaterialClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullMaterial.GRP_FIBERGLASS
+        )
+    )
+    assert snapshot.hull_material.value is HullMaterial.GRP_FIBERGLASS
+
+
+def test_hull_material_accepts_values_beyond_the_public_search_vocabulary() -> None:
+    """A broker may truthfully assert FERROCEMENT/CARBON_COMPOSITE/OTHER even
+    though none of the three is ever a public Search filter token."""
+    for value in (HullMaterial.FERROCEMENT, HullMaterial.CARBON_COMPOSITE, HullMaterial.OTHER):
+        snapshot = _minimal_snapshot(
+            hull_material=HullMaterialClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value=value
+            )
+        )
+        assert snapshot.hull_material.value is value
+
+
+def test_hull_material_explicit_unknown_is_distinct_from_omitted() -> None:
+    snapshot_omitted = _minimal_snapshot()
+    snapshot_unknown = _minimal_snapshot(
+        hull_material=HullMaterialClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    assert snapshot_omitted.hull_material is None
+    assert snapshot_unknown.hull_material.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.hull_material.value is None
+
+
+def test_hull_material_rejects_absent() -> None:
+    with pytest.raises(ValueError, match="assertion_kind"):
+        HullMaterialClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+def test_hull_material_rejects_unsupported_categorical_value() -> None:
+    with pytest.raises(ValueError):
+        HullMaterial("WOOD_COMPOSITE")  # not an accepted registry value
+
+
+def test_hull_material_rejects_keel_configuration_value_type() -> None:
+    with pytest.raises(TypeError, match="HullMaterial"):
+        HullMaterialClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION,
+            value=KeelConfiguration.FIN,  # type: ignore[arg-type]
+        )
+
+
+def test_beam_and_hull_material_are_independent_dimensions() -> None:
+    snapshot = _minimal_snapshot(
+        beam=BeamClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("4.2")),
+        hull_material=HullMaterialClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullMaterial.STEEL
+        ),
+    )
+    assert snapshot.beam.value == Decimal("4.2")
+    assert snapshot.hull_material.value is HullMaterial.STEEL
+
+
+def test_adding_beam_hull_material_kinds_does_not_loosen_other_fields() -> None:
+    with pytest.raises(ValueError, match="assertion_kind"):
+        LoaLengthClaim(assertion_kind=AssertionKind.ABSENT)
+    with pytest.raises(ValueError, match="assertion_kind"):
+        HullConfigurationClaim(assertion_kind=AssertionKind.ABSENT)

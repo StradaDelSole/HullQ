@@ -155,6 +155,9 @@ export interface SearchFitView {
     hull_configuration?: string;
     cockpit_position?: string;
     deck_saloon?: string;
+    beam_min?: string;
+    beam_max?: string;
+    hull_material?: string;
   };
   result_class: ResultClass;
   design_evaluation: DesignEvaluation | null;
@@ -206,6 +209,9 @@ export interface SearchFitScenario {
   hullConfiguration?: string;
   cockpitPosition?: string;
   deckSaloon?: string;
+  beamMin?: string;
+  beamMax?: string;
+  hullMaterial?: string;
 }
 
 export type SearchFitResult =
@@ -246,6 +252,9 @@ export async function fetchSearchFit(
   if (scenario.hullConfiguration) params.set("hull_configuration", scenario.hullConfiguration);
   if (scenario.cockpitPosition) params.set("cockpit_position", scenario.cockpitPosition);
   if (scenario.deckSaloon) params.set("deck_saloon", scenario.deckSaloon);
+  if (scenario.beamMin) params.set("beam_min", scenario.beamMin);
+  if (scenario.beamMax) params.set("beam_max", scenario.beamMax);
+  if (scenario.hullMaterial) params.set("hull_material", scenario.hullMaterial);
   const search = params.toString() ? `?${params.toString()}` : "";
   let response: Response;
   try {

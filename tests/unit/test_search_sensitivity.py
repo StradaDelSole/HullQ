@@ -68,6 +68,48 @@ def test_slice_0086_active_hull_configuration_in_current_is_safely_declined() ->
     assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
 
 
+def test_slice_0087_active_beam_min_in_current_is_safely_declined() -> None:
+    """SLICE-0087: identical fail-closed decline for the two new facets
+    (beam_min/beam_max/hull_material) -- `_ALLOWED_CURRENT_KEYS` is
+    deliberately NOT extended to these keys either."""
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"draft_max": "1.6", "beam_min": "3.2"},
+        changed_criterion="draft_max",
+        changed_value="1.7",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
+
+
+def test_slice_0087_active_hull_material_in_current_is_safely_declined() -> None:
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"keel_configuration": "FIN", "hull_material": "WOOD"},
+        changed_criterion="keel_configuration",
+        changed_value="WING",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNKNOWN_CURRENT_KEY
+
+
+def test_slice_0087_hull_material_as_changed_criterion_is_unsupported() -> None:
+    outcome = evaluate_requirement_sensitivity(
+        None,
+        locale="en",
+        current={"keel_configuration": "FIN"},
+        changed_criterion="hull_material",
+        changed_value="WOOD",
+        as_of=_AS_OF,
+    )
+    assert outcome.kind is SensitivityOutcomeKind.INVALID
+    assert outcome.error is SensitivityErrorKind.UNSUPPORTED_CHANGED_CRITERION
+
+
 def test_slice_0086_deck_saloon_as_changed_criterion_is_unsupported() -> None:
     outcome = evaluate_requirement_sensitivity(
         None,
