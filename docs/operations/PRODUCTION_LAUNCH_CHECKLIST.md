@@ -6,6 +6,14 @@
 **Started:** 2026-10-09  
 **Secret rule:** this file stores secret names/status only. Never place passwords, tokens, API keys, private keys, recovery codes or secret values here.
 
+## Pre-external-broker-upload runtime STOP/GO (external v0.3 review, 2026-10-16)
+
+**Status: UNVERIFIED / NOT SATISFIED.** The Owner-supplied Claude LLM code review v0.3 was inspected against current canonical production code; independently reconciled risk/proof scope resides in `docs/POST_SLICE_0087_EXTERNAL_CODE_REVIEW_RECONCILIATION_2026-10-16.md`, actionable issue [#355](https://github.com/StradaDelSole/HullQ/issues/355). This is a **hard evidence condition before real external broker upload/intake, external broker pilot or public production** — not a claim that implementation of the existing broker import or queued offline exporter is rejected, and not a change of `PRODUCTION_LAUNCH_PACK_PHASE`.
+
+Before first real external broker-supplied upload into a production system, independently demonstrate **all applicable**: (1) single-worker API remains responsive during bounded/malformed/slow 20-MB multi-format import and equivalent export; no synchronous workbook/DB operation on the async event loop; (2) authentic ZIP archive type, decomp/declaration mismatches, memory/CPU limits and malformed-XLSB/ODS tests; (3) trusted Cloudflare/Tunnel/Caddy/Uvicorn client-IP chain with spoofed-forwarded-address negative proof and thread-safe bounded rate limiting; (4) controlled psycopg admission/connect/statement/lock timeouts and failure/reconnect behavior; (5) actual monitored/stable broker Organization/MFA/role provisioning; (6) scheduled and observed import-staging retention purge with missed-run alarm; (7) lead notification worker/provider and end-to-end email/live delivery only when the real external lead/contact boundary requires it, with backlog/retry monitoring; (8) production Search scale/rate protection sized by measured public inventory, consistent qualified claims/BoatDesign across concurrent revisions. These may be completed through multiple independently accepted code/operations tasks; **do not** bundle all into an unreviewable one-slice refactor or infer that cron entries in docs are running on a host.
+
+No actual provider/account/secret/HA/test execution is claimed by this documentary risk ledger. Other existing Production Readiness and separate Launch Pack phase gates remain unchanged. SLICE-0088 is already Owner-selected for synthetic-data broker export and retains regular START/independent review without granting external data authorization.
+
 ## Current execution boundary
 
 The active operator goal is:
