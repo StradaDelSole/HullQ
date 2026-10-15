@@ -363,7 +363,7 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 
 ## Next capability selection
 
-Next unselected queue number:
+Current queued slice:
 
 ```text
 SLICE-0087 — OWNER-SELECTED / docs-only READY review pending (NOT YET STARTABLE)
