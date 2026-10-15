@@ -26,7 +26,7 @@ def test_empty_scenario_is_invalid() -> None:
 
 def test_unknown_parameter_is_invalid() -> None:
     with pytest.raises(InvalidSearchFitScenarioError):
-        parse_search_fit_scenario({"beam_max": ["10"]})
+        parse_search_fit_scenario({"displacement_kg": ["5000"]})
 
 
 def test_draft_max_and_keel_only_scenario_parses() -> None:
@@ -172,3 +172,76 @@ def test_all_eight_criteria_scenario_parses() -> None:
     assert scenario.hull_configuration == "MONOHULL"
     assert scenario.cockpit_position == "AFT"
     assert scenario.deck_saloon == "DECK_SALOON"
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0087: beam / hull_material
+# ---------------------------------------------------------------------------
+
+
+def test_beam_min_only_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario({"beam_min": ["3.2"]})
+    assert scenario.beam_min == Decimal("3.2")
+    assert scenario.beam_max is None
+    assert scenario.hull_material is None
+
+
+def test_beam_min_and_max_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario({"beam_min": ["3.2"], "beam_max": ["4.4"]})
+    assert scenario.beam_min == Decimal("3.2")
+    assert scenario.beam_max == Decimal("4.4")
+
+
+def test_beam_min_greater_than_max_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"beam_min": ["4.4"], "beam_max": ["3.2"]})
+
+
+def test_noncanonical_beam_value_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"beam_min": ["3.20"]})
+
+
+def test_duplicate_beam_min_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"beam_min": ["3.2", "3.5"]})
+
+
+def test_hull_material_only_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario({"hull_material": ["GRP_FIBERGLASS"]})
+    assert scenario.hull_material == "GRP_FIBERGLASS"
+
+
+def test_unsupported_hull_material_value_is_invalid() -> None:
+    # FERROCEMENT/OTHER remain valid PhysicalBoat claim tokens but are never
+    # accepted public Search-fit scenario values.
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"hull_material": ["FERROCEMENT"]})
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"hull_material": ["OTHER"]})
+
+
+def test_duplicate_hull_material_is_invalid() -> None:
+    with pytest.raises(InvalidSearchFitScenarioError):
+        parse_search_fit_scenario({"hull_material": ["STEEL", "WOOD"]})
+
+
+def test_all_eleven_criteria_scenario_parses() -> None:
+    scenario = parse_search_fit_scenario(
+        {
+            "draft_max": ["1.6"],
+            "keel_configuration": ["FIN"],
+            "loa_min": ["10"],
+            "loa_max": ["15"],
+            "rudder_configuration": ["SKEG_HUNG"],
+            "hull_configuration": ["MONOHULL"],
+            "cockpit_position": ["AFT"],
+            "deck_saloon": ["DECK_SALOON"],
+            "beam_min": ["3.2"],
+            "beam_max": ["4.4"],
+            "hull_material": ["WOOD"],
+        }
+    )
+    assert scenario.beam_min == Decimal("3.2")
+    assert scenario.beam_max == Decimal("4.4")
+    assert scenario.hull_material == "WOOD"

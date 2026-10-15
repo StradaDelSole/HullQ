@@ -17,6 +17,7 @@ import {
   SEARCH_COCKPIT_POSITION_VALUES,
   SEARCH_DECK_SALOON_VALUES,
   SEARCH_HULL_CONFIGURATION_VALUES,
+  SEARCH_HULL_MATERIAL_VALUES,
   SEARCH_KEEL_CONFIGURATION_VALUES,
   SEARCH_RUDDER_CONFIGURATION_VALUES,
   type DraftOnlyConfirmedMatch,
@@ -59,7 +60,10 @@ const usesTypedEvidenceShape =
     activeRequirement.rudder_configuration !== undefined ||
     activeRequirement.hull_configuration !== undefined ||
     activeRequirement.cockpit_position !== undefined ||
-    activeRequirement.deck_saloon !== undefined);
+    activeRequirement.deck_saloon !== undefined ||
+    activeRequirement.beam_min !== undefined ||
+    activeRequirement.beam_max !== undefined ||
+    activeRequirement.hull_material !== undefined);
 // Retained alias: the three originally accepted shapes (draft-only,
 // keel-only, draft+keel) keep rendering through the exact same byte-for-byte
 // unchanged branches below (Required Behavior non-regression).
@@ -75,7 +79,10 @@ const isLegacySummaryShape =
   activeRequirement.rudder_configuration === undefined &&
   activeRequirement.hull_configuration === undefined &&
   activeRequirement.cockpit_position === undefined &&
-  activeRequirement.deck_saloon === undefined;
+  activeRequirement.deck_saloon === undefined &&
+  activeRequirement.beam_min === undefined &&
+  activeRequirement.beam_max === undefined &&
+  activeRequirement.hull_material === undefined;
 
 function keelLabel(value: string): string {
   return (t.keelConfigurationLabels as Record<string, string>)[value] ?? value;
@@ -95,6 +102,10 @@ function cockpitLabel(value: string): string {
 
 function deckSaloonLabel(value: string): string {
   return (t.deckSaloonLabels as Record<string, string>)[value] ?? value;
+}
+
+function hullMaterialLabel(value: string): string {
+  return (t.hullMaterialLabels as Record<string, string>)[value] ?? value;
 }
 
 // PR #349 independent-review Finding D: the design/configuration-level
@@ -185,6 +196,26 @@ function deckSaloonEvidenceText(match: NativeInventoryConfirmedMatch): string | 
   return t.resolvedDeckSaloonText(deckSaloonLabel(evidence.observed_value));
 }
 
+function beamEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  // beam_min/beam_max may each contribute their own criterion_evidence entry
+  // against the shared "beam_m" field -- mirrors loaEvidenceText above.
+  const evidence = match.criterion_evidence.find(
+    (item) => item.field === "beam_m" && item.observed_value !== null,
+  );
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedBeamText(evidence.observed_value);
+}
+
+function hullMaterialEvidenceText(match: NativeInventoryConfirmedMatch): string | null {
+  const evidence = match.criterion_evidence.find((item) => item.field === "hull_material");
+  if (evidence === undefined || evidence.observed_value === null) {
+    return null;
+  }
+  return t.resolvedHullMaterialText(hullMaterialLabel(evidence.observed_value));
+}
+
 // SLICE-0085/SLICE-0086: one match's evidence text per *active* criterion
 // only (never unconditionally -- a pure loa-only or hull-only match must
 // never render a null/undefined draft or keel evidence line). Order mirrors
@@ -195,6 +226,10 @@ function matchEvidenceTexts(
   req: NonNullable<typeof activeRequirement>,
 ): string[] {
   const texts: string[] = [];
+  if (req.beam_min !== undefined || req.beam_max !== undefined) {
+    const text = beamEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
   if (req.cockpit_position !== undefined) {
     const text = cockpitEvidenceText(match);
     if (text !== null) texts.push(text);
@@ -209,6 +244,10 @@ function matchEvidenceTexts(
   }
   if (req.hull_configuration !== undefined) {
     const text = hullEvidenceText(match);
+    if (text !== null) texts.push(text);
+  }
+  if (req.hull_material !== undefined) {
+    const text = hullMaterialEvidenceText(match);
     if (text !== null) texts.push(text);
   }
   if (req.keel_configuration !== undefined) {
@@ -233,6 +272,13 @@ function matchEvidenceTexts(
 // never a second Search truth, purely a presentation-layer phrase join.
 function genericRequirementSummary(req: NonNullable<typeof activeRequirement>): string {
   const phrases: string[] = [];
+  if (req.beam_min !== undefined && req.beam_max !== undefined) {
+    phrases.push(t.requirementPhraseBeamRange(req.beam_min, req.beam_max));
+  } else if (req.beam_max !== undefined) {
+    phrases.push(t.requirementPhraseBeamMax(req.beam_max));
+  } else if (req.beam_min !== undefined) {
+    phrases.push(t.requirementPhraseBeamMin(req.beam_min));
+  }
   if (req.cockpit_position !== undefined) {
     phrases.push(t.requirementPhraseCockpit(cockpitLabel(req.cockpit_position)));
   }
@@ -244,6 +290,9 @@ function genericRequirementSummary(req: NonNullable<typeof activeRequirement>): 
   }
   if (req.hull_configuration !== undefined) {
     phrases.push(t.requirementPhraseHull(hullLabel(req.hull_configuration)));
+  }
+  if (req.hull_material !== undefined) {
+    phrases.push(t.requirementPhraseHullMaterial(hullMaterialLabel(req.hull_material)));
   }
   if (req.keel_configuration !== undefined) {
     phrases.push(t.requirementPhraseKeel(keelLabel(req.keel_configuration)));
@@ -404,6 +453,39 @@ const nativeInventoryMatches: NativeInventoryConfirmedMatch[] =
                     selected={activeRequirement?.rudder_configuration === value}
                   >
                     {rudderLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t.beamMinLabel}
+              <input
+                type="text"
+                name="beam_min"
+                inputmode="decimal"
+                placeholder={t.beamMinPlaceholder}
+                value={activeRequirement?.beam_min ?? ""}
+              />
+            </label>
+            <label>
+              {t.beamMaxLabel}
+              <input
+                type="text"
+                name="beam_max"
+                inputmode="decimal"
+                placeholder={t.beamMaxPlaceholder}
+                value={activeRequirement?.beam_max ?? ""}
+              />
+            </label>
+            <label>
+              {t.hullMaterialLabel}
+              <select name="hull_material">
+                <option value="" selected={activeRequirement?.hull_material === undefined}>
+                  {t.hullMaterialAnyOption}
+                </option>
+                {SEARCH_HULL_MATERIAL_VALUES.map((value) => (
+                  <option value={value} selected={activeRequirement?.hull_material === value}>
+                    {hullMaterialLabel(value)}
                   </option>
                 ))}
               </select>

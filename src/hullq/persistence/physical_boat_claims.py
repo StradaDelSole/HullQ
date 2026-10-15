@@ -58,6 +58,7 @@ from typing import Any
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BeamClaim,
     BoatNameClaim,
     BuildYearClaim,
     CockpitPosition,
@@ -67,6 +68,8 @@ from hullq.domain.physical_boat_claims import (
     DraftClaim,
     HullConfiguration,
     HullConfigurationClaim,
+    HullMaterial,
+    HullMaterialClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
     LoaLengthClaim,
@@ -243,8 +246,10 @@ INSERT INTO physical_boat_claim_revisions (
     hull_configuration_assertion_kind, hull_configuration_value,
     cockpit_position_assertion_kind, cockpit_position_value,
     deck_saloon_assertion_kind, deck_saloon_value,
+    beam_assertion_kind, beam_value,
+    hull_material_assertion_kind, hull_material_value,
     previous_claim_revision_id, content_hash
-) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (claim_revision_id) DO NOTHING
 """
 
@@ -269,6 +274,8 @@ _REVISION_COLUMNS = """
     r.hull_configuration_assertion_kind, r.hull_configuration_value,
     r.cockpit_position_assertion_kind, r.cockpit_position_value,
     r.deck_saloon_assertion_kind, r.deck_saloon_value,
+    r.beam_assertion_kind, r.beam_value,
+    r.hull_material_assertion_kind, r.hull_material_value,
     r.previous_claim_revision_id, r.recorded_at
 """
 
@@ -320,6 +327,10 @@ ORDER BY h.claiming_organization_id
 #: SLICE-0086: further extends the same single query to also carry
 #: `hull_configuration`/`cockpit_position`/`deck_saloon` -- identical
 #: single-statement-per-PhysicalBoat rationale.
+#:
+#: SLICE-0087: further extends the same single query to also carry
+#: `beam`/`hull_material` -- identical single-statement-per-PhysicalBoat
+#: rationale.
 _SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS = """
 SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value,
        r.keel_configuration_assertion_kind, r.keel_configuration_value,
@@ -327,7 +338,9 @@ SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value,
        r.rudder_configuration_assertion_kind, r.rudder_configuration_value,
        r.hull_configuration_assertion_kind, r.hull_configuration_value,
        r.cockpit_position_assertion_kind, r.cockpit_position_value,
-       r.deck_saloon_assertion_kind, r.deck_saloon_value
+       r.deck_saloon_assertion_kind, r.deck_saloon_value,
+       r.beam_assertion_kind, r.beam_value,
+       r.hull_material_assertion_kind, r.hull_material_value
 FROM physical_boat_claim_heads h
 JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
 WHERE h.physical_boat_id = %s
@@ -378,6 +391,8 @@ def _optional_claim_dict(
     | HullConfigurationClaim
     | CockpitPositionClaim
     | DeckSaloonClaim
+    | BeamClaim
+    | HullMaterialClaim
     | None,
 ) -> dict[str, Any] | None:
     if claim is None:
@@ -387,7 +402,14 @@ def _optional_claim_dict(
         value: Any = _canonical_decimal_str(raw_value)
     elif isinstance(
         raw_value,
-        (KeelConfiguration, RudderConfiguration, HullConfiguration, CockpitPosition, DeckSaloon),
+        (
+            KeelConfiguration,
+            RudderConfiguration,
+            HullConfiguration,
+            CockpitPosition,
+            DeckSaloon,
+            HullMaterial,
+        ),
     ):
         value = raw_value.value
     else:
@@ -436,6 +458,14 @@ def _claim_envelope_dict(
         envelope["cockpit_position"] = _optional_claim_dict(claims.cockpit_position)
     if claims.deck_saloon is not None:
         envelope["deck_saloon"] = _optional_claim_dict(claims.deck_saloon)
+    # SLICE-0087: identical "only add the key when actually present" rule as
+    # hull_configuration/cockpit_position/deck_saloon above, for the same
+    # exact pre-0087 retry-fingerprint-stability reason -- a pre-0087
+    # revision never had these keys at all.
+    if claims.beam is not None:
+        envelope["beam"] = _optional_claim_dict(claims.beam)
+    if claims.hull_material is not None:
+        envelope["hull_material"] = _optional_claim_dict(claims.hull_material)
     return envelope
 
 
@@ -470,6 +500,10 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
         cockpit_position_value,
         deck_saloon_kind,
         deck_saloon_value,
+        beam_kind,
+        beam_value,
+        hull_material_kind,
+        hull_material_value,
         previous_revision_id,
         recorded_at,
     ) = row
@@ -526,6 +560,18 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
             assertion_kind=AssertionKind(deck_saloon_kind),
             value=DeckSaloon(deck_saloon_value) if deck_saloon_value is not None else None,
         )
+    beam: BeamClaim | None = None
+    if beam_kind is not None:
+        beam = BeamClaim(
+            assertion_kind=AssertionKind(beam_kind),
+            value=Decimal(beam_value) if beam_value is not None else None,
+        )
+    hull_material: HullMaterialClaim | None = None
+    if hull_material_kind is not None:
+        hull_material = HullMaterialClaim(
+            assertion_kind=AssertionKind(hull_material_kind),
+            value=HullMaterial(hull_material_value) if hull_material_value is not None else None,
+        )
 
     claims = PhysicalBoatClaimSnapshot(
         marketed_brand_claim=marketed_brand_claim,
@@ -542,6 +588,8 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam=beam,
+        hull_material=hull_material,
     )
 
     return PhysicalBoatClaimRevisionRecord(
@@ -569,6 +617,8 @@ def _optional_claim_columns(
     | HullConfigurationClaim
     | CockpitPositionClaim
     | DeckSaloonClaim
+    | BeamClaim
+    | HullMaterialClaim
     | None,
 ) -> tuple[str | None, Any]:
     if claim is None:
@@ -576,7 +626,14 @@ def _optional_claim_columns(
     raw_value = claim.value
     if isinstance(
         raw_value,
-        (KeelConfiguration, RudderConfiguration, HullConfiguration, CockpitPosition, DeckSaloon),
+        (
+            KeelConfiguration,
+            RudderConfiguration,
+            HullConfiguration,
+            CockpitPosition,
+            DeckSaloon,
+            HullMaterial,
+        ),
     ):
         return claim.assertion_kind.value, raw_value.value
     return claim.assertion_kind.value, raw_value
@@ -736,6 +793,8 @@ def write_physical_boat_claim_revision_row(
     )
     cockpit_position_kind, cockpit_position_value = _optional_claim_columns(claims.cockpit_position)
     deck_saloon_kind, deck_saloon_value = _optional_claim_columns(claims.deck_saloon)
+    beam_kind, beam_value = _optional_claim_columns(claims.beam)
+    hull_material_kind, hull_material_value = _optional_claim_columns(claims.hull_material)
 
     # ON CONFLICT DO NOTHING on claim_revision_id (a global PRIMARY KEY,
     # not scoped to (physical_boat_id, claiming_organization_id)) closes
@@ -769,6 +828,10 @@ def write_physical_boat_claim_revision_row(
             cockpit_position_value,
             deck_saloon_kind,
             deck_saloon_value,
+            beam_kind,
+            beam_value,
+            hull_material_kind,
+            hull_material_value,
             actual_current_id,
             content_hash,
         ),
@@ -995,6 +1058,8 @@ class CurrentPhysicalBoatClaimObservation:
     hull_configuration: HullConfigurationClaim | None
     cockpit_position: CockpitPositionClaim | None
     deck_saloon: DeckSaloonClaim | None
+    beam: BeamClaim | None
+    hull_material: HullMaterialClaim | None
 
 
 def list_current_physical_boat_claim_observations(
@@ -1038,6 +1103,10 @@ def list_current_physical_boat_claim_observations(
         cockpit_position_value,
         deck_saloon_kind,
         deck_saloon_value,
+        beam_kind,
+        beam_value,
+        hull_material_kind,
+        hull_material_value,
     ) in rows:
         draft: DraftClaim | None = None
         if draft_kind is not None:
@@ -1085,6 +1154,20 @@ def list_current_physical_boat_claim_observations(
                 assertion_kind=AssertionKind(deck_saloon_kind),
                 value=DeckSaloon(deck_saloon_value) if deck_saloon_value is not None else None,
             )
+        beam: BeamClaim | None = None
+        if beam_kind is not None:
+            beam = BeamClaim(
+                assertion_kind=AssertionKind(beam_kind),
+                value=Decimal(beam_value) if beam_value is not None else None,
+            )
+        hull_material: HullMaterialClaim | None = None
+        if hull_material_kind is not None:
+            hull_material = HullMaterialClaim(
+                assertion_kind=AssertionKind(hull_material_kind),
+                value=HullMaterial(hull_material_value)
+                if hull_material_value is not None
+                else None,
+            )
         observations.append(
             CurrentPhysicalBoatClaimObservation(
                 claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
@@ -1095,6 +1178,8 @@ def list_current_physical_boat_claim_observations(
                 hull_configuration=hull_configuration,
                 cockpit_position=cockpit_position,
                 deck_saloon=deck_saloon,
+                beam=beam,
+                hull_material=hull_material,
             )
         )
     return observations

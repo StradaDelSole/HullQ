@@ -91,6 +91,27 @@ export interface SearchText {
     SPADE: string;
     TWIN: string;
   };
+  // SLICE-0087: overall beam min/max filter.
+  beamMinLabel: string;
+  beamMaxLabel: string;
+  beamMinPlaceholder: string;
+  beamMaxPlaceholder: string;
+  // SLICE-0087: hull construction material filter.
+  hullMaterialLabel: string;
+  hullMaterialAnyOption: string;
+  /** Localized display label for each accepted technical hull-material value. */
+  hullMaterialLabels: {
+    GRP_FIBERGLASS: string;
+    STEEL: string;
+    ALUMINUM: string;
+    WOOD: string;
+  };
+  requirementPhraseBeamMin: (beamMin: string) => string;
+  requirementPhraseBeamMax: (beamMax: string) => string;
+  requirementPhraseBeamRange: (beamMin: string, beamMax: string) => string;
+  requirementPhraseHullMaterial: (hullMaterialLabel: string) => string;
+  resolvedBeamText: (resolvedBeamM: string) => string;
+  resolvedHullMaterialText: (hullMaterialLabel: string) => string;
   // SLICE-0085: per-criterion requirement-summary phrase fragments, combined
   // generically (joined with `requirementSummaryListConjunction`) by
   // `requirementSummaryGeneric` whenever any of loa_min/loa_max/
@@ -245,6 +266,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       SPADE: "Spade rudder",
       TWIN: "Twin rudders",
     },
+    beamMinLabel: "Minimum overall beam (metres)",
+    beamMaxLabel: "Maximum overall beam (metres)",
+    beamMinPlaceholder: "3.2",
+    beamMaxPlaceholder: "4.4",
+    hullMaterialLabel: "Hull construction material",
+    hullMaterialAnyOption: "Any hull material",
+    hullMaterialLabels: {
+      GRP_FIBERGLASS: "GRP / fiberglass",
+      STEEL: "Steel",
+      ALUMINUM: "Aluminum",
+      WOOD: "Wood",
+    },
     requirementPhraseDraftMax: (draftMax) => `a draft of ${draftMax} m or less`,
     requirementPhraseKeel: (keelLabel) => `a ${keelLabel}`,
     requirementPhraseLoaMin: (loaMin) => `a length overall of at least ${loaMin} m`,
@@ -252,12 +285,21 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     requirementPhraseLoaRange: (loaMin, loaMax) =>
       `a length overall between ${loaMin} m and ${loaMax} m`,
     requirementPhraseRudder: (rudderLabel) => `a ${rudderLabel}`,
+    requirementPhraseBeamMin: (beamMin) => `an overall beam of at least ${beamMin} m`,
+    requirementPhraseBeamMax: (beamMax) => `an overall beam of ${beamMax} m or less`,
+    requirementPhraseBeamRange: (beamMin, beamMax) =>
+      `an overall beam between ${beamMin} m and ${beamMax} m`,
+    requirementPhraseHullMaterial: (hullMaterialLabel) => `a ${hullMaterialLabel} hull`,
     requirementSummaryListConjunction: "and",
     requirementSummaryGeneric: (phrases) => `Showing boats confirmed to have ${phrases}.`,
     resolvedLoaText: (resolvedLoaM) =>
       `broker-declared length overall: ${resolvedLoaM} m (not independently verified)`,
     resolvedRudderText: (rudderLabel) =>
       `broker-declared rudder configuration: ${rudderLabel} (not independently verified)`,
+    resolvedBeamText: (resolvedBeamM) =>
+      `broker-declared overall beam: ${resolvedBeamM} m (not independently verified)`,
+    resolvedHullMaterialText: (hullMaterialLabel) =>
+      `broker-declared hull material: ${hullMaterialLabel} (not independently verified)`,
     submit: "Search",
     formInstructions:
       "Start with the structure that interests you (hull form, cockpit position, deck saloon), then optionally enter the deepest draft your boat can be, in metres, and/or choose a keel configuration. HullQ only shows boats a broker has confirmed meet these requirements.",
@@ -293,7 +335,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
     sensitivityUnavailableWithNewCriteria:
-      "Requirement sensitivity isn't available while a length overall, rudder configuration, hull form, cockpit position or deck saloon filter is also active.",
+      "Requirement sensitivity isn't available while a length overall, rudder configuration, hull form, cockpit position, deck saloon, overall beam or hull material filter is also active.",
     sensitivityDraftSubmitLabel: "See the effect of a different maximum draft",
     sensitivityKeelSubmitLabel: "See the effect of a different keel configuration",
     sensitivityAlternativeDraftLabel: "Alternative maximum draft (metres)",
@@ -384,6 +426,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       SPADE: "Spatenruder (freistehend)",
       TWIN: "Doppelruder",
     },
+    beamMinLabel: "Mindestbreite über alles (Meter)",
+    beamMaxLabel: "Maximale Breite über alles (Meter)",
+    beamMinPlaceholder: "3.2",
+    beamMaxPlaceholder: "4.4",
+    hullMaterialLabel: "Rumpfbaumaterial",
+    hullMaterialAnyOption: "Beliebiges Rumpfmaterial",
+    hullMaterialLabels: {
+      GRP_FIBERGLASS: "GFK / Fiberglas",
+      STEEL: "Stahl",
+      ALUMINUM: "Aluminium",
+      WOOD: "Holz",
+    },
     requirementPhraseDraftMax: (draftMax) => `einem Tiefgang von ${draftMax} m oder weniger`,
     requirementPhraseKeel: (keelLabel) => `einer Kielkonfiguration: ${keelLabel}`,
     requirementPhraseLoaMin: (loaMin) => `einer Gesamtlänge von mindestens ${loaMin} m`,
@@ -391,12 +445,21 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     requirementPhraseLoaRange: (loaMin, loaMax) =>
       `einer Gesamtlänge zwischen ${loaMin} m und ${loaMax} m`,
     requirementPhraseRudder: (rudderLabel) => `einer Ruderkonfiguration: ${rudderLabel}`,
+    requirementPhraseBeamMin: (beamMin) => `einer Breite über alles von mindestens ${beamMin} m`,
+    requirementPhraseBeamMax: (beamMax) => `einer Breite über alles von ${beamMax} m oder weniger`,
+    requirementPhraseBeamRange: (beamMin, beamMax) =>
+      `einer Breite über alles zwischen ${beamMin} m und ${beamMax} m`,
+    requirementPhraseHullMaterial: (hullMaterialLabel) => `einem Rumpf aus ${hullMaterialLabel}`,
     requirementSummaryListConjunction: "und",
     requirementSummaryGeneric: (phrases) => `Boote mit ${phrases} (bestätigt).`,
     resolvedLoaText: (resolvedLoaM) =>
       `vom Makler angegebene Gesamtlänge: ${resolvedLoaM} m (nicht unabhängig verifiziert)`,
     resolvedRudderText: (rudderLabel) =>
       `vom Makler angegebene Ruderkonfiguration: ${rudderLabel} (nicht unabhängig verifiziert)`,
+    resolvedBeamText: (resolvedBeamM) =>
+      `vom Makler angegebene Breite über alles: ${resolvedBeamM} m (nicht unabhängig verifiziert)`,
+    resolvedHullMaterialText: (hullMaterialLabel) =>
+      `vom Makler angegebenes Rumpfmaterial: ${hullMaterialLabel} (nicht unabhängig verifiziert)`,
     submit: "Suchen",
     formInstructions:
       "Beginnen Sie mit der Struktur, die Sie interessiert (Rumpfform, Cockpit-Position, Decksalon), und geben Sie optional den größten zulässigen Tiefgang in Metern an und/oder wählen Sie eine Kielkonfiguration. HullQ zeigt nur Boote, die von einem Makler als diesen Anforderungen entsprechend bestätigt wurden.",
@@ -432,7 +495,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
     sensitivityUnavailableWithNewCriteria:
-      "Die Anforderungssensitivität ist nicht verfügbar, während zusätzlich ein Filter für Gesamtlänge, Ruderkonfiguration, Rumpfform, Cockpit-Position oder Decksalon aktiv ist.",
+      "Die Anforderungssensitivität ist nicht verfügbar, während zusätzlich ein Filter für Gesamtlänge, Ruderkonfiguration, Rumpfform, Cockpit-Position, Decksalon, Breite über alles oder Rumpfmaterial aktiv ist.",
     sensitivityDraftSubmitLabel: "Auswirkung eines anderen maximalen Tiefgangs anzeigen",
     sensitivityKeelSubmitLabel: "Auswirkung einer anderen Kielkonfiguration anzeigen",
     sensitivityAlternativeDraftLabel: "Alternativer maximaler Tiefgang (Meter)",
@@ -523,6 +586,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       SPADE: "Safran suspendu (spade)",
       TWIN: "Safrans jumelés",
     },
+    beamMinLabel: "Largeur hors tout minimale (mètres)",
+    beamMaxLabel: "Largeur hors tout maximale (mètres)",
+    beamMinPlaceholder: "3.2",
+    beamMaxPlaceholder: "4.4",
+    hullMaterialLabel: "Matériau de construction de la coque",
+    hullMaterialAnyOption: "Tout matériau de coque",
+    hullMaterialLabels: {
+      GRP_FIBERGLASS: "PRV / fibre de verre",
+      STEEL: "Acier",
+      ALUMINUM: "Aluminium",
+      WOOD: "Bois",
+    },
     requirementPhraseDraftMax: (draftMax) => `un tirant d'eau de ${draftMax} m ou moins`,
     requirementPhraseKeel: (keelLabel) => `une configuration de quille : ${keelLabel}`,
     requirementPhraseLoaMin: (loaMin) => `une longueur hors tout d'au moins ${loaMin} m`,
@@ -530,10 +605,19 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     requirementPhraseLoaRange: (loaMin, loaMax) =>
       `une longueur hors tout comprise entre ${loaMin} m et ${loaMax} m`,
     requirementPhraseRudder: (rudderLabel) => `une configuration de safran : ${rudderLabel}`,
+    requirementPhraseBeamMin: (beamMin) => `une largeur hors tout d'au moins ${beamMin} m`,
+    requirementPhraseBeamMax: (beamMax) => `une largeur hors tout de ${beamMax} m ou moins`,
+    requirementPhraseBeamRange: (beamMin, beamMax) =>
+      `une largeur hors tout comprise entre ${beamMin} m et ${beamMax} m`,
+    requirementPhraseHullMaterial: (hullMaterialLabel) => `une coque en ${hullMaterialLabel}`,
     requirementSummaryListConjunction: "et",
     requirementSummaryGeneric: (phrases) => `Bateaux confirmés avec ${phrases}.`,
     resolvedLoaText: (resolvedLoaM) =>
       `longueur hors tout déclarée par le courtier : ${resolvedLoaM} m (non vérifiée de manière indépendante)`,
+    resolvedBeamText: (resolvedBeamM) =>
+      `largeur hors tout déclarée par le courtier : ${resolvedBeamM} m (non vérifiée de manière indépendante)`,
+    resolvedHullMaterialText: (hullMaterialLabel) =>
+      `matériau de coque déclaré par le courtier : ${hullMaterialLabel} (non vérifié de manière indépendante)`,
     resolvedRudderText: (rudderLabel) =>
       `configuration de safran déclarée par le courtier : ${rudderLabel} (non vérifiée de manière indépendante)`,
     submit: "Rechercher",
@@ -572,7 +656,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
     sensitivityUnavailableWithNewCriteria:
-      "La sensibilité de l'exigence n'est pas disponible lorsqu'un filtre de longueur hors tout, de configuration de safran, de forme de carène, de position de cockpit ou de salon de pont est également actif.",
+      "La sensibilité de l'exigence n'est pas disponible lorsqu'un filtre de longueur hors tout, de configuration de safran, de forme de carène, de position de cockpit, de salon de pont, de largeur hors tout ou de matériau de coque est également actif.",
     sensitivityDraftSubmitLabel: "Voir l'effet d'un tirant d'eau maximal différent",
     sensitivityKeelSubmitLabel: "Voir l'effet d'une configuration de quille différente",
     sensitivityAlternativeDraftLabel: "Tirant d'eau maximal alternatif (mètres)",
@@ -663,6 +747,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       SPADE: "Leme suspenso (spade)",
       TWIN: "Lemes duplos",
     },
+    beamMinLabel: "Boca mínima (metros)",
+    beamMaxLabel: "Boca máxima (metros)",
+    beamMinPlaceholder: "3.2",
+    beamMaxPlaceholder: "4.4",
+    hullMaterialLabel: "Material de construção do casco",
+    hullMaterialAnyOption: "Qualquer material de casco",
+    hullMaterialLabels: {
+      GRP_FIBERGLASS: "PRFV / fibra de vidro",
+      STEEL: "Aço",
+      ALUMINUM: "Alumínio",
+      WOOD: "Madeira",
+    },
     requirementPhraseDraftMax: (draftMax) => `um calado de ${draftMax} m ou menos`,
     requirementPhraseKeel: (keelLabel) => `uma configuração de quilha: ${keelLabel}`,
     requirementPhraseLoaMin: (loaMin) => `um comprimento total de pelo menos ${loaMin} m`,
@@ -670,10 +766,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     requirementPhraseLoaRange: (loaMin, loaMax) =>
       `um comprimento total entre ${loaMin} m e ${loaMax} m`,
     requirementPhraseRudder: (rudderLabel) => `uma configuração de leme: ${rudderLabel}`,
+    requirementPhraseBeamMin: (beamMin) => `uma boca de pelo menos ${beamMin} m`,
+    requirementPhraseBeamMax: (beamMax) => `uma boca de ${beamMax} m ou menos`,
+    requirementPhraseBeamRange: (beamMin, beamMax) => `uma boca entre ${beamMin} m e ${beamMax} m`,
+    requirementPhraseHullMaterial: (hullMaterialLabel) => `um casco de ${hullMaterialLabel}`,
     requirementSummaryListConjunction: "e",
     requirementSummaryGeneric: (phrases) => `A mostrar barcos confirmados com ${phrases}.`,
     resolvedLoaText: (resolvedLoaM) =>
       `comprimento total declarado pelo corretor: ${resolvedLoaM} m (não verificado de forma independente)`,
+    resolvedBeamText: (resolvedBeamM) =>
+      `boca declarada pelo corretor: ${resolvedBeamM} m (não verificada de forma independente)`,
+    resolvedHullMaterialText: (hullMaterialLabel) =>
+      `material de casco declarado pelo corretor: ${hullMaterialLabel} (não verificado de forma independente)`,
     resolvedRudderText: (rudderLabel) =>
       `configuração de leme declarada pelo corretor: ${rudderLabel} (não verificada de forma independente)`,
     submit: "Pesquisar",
@@ -712,7 +816,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
     sensitivityUnavailableWithNewCriteria:
-      "A sensibilidade do requisito não está disponível enquanto um filtro de comprimento total, configuração de leme, forma do casco, posição do cockpit ou salão de convés também estiver ativo.",
+      "A sensibilidade do requisito não está disponível enquanto um filtro de comprimento total, configuração de leme, forma do casco, posição do cockpit, salão de convés, boca máxima ou material do casco também estiver ativo.",
     sensitivityDraftSubmitLabel: "Ver o efeito de um calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver o efeito de uma configuração de quilha diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",
@@ -803,6 +907,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       SPADE: "Timón suspendido (spade)",
       TWIN: "Timones gemelos",
     },
+    beamMinLabel: "Manga mínima (metros)",
+    beamMaxLabel: "Manga máxima (metros)",
+    beamMinPlaceholder: "3.2",
+    beamMaxPlaceholder: "4.4",
+    hullMaterialLabel: "Material de construcción del casco",
+    hullMaterialAnyOption: "Cualquier material de casco",
+    hullMaterialLabels: {
+      GRP_FIBERGLASS: "PRFV / fibra de vidrio",
+      STEEL: "Acero",
+      ALUMINUM: "Aluminio",
+      WOOD: "Madera",
+    },
     requirementPhraseDraftMax: (draftMax) => `un calado de ${draftMax} m o menos`,
     requirementPhraseKeel: (keelLabel) => `una configuración de quilla: ${keelLabel}`,
     requirementPhraseLoaMin: (loaMin) => `una eslora total de al menos ${loaMin} m`,
@@ -810,10 +926,18 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     requirementPhraseLoaRange: (loaMin, loaMax) =>
       `una eslora total entre ${loaMin} m y ${loaMax} m`,
     requirementPhraseRudder: (rudderLabel) => `una configuración de timón: ${rudderLabel}`,
+    requirementPhraseBeamMin: (beamMin) => `una manga de al menos ${beamMin} m`,
+    requirementPhraseBeamMax: (beamMax) => `una manga de ${beamMax} m o menos`,
+    requirementPhraseBeamRange: (beamMin, beamMax) => `una manga entre ${beamMin} m y ${beamMax} m`,
+    requirementPhraseHullMaterial: (hullMaterialLabel) => `un casco de ${hullMaterialLabel}`,
     requirementSummaryListConjunction: "y",
     requirementSummaryGeneric: (phrases) => `Mostrando barcos confirmados con ${phrases}.`,
     resolvedLoaText: (resolvedLoaM) =>
       `eslora total declarada por el bróker: ${resolvedLoaM} m (no verificada de forma independiente)`,
+    resolvedBeamText: (resolvedBeamM) =>
+      `manga declarada por el bróker: ${resolvedBeamM} m (no verificada de forma independiente)`,
+    resolvedHullMaterialText: (hullMaterialLabel) =>
+      `material de casco declarado por el bróker: ${hullMaterialLabel} (no verificado de forma independiente)`,
     resolvedRudderText: (rudderLabel) =>
       `configuración de timón declarada por el bróker: ${rudderLabel} (no verificada de forma independiente)`,
     submit: "Buscar",
@@ -852,7 +976,7 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityFormNote:
       "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
     sensitivityUnavailableWithNewCriteria:
-      "La sensibilidad del requisito no está disponible mientras también esté activo un filtro de eslora total, configuración de timón, forma de casco, posición de bañera o salón de cubierta.",
+      "La sensibilidad del requisito no está disponible mientras también esté activo un filtro de eslora total, configuración de timón, forma de casco, posición de bañera, salón de cubierta, manga máxima o material del casco.",
     sensitivityDraftSubmitLabel: "Ver el efecto de un calado máximo diferente",
     sensitivityKeelSubmitLabel: "Ver el efecto de una configuración de quilla diferente",
     sensitivityAlternativeDraftLabel: "Calado máximo alternativo (metros)",

@@ -243,6 +243,53 @@ test("buildSearchCanonicalPath: all eight accepted keys in canonical order", () 
   );
 });
 
+// SLICE-0087: beam_min/beam_max/hull_material.
+
+test("buildSearchCanonicalPath: beam range puts beam_max before beam_min", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { beam_min: "3.2", beam_max: "4.4" }),
+    "/en/search?beam_max=4.4&beam_min=3.2",
+  );
+});
+
+test("buildSearchCanonicalPath: hull-material-only", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", { hull_material: "WOOD" }),
+    "/en/search?hull_material=WOOD",
+  );
+});
+
+test("buildSearchCanonicalPath: hull_material before keel_configuration (canonical key order)", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", {
+      keel_configuration: "FIN",
+      hull_material: "WOOD",
+    }),
+    "/en/search?hull_material=WOOD&keel_configuration=FIN",
+  );
+});
+
+test("buildSearchCanonicalPath: all eleven accepted keys in canonical order", () => {
+  assert.equal(
+    buildSearchCanonicalPath("en", {
+      draft_max: "1.6",
+      keel_configuration: "FIN",
+      loa_min: "10",
+      loa_max: "15",
+      rudder_configuration: "SKEG_HUNG",
+      hull_configuration: "CATAMARAN",
+      cockpit_position: "CENTER",
+      deck_saloon: "DECK_SALOON",
+      beam_min: "3.2",
+      beam_max: "4.4",
+      hull_material: "WOOD",
+    }),
+    "/en/search?beam_max=4.4&beam_min=3.2&cockpit_position=CENTER&deck_saloon=DECK_SALOON" +
+      "&draft_max=1.6&hull_configuration=CATAMARAN&hull_material=WOOD&keel_configuration=FIN" +
+      "&loa_max=15&loa_min=10&rudder_configuration=SKEG_HUNG",
+  );
+});
+
 test("loadSearchPageData: a loa-only 200 result carries only loa_min/loa_max in activeRequirement", async () => {
   await withServer(
     (_req, res) => {

@@ -274,6 +274,33 @@ test("fetchSearchFit: SLICE-0086 scenario fields are forwarded as query params",
   );
 });
 
+test("fetchSearchFit: SLICE-0087 scenario fields are forwarded as query params", async () => {
+  await withServer(
+    (req, res) => {
+      const url = new URL(req.url ?? "", "http://localhost");
+      assert.equal(url.searchParams.get("beam_min"), "3.2");
+      assert.equal(url.searchParams.get("beam_max"), "4.4");
+      assert.equal(url.searchParams.get("hull_material"), "GRP_FIBERGLASS");
+      assert.equal(url.searchParams.has("draft_max"), false);
+      jsonResponse(res, 200, VALID_VIEW);
+    },
+    async (baseUrl) => {
+      const result = await fetchSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        {
+          beamMin: "3.2",
+          beamMax: "4.4",
+          hullMaterial: "GRP_FIBERGLASS",
+        },
+        null,
+      );
+      assert.equal(result.kind, "ok");
+    },
+  );
+});
+
 test("fetchSearchFit: cookie header is forwarded verbatim", async () => {
   await withServer(
     (req, res) => {

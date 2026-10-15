@@ -126,10 +126,12 @@ from hullq.search.criteria import (
     NumericLeafCriterion,
 )
 from hullq.search.criteria_registry import (
+    BEAM_DEFINITION,
     COCKPIT_POSITION_DEFINITION,
     DECK_SALOON_DEFINITION,
     DRAFT_MAX_DEFINITION,
     HULL_CONFIGURATION_DEFINITION,
+    HULL_MATERIAL_DEFINITION,
     KEEL_CONFIGURATION_DEFINITION,
     LOA_DEFINITION,
     RUDDER_CONFIGURATION_DEFINITION,
@@ -250,6 +252,9 @@ class NativeInventorySearchOutcome:
     hull_configuration: str | None
     cockpit_position: str | None
     deck_saloon: str | None
+    beam_min: Decimal | None
+    beam_max: Decimal | None
+    hull_material: str | None
     query: MixedAndQuery
     confirmed_matches: tuple[NativeInventoryCandidateEvaluation, ...]
     confirmed_non_matches: tuple[NativeInventoryCandidateEvaluation, ...]
@@ -481,6 +486,9 @@ def build_mixed_requirement_query(
     hull_configuration: str | None = None,
     cockpit_position: str | None = None,
     deck_saloon: str | None = None,
+    beam_min: Decimal | None = None,
+    beam_max: Decimal | None = None,
+    hull_material: str | None = None,
 ) -> tuple[MixedAndQuery, tuple[CriterionDefinition, ...]]:
     """Validate and build the bounded multi-criterion `MixedAndQuery` + the
     exact `hullq.search.criteria_registry.CriterionDefinition`s active in it.
@@ -513,6 +521,9 @@ def build_mixed_requirement_query(
         and hull_configuration is None
         and cockpit_position is None
         and deck_saloon is None
+        and beam_min is None
+        and beam_max is None
+        and hull_material is None
     ):
         raise ValueError("at least one criterion must be supplied")
     if draft_max is not None and (
@@ -567,6 +578,19 @@ def build_mixed_requirement_query(
         raise ValueError(
             f"deck_saloon must be one of "
             f"{sorted(DECK_SALOON_DEFINITION.allowed_values)}; got {deck_saloon!r}"
+        )
+    for label, bound in (("beam_min", beam_min), ("beam_max", beam_max)):
+        if bound is not None and (
+            not isinstance(bound, Decimal) or not bound.is_finite() or bound <= 0
+        ):
+            raise ValueError(f"{label} must be a positive finite Decimal; got {bound!r}")
+    if beam_min is not None and beam_max is not None and beam_min > beam_max:
+        raise ValueError(f"beam_min ({beam_min}) must be <= beam_max ({beam_max})")
+    assert HULL_MATERIAL_DEFINITION.allowed_values is not None
+    if hull_material is not None and hull_material not in HULL_MATERIAL_DEFINITION.allowed_values:
+        raise ValueError(
+            f"hull_material must be one of "
+            f"{sorted(HULL_MATERIAL_DEFINITION.allowed_values)}; got {hull_material!r}"
         )
 
     criteria: list[NumericLeafCriterion | CategoricalLeafCriterion] = []
@@ -637,6 +661,34 @@ def build_mixed_requirement_query(
             )
         )
         active_definitions.append(DECK_SALOON_DEFINITION)
+    if beam_min is not None or beam_max is not None:
+        # SLICE-0087 normative beam semantics: both bounds project against
+        # the SAME deduplicated beam_m field, as two independent numeric
+        # leaves -- mirrors LOA's identical rule.
+        if beam_min is not None:
+            criteria.append(
+                NumericLeafCriterion(
+                    field=BEAM_DEFINITION.projection_field,
+                    comparison=NumericComparisonKind.MINIMUM,
+                    threshold_min=beam_min,
+                )
+            )
+        if beam_max is not None:
+            criteria.append(
+                NumericLeafCriterion(
+                    field=BEAM_DEFINITION.projection_field,
+                    comparison=NumericComparisonKind.MAXIMUM,
+                    threshold_max=beam_max,
+                )
+            )
+        active_definitions.append(BEAM_DEFINITION)
+    if hull_material is not None:
+        criteria.append(
+            CategoricalLeafCriterion(
+                field=HULL_MATERIAL_DEFINITION.projection_field, equals=hull_material
+            )
+        )
+        active_definitions.append(HULL_MATERIAL_DEFINITION)
     return MixedAndQuery(criteria=tuple(criteria)), tuple(active_definitions)
 
 
@@ -748,6 +800,9 @@ def evaluate_native_inventory_requirements(
     hull_configuration: str | None = None,
     cockpit_position: str | None = None,
     deck_saloon: str | None = None,
+    beam_min: Decimal | None = None,
+    beam_max: Decimal | None = None,
+    hull_material: str | None = None,
     as_of: datetime,
 ) -> NativeInventorySearchOutcome:
     """Evaluate the bounded mixed vertical against real persisted state.
@@ -794,6 +849,9 @@ def evaluate_native_inventory_requirements(
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
     )
 
     def _empty() -> NativeInventorySearchOutcome:
@@ -806,6 +864,9 @@ def evaluate_native_inventory_requirements(
             hull_configuration=hull_configuration,
             cockpit_position=cockpit_position,
             deck_saloon=deck_saloon,
+            beam_min=beam_min,
+            beam_max=beam_max,
+            hull_material=hull_material,
             query=query,
             confirmed_matches=(),
             confirmed_non_matches=(),
@@ -916,6 +977,9 @@ def evaluate_native_inventory_requirements(
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
         query=query,
         confirmed_matches=tuple(confirmed_matches),
         confirmed_non_matches=tuple(confirmed_non_matches),

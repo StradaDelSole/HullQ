@@ -664,3 +664,126 @@ class TestClaimEditRequest:
         assert parsed.claims.hull_configuration.value.value == "MONOHULL"
         assert parsed.claims.cockpit_position.value.value == "AFT"
         assert parsed.claims.deck_saloon.value.value == "DECK_SALOON"
+
+    # -----------------------------------------------------------------
+    # SLICE-0087: beam / hull_material
+    # -----------------------------------------------------------------
+
+    def test_beam_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.beam": {"assertion_kind": "VALUE_ASSERTION", "value": "3.75"}},
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.beam is not None
+        assert str(parsed.claims.beam.value) == "3.75"
+
+    def test_beam_unknown_parses_with_no_value(self) -> None:
+        body = dict(_BASE_CLAIM, **{"physical_boat.beam": {"assertion_kind": "UNKNOWN"}})
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.beam.assertion_kind.value == "UNKNOWN"
+        assert parsed.claims.beam.value is None
+
+    def test_beam_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.beam": {"assertion_kind": "UNKNOWN", "value": "3.75"}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_beam_non_decimal_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.beam": {"assertion_kind": "VALUE_ASSERTION", "value": "wide"}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_beam_omitted_key_leaves_claim_none(self) -> None:
+        parsed = parse_physical_boat_claim_edit_request(_BASE_CLAIM)
+        assert parsed.claims.beam is None
+
+    def test_hull_material_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_material": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "GRP_FIBERGLASS",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.hull_material is not None
+        assert parsed.claims.hull_material.value.value == "GRP_FIBERGLASS"
+
+    def test_hull_material_accepts_a_value_beyond_the_public_search_vocabulary(self) -> None:
+        """FERROCEMENT remains valid PhysicalBoat claim vocabulary even
+        though it is never a public Search filter token in this slice."""
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_material": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "FERROCEMENT",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.hull_material.value.value == "FERROCEMENT"
+
+    def test_hull_material_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_material": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "WOOD_COMPOSITE",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_material_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_material": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "GRP_FIBERGLASS",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_material_absent_is_invalid(self) -> None:
+        body = dict(_BASE_CLAIM, **{"physical_boat.hull_material": {"assertion_kind": "ABSENT"}})
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_hull_material_omitted_key_leaves_claim_none(self) -> None:
+        parsed = parse_physical_boat_claim_edit_request(_BASE_CLAIM)
+        assert parsed.claims.hull_material is None
+
+    def test_beam_and_hull_material_combinable_with_slice_0086_fields(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.hull_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "MONOHULL",
+                },
+                "physical_boat.beam": {"assertion_kind": "VALUE_ASSERTION", "value": "4.2"},
+                "physical_boat.hull_material": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "STEEL",
+                },
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.hull_configuration.value.value == "MONOHULL"
+        assert str(parsed.claims.beam.value) == "4.2"
+        assert parsed.claims.hull_material.value.value == "STEEL"

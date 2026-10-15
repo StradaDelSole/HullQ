@@ -103,6 +103,9 @@ from hullq.persistence.native_listing_lifecycle import fetch_lifecycle_state
 from hullq.persistence.physical_boat import fetch_physical_boat
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria_registry import (
+    BEAM_DEFINITION,
+    BEAM_MAX_PARAM_KEY,
+    BEAM_MIN_PARAM_KEY,
     COCKPIT_POSITION_DEFINITION,
     COCKPIT_POSITION_PARAM_KEY,
     DECK_SALOON_DEFINITION,
@@ -111,6 +114,8 @@ from hullq.search.criteria_registry import (
     DRAFT_MAX_PARAM_KEY,
     HULL_CONFIGURATION_DEFINITION,
     HULL_CONFIGURATION_PARAM_KEY,
+    HULL_MATERIAL_DEFINITION,
+    HULL_MATERIAL_PARAM_KEY,
     KEEL_CONFIGURATION_DEFINITION,
     KEEL_CONFIGURATION_PARAM_KEY,
     LOA_DEFINITION,
@@ -143,6 +148,9 @@ _RUDDER_CONFIGURATION_KEY = RUDDER_CONFIGURATION_PARAM_KEY
 _HULL_CONFIGURATION_KEY = HULL_CONFIGURATION_PARAM_KEY
 _COCKPIT_POSITION_KEY = COCKPIT_POSITION_PARAM_KEY
 _DECK_SALOON_KEY = DECK_SALOON_PARAM_KEY
+_BEAM_MIN_KEY = BEAM_MIN_PARAM_KEY
+_BEAM_MAX_KEY = BEAM_MAX_PARAM_KEY
+_HULL_MATERIAL_KEY = HULL_MATERIAL_PARAM_KEY
 _ALLOWED_SCENARIO_KEYS = SUPPORTED_PARAM_KEYS
 
 
@@ -165,6 +173,9 @@ class SearchFitScenario:
     hull_configuration: str | None = None
     cockpit_position: str | None = None
     deck_saloon: str | None = None
+    beam_min: Decimal | None = None
+    beam_max: Decimal | None = None
+    hull_material: str | None = None
 
 
 def _parse_single_valued(
@@ -224,6 +235,9 @@ def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> Sear
     hull_raw_values = list(query_params.get(_HULL_CONFIGURATION_KEY, ()))
     cockpit_raw_values = list(query_params.get(_COCKPIT_POSITION_KEY, ()))
     deck_saloon_raw_values = list(query_params.get(_DECK_SALOON_KEY, ()))
+    beam_min_raw_values = list(query_params.get(_BEAM_MIN_KEY, ()))
+    beam_max_raw_values = list(query_params.get(_BEAM_MAX_KEY, ()))
+    hull_material_raw_values = list(query_params.get(_HULL_MATERIAL_KEY, ()))
     if not (
         draft_raw_values
         or keel_raw_values
@@ -233,6 +247,9 @@ def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> Sear
         or hull_raw_values
         or cockpit_raw_values
         or deck_saloon_raw_values
+        or beam_min_raw_values
+        or beam_max_raw_values
+        or hull_material_raw_values
     ):
         raise InvalidSearchFitScenarioError("at least one scenario criterion is required")
 
@@ -274,6 +291,25 @@ def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> Sear
         deck_saloon_raw_values,
         parse_categorical_param(DECK_SALOON_DEFINITION, deck_saloon_raw_values),
     )
+    beam_min = _parse_single_valued(
+        _BEAM_MIN_KEY,
+        beam_min_raw_values,
+        parse_numeric_param(BEAM_DEFINITION, beam_min_raw_values),
+    )
+    beam_max = _parse_single_valued(
+        _BEAM_MAX_KEY,
+        beam_max_raw_values,
+        parse_numeric_param(BEAM_DEFINITION, beam_max_raw_values),
+    )
+    if beam_min is not None and beam_max is not None and beam_min > beam_max:
+        raise InvalidSearchFitScenarioError(
+            f"beam_min ({beam_min}) must be <= beam_max ({beam_max})"
+        )
+    hull_material = _parse_single_valued(
+        _HULL_MATERIAL_KEY,
+        hull_material_raw_values,
+        parse_categorical_param(HULL_MATERIAL_DEFINITION, hull_material_raw_values),
+    )
 
     return SearchFitScenario(
         draft_max=draft_max,
@@ -284,6 +320,9 @@ def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> Sear
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
     )
 
 
@@ -309,7 +348,8 @@ class SearchFitBlocker(StrEnum):
     `KEEL_CONFIGURATION_UNCONFIRMED`/`LOA_UNCONFIRMED` (SLICE-0085)/
     `RUDDER_CONFIGURATION_UNCONFIRMED` (SLICE-0085)/`HULL_CONFIGURATION_
     UNCONFIRMED`/`COCKPIT_POSITION_UNCONFIRMED`/`DECK_SALOON_UNCONFIRMED`
-    (SLICE-0086) to the existing 0072 claim editor."""
+    (SLICE-0086)/`BEAM_UNCONFIRMED`/`HULL_MATERIAL_UNCONFIRMED` (SLICE-0087)
+    to the existing 0072 claim editor."""
 
     BOATDESIGN_NOT_LINKED = "BOATDESIGN_NOT_LINKED"
     BOATDESIGN_CONFIGURATION_UNRESOLVED = "BOATDESIGN_CONFIGURATION_UNRESOLVED"
@@ -320,6 +360,8 @@ class SearchFitBlocker(StrEnum):
     HULL_CONFIGURATION_UNCONFIRMED = "HULL_CONFIGURATION_UNCONFIRMED"
     COCKPIT_POSITION_UNCONFIRMED = "COCKPIT_POSITION_UNCONFIRMED"
     DECK_SALOON_UNCONFIRMED = "DECK_SALOON_UNCONFIRMED"
+    BEAM_UNCONFIRMED = "BEAM_UNCONFIRMED"
+    HULL_MATERIAL_UNCONFIRMED = "HULL_MATERIAL_UNCONFIRMED"
 
 
 @dataclass(frozen=True)
@@ -347,6 +389,9 @@ class SearchFitView:
     hull_configuration: str | None
     cockpit_position: str | None
     deck_saloon: str | None
+    beam_min: Decimal | None
+    beam_max: Decimal | None
+    hull_material: str | None
     result_class: ResultClass
     design_evaluation: DesignQueryEvaluation | None
     design_configuration_evidence: tuple[ConfigurationEvidence, ...]
@@ -409,6 +454,10 @@ def _derive_blockers(
             blocker = SearchFitBlocker.COCKPIT_POSITION_UNCONFIRMED
         elif evidence.criterion.field == DECK_SALOON_DEFINITION.projection_field:
             blocker = SearchFitBlocker.DECK_SALOON_UNCONFIRMED
+        elif evidence.criterion.field == BEAM_DEFINITION.projection_field:
+            blocker = SearchFitBlocker.BEAM_UNCONFIRMED
+        elif evidence.criterion.field == HULL_MATERIAL_DEFINITION.projection_field:
+            blocker = SearchFitBlocker.HULL_MATERIAL_UNCONFIRMED
         if blocker is not None and blocker not in seen:
             # LOA may contribute two leaves (loa_min/loa_max) against the
             # same field -- a single actionable blocker, never duplicated.
@@ -492,6 +541,9 @@ def evaluate_organization_listing_search_fit(
     hull_configuration = scenario.hull_configuration
     cockpit_position = scenario.cockpit_position
     deck_saloon = scenario.deck_saloon
+    beam_min = scenario.beam_min
+    beam_max = scenario.beam_max
+    hull_material = scenario.hull_material
 
     query, active_definitions = build_mixed_requirement_query(
         draft_max=draft_max,
@@ -502,6 +554,9 @@ def evaluate_organization_listing_search_fit(
         hull_configuration=hull_configuration,
         cockpit_position=cockpit_position,
         deck_saloon=deck_saloon,
+        beam_min=beam_min,
+        beam_max=beam_max,
+        hull_material=hull_material,
     )
 
     # Finding A: every read needed to assemble a would-be OK result shares
@@ -549,6 +604,9 @@ def evaluate_organization_listing_search_fit(
                 hull_configuration=hull_configuration,
                 cockpit_position=cockpit_position,
                 deck_saloon=deck_saloon,
+                beam_min=beam_min,
+                beam_max=beam_max,
+                hull_material=hull_material,
                 result_class=ResultClass.INSUFFICIENT_DATA,
                 design_evaluation=None,
                 design_configuration_evidence=(),
@@ -611,6 +669,9 @@ def evaluate_organization_listing_search_fit(
                 hull_configuration=hull_configuration,
                 cockpit_position=cockpit_position,
                 deck_saloon=deck_saloon,
+                beam_min=beam_min,
+                beam_max=beam_max,
+                hull_material=hull_material,
                 result_class=result_class,
                 design_evaluation=design_evaluation,
                 design_configuration_evidence=design_configuration_evidence,

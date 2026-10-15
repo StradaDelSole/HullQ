@@ -223,6 +223,7 @@ from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizati
 from hullq.observability.logging_config import configure_logging, get_logger
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.persistence.native_listing_view_event import record_public_listing_view
+from hullq.search.beam_request import canonical_beam_str
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
@@ -550,12 +551,16 @@ def _build_active_requirement(
     hull_configuration: str | None = None,
     cockpit_position: str | None = None,
     deck_saloon: str | None = None,
+    beam_min: Any = None,
+    beam_max: Any = None,
+    hull_material: str | None = None,
 ) -> dict[str, str]:
-    """SLICE-0085, extended SLICE-0086: the sparse `active_requirement` body
-    shared by the public `GET /api/search/{locale}` route and the broker
-    Search-fit preview -- only the active criteria included, each rendered
-    through its own canonicalization, never neither (every caller only
-    builds this once at least one criterion is already known active)."""
+    """SLICE-0085, extended SLICE-0086/SLICE-0087: the sparse
+    `active_requirement` body shared by the public `GET /api/search/{locale}`
+    route and the broker Search-fit preview -- only the active criteria
+    included, each rendered through its own canonicalization, never neither
+    (every caller only builds this once at least one criterion is already
+    known active)."""
     requirement: dict[str, str] = {}
     if draft_max is not None:
         requirement["draft_max"] = canonical_draft_max_str(draft_max)
@@ -573,6 +578,12 @@ def _build_active_requirement(
         requirement["cockpit_position"] = cockpit_position
     if deck_saloon is not None:
         requirement["deck_saloon"] = deck_saloon
+    if beam_min is not None:
+        requirement["beam_min"] = canonical_beam_str(beam_min)
+    if beam_max is not None:
+        requirement["beam_max"] = canonical_beam_str(beam_max)
+    if hull_material is not None:
+        requirement["hull_material"] = hull_material
     return requirement
 
 
@@ -1296,6 +1307,9 @@ def create_app(
             hull_configuration=outcome.hull_configuration,
             cockpit_position=outcome.cockpit_position,
             deck_saloon=outcome.deck_saloon,
+            beam_min=outcome.beam_min,
+            beam_max=outcome.beam_max,
+            hull_material=outcome.hull_material,
         )
 
         if isinstance(search_outcome, DraftMaxSearchOutcome):
@@ -1907,6 +1921,9 @@ def create_app(
             hull_configuration=view.hull_configuration,
             cockpit_position=view.cockpit_position,
             deck_saloon=view.deck_saloon,
+            beam_min=view.beam_min,
+            beam_max=view.beam_max,
+            hull_material=view.hull_material,
         )
         return JSONResponse(
             {
