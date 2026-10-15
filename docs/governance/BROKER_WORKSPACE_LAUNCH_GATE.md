@@ -47,6 +47,17 @@ docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md
 
 Passing this gate does not cancel later mandatory commitments.
 
+
+### Additional operational STOP/GO before external broker file intake (2026-10-16)
+
+**Status: NOT VERIFIED; real external broker upload / production intake and real broker pilot remain BLOCKED.** The already accepted **Broker Workspace Launch Gate = PASS** is a product/usability assessment from Slices 0076/0077, **not** an operational certificate for ingesting untrusted broker-supplied files. Existing PASS is **not reset or reinterpreted** by this addendum, and this addendum does not claim a newly passed gate.
+
+Before an actual external broker is permitted to upload inventory into HullQ production, or a real external broker self-service production pilot starts, the **separate Production Readiness Gate must be PASS for that broker upload/intake path**, with independent retained proof closing all *applicable* pre-pilot operational safety conditions in `docs/governance/PRODUCTION_READINESS_GATE.md` and `docs/operations/PRODUCTION_LAUNCH_CHECKLIST.md`. This includes the confirmed SLICE-0083 import event-loop blocking and version-pinned XLSX parser memory-allocation exposure (CR-18/19), bounded concurrent CPU/RAM/connection use and denial-of-service behavior, trusted real client IP and rate limiting, safe broker onboarding, supervised expiry purge and any applicable real lead-notification pathway. No earlier accepted Security Hardening PASS automatically waives new exposure-specific risks.
+
+**Tracking/implementation ownership:** [Issue #355](https://github.com/StradaDelSole/HullQ/issues/355) is the **named mandatory pre-pilot runtime-hardening work owner/stop-go tracker**. A future explicitly Owner-selected and independently accepted bounded remediation slice (or multiple separately sized slices, plus real provider/ops proof) must close each applicable finding **before the first real file is accepted**. An issue number is not a selected Slice ID; **no SLICE-0089 is selected automatically**. The final PASS/GO record must link exact implementation/closure HEADs, real adversarial parser/workload tests, active host/provider/process evidence and named accountable operational verification, not review prose alone.
+
+The Owner-selected **SLICE-0088** remains READY for synthetic/disposable test-data-only eight-format **export development**, including its own resource-isolation safety test. It is **not** the importer hardening slice and does not authorize real broker uploads, external vendor integrations, live pilots or production data.
+
 ## Why this is hard-gated
 
 HullQ is broker-first. Inventory quality and supply retention depend on the daily experience of professional brokers. A technically functional CRUD form is not an acceptable launch substitute.
@@ -80,7 +91,7 @@ Before this gate can become `PASS`, HullQ uses:
 - representative task/usability testing;
 - explicit incumbent/alternative workflow benchmarking.
 
-`PASS` then permits the first real external broker self-service pilot. The pilot becomes the first required source of real professional-user falsification evidence.
+`PASS` satisfies this **product/workspace gate only**. A first real external broker self-service pilot additionally requires independently verified applicable Production Readiness, runtime-upload safety, and the other accepted pilot/launch gates; the pilot then becomes the first required source of real professional-user falsification evidence.
 
 After that pilot, `POST_PILOT_REAL_BROKER_VALIDATION_STATUS` in the Mandatory Capability Register must become `PASS` before scaled broker onboarding, paid broker activation or broad public production launch.
 
@@ -285,4 +296,4 @@ Canonical retained record:
 
 `docs/validation/BROKER_WORKSPACE_LAUNCH_GATE_PASS_EVIDENCE_2026-10.md`
 
-This PASS does not activate the broker pilot. The independently controlling Security Hardening & Adversarial Validation gate remains mandatory before `BROKER_SELF_SERVICE_PILOT_STATUS = ACTIVE`.
+This PASS does not activate the broker pilot. The independently controlling Security Hardening & Adversarial Validation gate and the separate **pre-external-broker-upload operational STOP/GO** above remain mandatory before `BROKER_SELF_SERVICE_PILOT_STATUS = ACTIVE`. Owner-accepted SLICE-0078 Security Hardening PASS stays historical truth but does not establish a safe real file parser or configured production operations.
