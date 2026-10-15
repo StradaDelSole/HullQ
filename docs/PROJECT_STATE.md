@@ -257,7 +257,7 @@ Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/gov
 
 ```text
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
-TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 4
+TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 7
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
 WORKFLOW_REASSESSMENT_STATUS: PASS
 
@@ -329,7 +329,7 @@ Every primary slice selected after SLICE-0072 must reconcile that register befor
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; broker inventory export; expansion of the currently two technical Buyer Search criteria (LOA, rudder/skeg, long-keel mapping and further qualified dimensions) plus buyer-facing Search explainability beyond the accepted one-change sensitivity capability; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; broker inventory export; extension beyond the seven accepted qualified public technical Search dimensions (beam, displacement, rig, hull material and further safely proven facets; `LONG_KEEL` remains publicly unsupported pending its own evidence-backed taxonomy decision), plus buyer-facing Search explainability and sensitivity beyond the original draft/keel-only accepted one-change comparison; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
 SLICE-0078 is owner-accepted and merged. The dedicated pre-pilot Security Hardening & Adversarial Validation gate is PASS after exact-head independent review, remediation of all reachable Critical/High findings, explicit Owner risk acceptance of SEC-0078-07, and successful CI/reproducibility. Broker Workspace Launch Gate is also PASS.
 
