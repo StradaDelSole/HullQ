@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0086 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0087 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0087 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0088 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
 **Updated:** 2026-10-15  
-**Latest owner-accepted / DONE slice:** SLICE-0086  
-**Current queue:** SLICE-0087 — **OWNER-SELECTED: Qualified Beam & Hull-Material Buyer Search; docs-only READY review PENDING**. Owner confirmed local `FINISH_SLICE.bat 0086` SUCCESS after implementation PR #349 and separate closure PR #350 merged; seven prior technical Search dimensions are implemented, and 0087 proposes beam range + exact conservative hull-material public search with matched private Broker Search-fit. **No 0087 implementation authorization before independent exact-HEAD READY-doc review, CI/repro PASS, docs-only PR merge and Owner `START_SLICE.bat`**. Technical accepted count remains 7; Production Readiness `IN_PROGRESS`, Launch Pack `NOT_STARTED`, real external data, pilot and public launch `NOT_STARTED`. Governing post-0086 reconciliation: `docs/POST_SLICE_0086_BEAM_HULL_MATERIAL_REASSESSMENT_2026-10-15.md`.
+**Latest owner-accepted / DONE slice:** SLICE-0087  
+**Current queue:** SLICE-0088 — **UNSELECTED / NOT READY**. SLICE-0087 Qualified Beam & Hull-Material Buyer Search is Owner-accepted on exact implementation HEAD `88c8baa3e8451f9b0afaca776766b1f5a450f354`, independent review ACCEPT, implementation PR #352 merged to main as `e6d30f1671e6834d097068a7318a4d84c8f96e04`, and recorded in the separately reviewed formal closure `docs/slices/SLICE-0087-acceptance-closure.md`. Nine qualified Buyer Search hard dimensions with authorized private Broker Search-fit are accepted. **Local `FINISH_SLICE.bat 0087` is PENDING until this closure PR merges.** No 0088 capability selected or START authorized; Production Readiness `IN_PROGRESS`, Launch Pack `NOT_STARTED`, external data/pilot/public launch not authorized.
 
 **Exceptional historical state:** SLICE-0039 remains terminal `BLOCKED` and is not to be reopened.
 
@@ -202,29 +202,31 @@ docs/slices/SLICE-0079-acceptance-closure.md
 
 ## Accepted technical Search result
 
-HullQ has exactly **seven** Owner-accepted public hard technical native-inventory Search dimensions through accepted SLICE-0086:
+HullQ has exactly **nine** Owner-accepted native public hard technical Search dimensions through SLICE-0087, counting semantic dimensions rather than URL parameter keys:
 
 ```text
-1 — draft_max (one exact-Decimal maximum draft in metres)
-2 — keel_configuration (six accepted, positive canonical keel values)
-3 — loa (loa_min and/or loa_max inclusive: ONE dimension)
+1 — draft_max (maximum draft, positive SI metres)
+2 — keel_configuration (accepted public positive keel taxonomy)
+3 — loa (loa_min and/or loa_max inclusive, ONE range dimension)
 4 — rudder_configuration (qualified SKEG_HUNG/TRANSOM_HUNG/SPADE/TWIN)
 5 — hull_configuration (MONOHULL/CATAMARAN/TRIMARAN)
 6 — cockpit_position (AFT/CENTER/FORWARD/MULTIPLE)
 7 — deck_saloon (DECK_SALOON/PILOTHOUSE)
+8 — beam (beam_min and/or beam_max inclusive, ONE range dimension)
+9 — hull_material (GRP_FIBERGLASS/STEEL/ALUMINUM/WOOD)
 ```
 
-SLICE-0086 adds **three** orthogonal first-level structure facets. Eight public URL parameter keys are **seven** semantic dimensions because `loa_min` and `loa_max` are one LOA range. These facets do not create a mutually exclusive mega-boat-type selector. Qualified v0.5/v0.6 hull form and v0.6-only cockpit/deck source facts require independently current non-conflicting concrete PhysicalBoat claims: no importer tag, name or image is sufficient. Actual-boat `OTHER` hull/cockpit and `NONE` deck assertions are not public filter tokens. Confirmed design `deck_saloon=none` is typed known absence/non-match for positive public deck requests, not UNKNOWN; a confirmed `MULTIPLE` with one counted physical cockpit fails closed, while legitimate CENTER+DECK_SALOON is not blanket-banned. NamedVariant/applicability, D29, org access, publication/freshness truth and deterministic same-configuration MUST/AND remain mandatory.
+SLICE-0085 added qualified LOA and rudder; SLICE-0086 added independent first-level hull/cockpit/deck facets; Owner-accepted SLICE-0087 added bounded exact overall beam and conservative hull-material search. **Eleven technical public URL keys are nine dimensions**: LOA min/max and Beam min/max each count as ONE. All are combinable via the one accepted static typed `CriterionDefinition` + FieldResolution/NamedVariant same-configuration MUST/AND query and independently asserted current nonconflicting PhysicalBoat actual claims. No import/advertisement/photo or design-only fact manufactures actual seller claims. Omission, explicit UNKNOWN and truthful known-OTHER remain distinct. Existing D29 public eligibility, authorized private illustrative MFA/PUBLISHER DRAFT Broker Search-fit, canonical five-locale URLs, actual-vs-qualified-design evidence and organic Search commercial independence remain unchanged.
 
-Accepted keel values remain `FIN`, `FIN_WITH_BULB`, `WING`, `CENTERBOARD`, `LIFTING_KEEL`, `TWIN_KEEL`; `LONG_KEEL` stays publicly **UNSUPPORTED**, and ambiguous rudder source facts do not silently become `SPADE`. New facets participate in the same finite `CriterionDefinition` registry, current one-snapshot concrete observations, canonicalized public EN/DE/FR/PT/ES URLs, design-vs-actual-boat evidence rendering, and private authorized DRAFT Broker Search-fit. Buyer sensitivity is still only valid for the original draft/keel supported forms; any LOA/rudder/new structural criterion suppresses the misleading legacy comparison rather than dropping a hard condition. `SLICE-0086-acceptance-closure.md` holds exact head/review/test history.
+SLICE-0087's actual PhysicalBoat `hull_material` claim also truthfully admits FERROCEMENT, CARBON_COMPOSITE and OTHER, but these are NOT public positive Search filter values, nor are unproved design `wood_composite`/carbon synonyms inferred. `LONG_KEEL` is still public Search **UNSUPPORTED** without further evidence-backed taxonomy proof; public `OTHER`/deck `NONE` remains unsupported. Buyer sensitivity still only applies to the original draft/keel-only forms; with LOA, rudder, structural, beam or material criteria active it is explicitly unavailable rather than silently dropping hard requirements. Old-revision exact retry semantics and cross-Organization conflicts fail closed. See `docs/slices/SLICE-0085-acceptance-closure.md`, `SLICE-0086-acceptance-closure.md` and `SLICE-0087-acceptance-closure.md`.
 
-The `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` moves **4 → 7** only in this reviewed formal Owner-acceptance closure; Gate 3 in `docs/governance/POST_0051_TRIGGER_GATES.md` retains the no-third-copy qualified Search kernel and owner-direct organic ranking independence. All historical accepted-slice closure and capability records remain history.
+The `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` advances **7 → 9 in the separately reviewed Owner-accepted SLICE-0087 closure**; the common no-third-copy abstraction and owner-direct Search ranking invariants remain binding under `docs/governance/POST_0051_TRIGGER_GATES.md`.
 
-The binding Gate/Production markers now are:
+The canonical Gate/Production state remains:
 
 ```text
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
-TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 7
+TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 9
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
 WORKFLOW_REASSESSMENT_STATUS: PASS
 
@@ -257,7 +259,7 @@ Canonical records remain `docs/governance/POST_0051_TRIGGER_GATES.md`, `docs/gov
 
 ```text
 POST_0051_ARCHITECTURE_RECONCILIATION: PASS
-TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 7
+TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 9
 WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056
 WORKFLOW_REASSESSMENT_STATUS: PASS
 
@@ -329,7 +331,7 @@ Every primary slice selected after SLICE-0072 must reconcile that register befor
 
 ## What remains unbuilt
 
-Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; broker inventory export; extension beyond the seven accepted qualified public technical Search dimensions (beam, displacement, rig, hull material and further safely proven facets; `LONG_KEEL` remains publicly unsupported pending its own evidence-backed taxonomy decision), plus buyer-facing Search explainability and sensitivity beyond the original draft/keel-only accepted one-change comparison; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
+Important future work includes owner-direct marketplace admission/publication and trust escalation; representation-conflict handling; seller-choice/broker referral; production email-provider activation; buyer-contact email verification; periodic/broader broker analytics beyond the accepted factual SLICE-0075 snapshot; broker inventory export; extension beyond the nine accepted qualified public technical Search dimensions (displacement/basis, rig, broader material classes and further safely proven facets; `LONG_KEEL` remains publicly unsupported pending its own evidence-backed taxonomy decision), plus buyer-facing Search explainability and sensitivity beyond the original draft/keel-only accepted one-change comparison; BuyerRequirements persistence; persistent/account Shortlist continuity and anonymous-to-account migration; sharing and persisted Compare subset/reorder; Rare Match and comparable-vessel semantics; Saved Search/alerts/price history; independent vessel-claim verification; production operations; broader SEO; payment/subscription enforcement; and any future transaction/escrow integration.
 
 SLICE-0078 is owner-accepted and merged. The dedicated pre-pilot Security Hardening & Adversarial Validation gate is PASS after exact-head independent review, remediation of all reachable Critical/High findings, explicit Owner risk acceptance of SEC-0078-07, and successful CI/reproducibility. Broker Workspace Launch Gate is also PASS.
 
@@ -357,7 +359,7 @@ Post-0067 reassessment should strongly prefer the shortest safe path through med
 
 The existing public NativeListing read path is already implemented; near-term work is to let normal broker-created inventory reach that path truthfully rather than to invent a second public-listing architecture.
 
-Structured bulk/source import is implemented by Owner-accepted SLICE-0083 (REQ-BROKER-027/MVP-BROKER-011). Broker pre-publication Search-fit for a promoted lifecycle-DRAFT NativeListing was initially accepted in SLICE-0084 (REQ-BROKER-026/MVP-BROKER-010) with two technical hard criteria, extended by accepted SLICE-0085 to four, and by accepted SLICE-0086 to all seven accepted public hard Search dimensions, within the same authorized synthetic-read-only and no-real-demand scope. Neither capability authorizes external broker production data or publication/eligibility bypass; broker export, periodic reporting and production operation remain separately governed.
+Structured bulk/source import is implemented by Owner-accepted SLICE-0083 (REQ-BROKER-027/MVP-BROKER-011). Broker pre-publication Search-fit for a promoted lifecycle-DRAFT NativeListing was initially accepted in SLICE-0084 (REQ-BROKER-026/MVP-BROKER-010) with two technical hard criteria, extended by accepted SLICE-0085 to four, by accepted SLICE-0086 to seven and by Owner-accepted SLICE-0087 to all nine accepted public hard Search dimensions, within the same authorized synthetic-read-only and no-real-demand scope. Neither capability authorizes external broker production data or publication/eligibility bypass; broker export, periodic reporting and production operation remain separately governed.
 
 Large retained research artifacts are acknowledged as repository-hygiene debt, not a launch blocker. They remain in-repo for now because they support deterministic evidence replay/auditability; any later externalization must preserve immutable hashes, provenance and reproducibility.
 
@@ -366,16 +368,16 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Current queued slice:
 
 ```text
-SLICE-0087 — OWNER-SELECTED / docs-only READY review pending (NOT YET STARTABLE)
+SLICE-0088 — UNSELECTED / NOT READY (no capability assigned)
 ```
 
-**Status: Owner-selected on 2026-10-15; READY subject to independent docs-only exact-HEAD review/CI/repro/merge.** The Owner confirmed `SLICE-0087 — Qualified Beam & Hull-Material Buyer Search` (one inclusive `beam_min`/`beam_max` range dimension and one safely bounded public `hull_material` dimension) with authorized private Broker Search-fit parity. Reconciliation: `docs/POST_SLICE_0086_BEAM_HULL_MATERIAL_REASSESSMENT_2026-10-15.md`; controlling readiness: `docs/slices/SLICE-0087-qualified-beam-hull-material-search.md`. This selection implements neither facet yet, does NOT change the canonical accepted count **7**, and cannot authorize `START_SLICE.bat` before independent exact-HEAD readiness review, CI/manufacturer repro PASS and merge.
+**Status:** SLICE-0087 is Owner-accepted, independently reviewed, CI/manufacturer-verified, implementation PR #352 merged and formal acceptance closure under separate review. Local `FINISH_SLICE.bat 0087` becomes appropriate **only after the separate closure merge**. Any 0088 proposal first requires post-0087 decision/implementation reconciliation, fresh product/launch gate and MVP checks, and explicit Owner selection. No inherited READY or implementation authorization.
 
-The selected 0087 bundle advances the Owner's existing technical Search breadth priority; its exact material mapping is deliberately conservative. The critical path to the first **real externally visible** listing remains independent: Production Readiness PASS, sequential Launch Pack work and real provider/managed-PostgreSQL/HA evidence. Broker export/periodic engagement reporting remain mandatory before paid/broad public activation; owner-direct safety/trust, buyer persistence/alerts, support/privacy/legal and production obligations remain open. No later capability (0088) has been selected.
+**First real externally visible listing:** This is NOT unlocked simply by nine technical Search dimensions. Production Readiness remains `IN_PROGRESS` and Launch Pack `NOT_STARTED`. Owner-product prioritization must explicitly weigh real provider/HA/backups/ops phase completion against remaining broker export/periodic reporting, owner-direct trust/publication, buyer persistence/alerts and further technical filters; a reliable remaining *code-slice* count cannot be inferred from provider-console gates alone. Launch requires the independent Production Readiness PASS, applicable sequential Launch Pack phases and the accepted managed PostgreSQL standby/automatic failover before exposure to real buyers.
 
-**Exact 0086 acceptance:** implementation PR #349; independent ACCEPT `6193304146`; explicit Owner “0086 akzeptiert” `6193339724`; accepted implementation head `4337463fde821e8fd5da78e1db718f43d776ccc6`; main merge `a2bb532a5a7b7d15a51caf71c82c46763796f6f4`. New structural Search positives are public, but concrete `OTHER`/`NONE` remain claim-only, owner-direct public publication and commercial certifications are NOT implied. The production rollout gates and provider configuration have not changed.
+**SLICE-0087 evidence:** accepted branch HEAD `88c8baa3e8451f9b0afaca776766b1f5a450f354`; independent ACCEPT PR #352 comment `6202278022`; Owner “0087 akzeptiert” recorded PR #352 comment `6202366086`; implementation merge `e6d30f1671e6834d097068a7318a4d84c8f96e04`; accepted eight/ninth hard facets are Beam range and Hull Material (the latter with 4 safe public tokens). Retained real PG18+FastAPI+built Astro SSR proof reviewed, including all four positive materials, mixed legacy+new and 5 locales; implementer reported execution, reviewer did not separately run it. See `docs/slices/SLICE-0087-acceptance-closure.md`.
 
-Production Launch Pack Phase 1 operator work remains deferred in priority, not completed. Actual production cron scheduling/monitoring of import-expiry purge and live retention proof are unverified. Accepted ADR-0012 selects PlanetScale Managed PostgreSQL 18 without authorizing paid provisioning.
+Actual production import-expiry purge scheduling and live retention, real provider configuration and operability remain unverified; accepted ADR-0012 designates PlanetScale Managed PostgreSQL 18 without authorizing paid provisioning.
 
 ## Development workflow
 
@@ -390,6 +392,6 @@ Production Launch Pack Phase 1 operator work remains deferred in priority, not c
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains complete and `PASS`; SLICE-0079 through SLICE-0086 are Owner-accepted and implementation-merged and the Owner-confirmed local `FINISH_SLICE.bat` for 0085 succeeded on 2026-10-14. The post-SLICE-0080 operator reassessment remains historical PASS. Owner product-first development priority does not waive production/pilot gates. SLICE-0082 linked broker inventory→canonical BoatDesign, SLICE-0083 private import, SLICE-0084 read-only DRAFT Search-fit and SLICE-0085 four-dimensional public/private qualified Search and SLICE-0086 adds three accepted first-level sailing-vessel structural dimensions. `LONG_KEEL` stays unsupported. The separate SLICE-0086 acceptance closure is already merged and the Owner has confirmed local `FINISH_SLICE.bat 0086` SUCCESS. SLICE-0087 is explicitly Owner-selected for qualified beam and hull material Search, pending its separate exact-HEAD READY docs review/CI/repro/merge; no next SLICE-0088 has been selected.
+- the mandatory post-SLICE-0056 workflow reassessment remains PASS; SLICE-0079 through SLICE-0087 are Owner-accepted and implementation-merged (0087 exact HEAD and PR #352 as above). The Owner-confirmed local `FINISH_SLICE.bat 0086` succeeded, while local FINISH of 0087 has **not** yet been observed and must follow its separate closure merge. SLICE-0088 is unselected. All real provider/data/pilot/launch gates remain unchanged; `LONG_KEEL` is still unsupported. No future slice starts automatically.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
