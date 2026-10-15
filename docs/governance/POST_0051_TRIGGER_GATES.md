@@ -39,7 +39,7 @@ Current accepted stack boundaries remain, including:
 
 - Astro as the main web framework, with React only where interaction justifies an island;
 - FastAPI as the sole HullQ application/domain API boundary;
-- DigitalOcean Managed PostgreSQL 18 in FRA1 as the production database target;
+- **PlanetScale Managed PostgreSQL 18** as the accepted intended production database provider per Owner-accepted `architecture/decisions/ADR-0012-planetscale-managed-postgresql.md` (superseding the earlier DigitalOcean Managed PostgreSQL 18 FRA1 target); actual EU region, plan economics, security, backup/restore and standby/failover are not yet provider-verified or provisioned, and no purchase is authorized;
 - Auth0 Public Cloud with an EU tenant as authentication-only provider, while HullQ owns account/organization/membership/role/authorization truth in PostgreSQL;
 - privileged broker publishing protected by MFA, preferably passkeys/WebAuthn, with step-up for high-risk actions;
 - immutable CI-built Docker images, GHCR, versioned Docker Compose and controlled deploy/rollback rather than an initial self-hosted-PaaS layer;
