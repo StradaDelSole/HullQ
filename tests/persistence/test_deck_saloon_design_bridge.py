@@ -267,7 +267,9 @@ def test_named_variant_own_override_to_none_is_confirmed_known_absence(conn: Any
     )
     config_set = build_boat_design_deck_saloon_configuration_set(conn, design)
     baseline_config = next(
-        c for c in config_set.configurations if c.identity.configuration_id == f"{design_id}::baseline"
+        c
+        for c in config_set.configurations
+        if c.identity.configuration_id == f"{design_id}::baseline"
     )
     variant_config = next(
         c

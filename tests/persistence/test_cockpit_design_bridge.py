@@ -353,14 +353,18 @@ def test_named_variant_count_override_cannot_bypass_the_multiple_consistency_che
     )
     config_set = build_boat_design_cockpit_position_set(conn, design)
     baseline_config = next(
-        c for c in config_set.configurations if c.identity.configuration_id == f"{design_id}::baseline"
+        c
+        for c in config_set.configurations
+        if c.identity.configuration_id == f"{design_id}::baseline"
     )
     variant_config = next(
         c
         for c in config_set.configurations
         if c.identity.configuration_id == f"{design_id}::VAR-CDB-MULTIPLE-BYPASS"
     )
-    baseline_qualified = baseline_config.projection.get_categorical(COCKPIT_POSITION_PROJECTION_FIELD)
+    baseline_qualified = baseline_config.projection.get_categorical(
+        COCKPIT_POSITION_PROJECTION_FIELD
+    )
     variant_qualified = variant_config.projection.get_categorical(COCKPIT_POSITION_PROJECTION_FIELD)
     assert baseline_qualified.qualification is ValueQualification.CONFIRMED
     assert baseline_qualified.value == "MULTIPLE"

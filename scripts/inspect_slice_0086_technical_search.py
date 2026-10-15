@@ -442,9 +442,7 @@ def _admit_design_field(
     bundle = ResearchEvidenceBundle(
         bundle_id=f"BUNDLE-{resolution_id}",
         bundle_version="1",
-        research_target=ResearchTarget(
-            manufacturer=None, model="slice-0086-e2e", first_built=None
-        ),
+        research_target=ResearchTarget(manufacturer=None, model="slice-0086-e2e", first_built=None),
         research_job_id=None,
         activity_id=None,
         observations=(),
@@ -966,7 +964,9 @@ def main() -> int:
         )
         save_ok = status == 200
         ok &= save_ok
-        print(f"2. real broker claim save (POST, new HullQ facet fields) -> {'OK' if save_ok else 'FAIL'}")
+        print(
+            f"2. real broker claim save (POST, new HullQ facet fields) -> {'OK' if save_ok else 'FAIL'}"
+        )
 
         status, _, body = session.get(f"{web_base}{_edit_page_path(_ORG_ID, _LISTING_ID)}")
         page_text = body.decode("utf-8")
@@ -1032,7 +1032,9 @@ def main() -> int:
             and "broker-declared hull form: Catamaran (not independently verified)" in page_text
         )
         ok &= hull_only_ok
-        print(f"4. public Search SSR, hull_configuration=CATAMARAN -> {'OK' if hull_only_ok else 'FAIL'}")
+        print(
+            f"4. public Search SSR, hull_configuration=CATAMARAN -> {'OK' if hull_only_ok else 'FAIL'}"
+        )
 
         status, _, body = session.get(f"{web_base}/en/search?cockpit_position=CENTER")
         page_text = body.decode("utf-8")
@@ -1044,7 +1046,9 @@ def main() -> int:
             in page_text
         )
         ok &= cockpit_only_ok
-        print(f"   public Search SSR, cockpit_position=CENTER -> {'OK' if cockpit_only_ok else 'FAIL'}")
+        print(
+            f"   public Search SSR, cockpit_position=CENTER -> {'OK' if cockpit_only_ok else 'FAIL'}"
+        )
 
         status, _, body = session.get(f"{web_base}/en/search?deck_saloon=DECK_SALOON")
         page_text = body.decode("utf-8")
@@ -1061,7 +1065,9 @@ def main() -> int:
         )
 
         # Canonical order: cockpit_position, deck_saloon, hull_configuration.
-        combined_query = "cockpit_position=CENTER&deck_saloon=DECK_SALOON&hull_configuration=CATAMARAN"
+        combined_query = (
+            "cockpit_position=CENTER&deck_saloon=DECK_SALOON&hull_configuration=CATAMARAN"
+        )
         status, _, body = session.get(f"{web_base}/en/search?{combined_query}")
         page_text = body.decode("utf-8")
         combined_ok = (
@@ -1136,7 +1142,7 @@ def main() -> int:
         }
         locale_canonical_href = (
             f'<link rel="canonical" href="http://127.0.0.1:{web_port}/{{locale}}/search?'
-            "cockpit_position=CENTER&amp;deck_saloon=DECK_SALOON&amp;hull_configuration=CATAMARAN\">"
+            'cockpit_position=CENTER&amp;deck_saloon=DECK_SALOON&amp;hull_configuration=CATAMARAN">'
         )
         all_locales_ok = True
         for locale, text in _locale_text.items():
