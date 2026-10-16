@@ -1,6 +1,6 @@
 # SLICE-0088 — XLSB export writer feasibility blocker (2026-10-16)
 
-**Status:** Feasibility stop recorded, pending Owner scope-amendment decision. No implementation code written for SLICE-0088. The slice contract (`docs/slices/SLICE-0088-broker-inventory-portability-export.md`) is unmodified; its declared eight-format target and acceptance criteria remain as written until the Owner explicitly accepts an amendment.
+**Status:** Feasibility stop recorded and resolved. The Project Owner has **explicitly ACCEPTED** the seven-format scope amendment proposed below. No implementation code has been written for SLICE-0088 yet; the primary slice contract (`docs/slices/SLICE-0088-broker-inventory-portability-export.md`) has been amended accordingly (Status `REVIEW`, matching handoff marker) and now carries the seven-format target as its controlling scope, with the original eight-format decision preserved there as history. This record itself remains the evidence basis for that amendment and is unchanged below except for this status update and the tracking link.
 
 ## What was checked
 
@@ -34,19 +34,19 @@ By contrast, for the same CI baseline:
 
 Those seven families have no equivalent feasibility blocker recorded here.
 
-## Proposed minimum scope amendment (pending Owner approval)
+## Owner-accepted scope amendment (2026-10-16) — ACCEPTED
 
-1. Deliver the seven proven export families under SLICE-0088: CSV, TSV, XLSX, XLS, ODS, structured JSON, NautiX 1.4 `adverts.xml`.
-2. Track XLSB export as a separately registered, explicitly deferred capability (not silently dropped, not implemented via an unvetted dependency) — to be revisited only if/when a production-safe open-source writer emerges or a commercial-dependency decision (e.g. Aspose.Cells) is separately proposed, licensed and accepted.
-3. XLSB **import** is unaffected: the existing SLICE-0083 `python-calamine`-based reader keeps working unchanged; this blocker concerns only the new outbound writer direction SLICE-0088 would add.
-4. No change to the slice's acceptance-criteria text, "all eight formats" objective language, `REQ-BROKER-022`/`MVP-BROKER-009` status, or DONE state until the Owner records explicit approval of this amendment (or a different resolution).
+1. SLICE-0088 delivers the seven proven export families: CSV, TSV, XLSX, XLS, ODS, structured JSON, NautiX 1.4 `adverts.xml`.
+2. XLSB export is a separately registered, explicitly deferred capability (not silently dropped, not implemented via an unvetted or commercial dependency without separate authorization) — durably tracked in **[GitHub issue #362](https://github.com/StradaDelSole/HullQ/issues/362)**: a later investigation and possible development of a genuine XLSB export alternative, preferably without expensive commercial licensing. Any paid/commercial solution (e.g. Aspose.Cells) requires separate explicit Owner authorization before adoption.
+3. XLSB **import** is unaffected: the existing SLICE-0083 `python-calamine`-based reader keeps working unchanged; this amendment concerns only the new outbound writer direction SLICE-0088 adds.
+4. The primary slice contract's acceptance-criteria text, objective, in-scope formats and deliverables have been updated to the seven-format target (`docs/slices/SLICE-0088-broker-inventory-portability-export.md`, "Owner-accepted scope amendment (2026-10-16)" section); the original eight-format decision and this blocker's history are preserved there, not deleted. `REQ-BROKER-022`/`MVP-BROKER-009` status and DONE state are unaffected by this documentation-only amendment — those still require actual seven-format implementation, independent review and explicit Owner acceptance.
 
 ## Current slice state
 
-- SLICE-0088 implementation: **not started** (no domain/application/persistence/API/web/test code changed).
-- Branch `slice/0088-broker-inventory-portability-export`: carries only this documentation-only handoff plus the matching `BLOCKED` status/handoff marker on the primary slice document; no production code, tests, requirement completion markers or acceptance criteria were touched.
-- Recommended slice status: `BLOCKED` (feasibility stop, not a design/requirements conflict) pending Owner decision on the proposed amendment above.
-- Project Owner has agreed in principle with the seven-format amendment direction; this record and the primary-document handoff marker are the documented basis for the independent reviewer to examine before implementation resumes.
+- SLICE-0088 implementation: **not started** (no domain/application/persistence/API/web/test code changed by this or the prior documentation-only commit).
+- Branch `slice/0088-broker-inventory-portability-export`: carries this feasibility record, the primary-document seven-format amendment, and is merged up to date with `origin/main` (including PR #361, see below). No production code, tests, requirement completion markers or acceptance-criteria checkboxes have been touched.
+- Primary slice document status: `REVIEW` with matching `Status set by this handoff: REVIEW` marker — this documentation-only amendment is handed off for independent review before implementation resumes.
+- Writer feasibility is not equivalent to acceptance proof: every one of the seven delivered formats must still pass genuine format and reimport tests when implementation proceeds; new runtime writer dependencies (`xlwt`, `xlsxwriter`, `odfpy`) must be declared as pinned main `[project.dependencies]`, not left in the dev-only group they currently occupy.
 
 ## Pending reconciliation on resume
 
