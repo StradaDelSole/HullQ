@@ -2,10 +2,17 @@
 
 **ID:** SLICE-0088  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
+**Status:** BLOCKED  
+**Status set by this handoff:** `BLOCKED`  
 **Stage:** Broker-first marketplace — portable authored inventory and independently broker-controlled channels  
 **Depends on:** Owner-accepted SLICE-0061/0067/0072/0082/0083/0087, protected Organization/PUBLISHER/MFA broker workspace; D11/D14/D19/D26/D27/D29; post-SLICE-0087 Owner-selected reconciliation.  
 **Blocks:** `REQ-BROKER-022`/`MVP-BROKER-009` — brokers cannot retrieve a portable authoritative snapshot of their own HullQ-maintained listing inventory in standard machine-usable files.
+
+## Implementation handoff note (2026-10-16) — XLSB writer feasibility BLOCKED
+
+Before any writer code was written, the mandatory XLS/XLSB/ODS writer-feasibility hard gate (`## Mechanical invariants / failure modes` below) was executed against this repository's pinned CPython 3.14 toolchain. XLS (`xlwt`), ODS (`odfpy`) and the other six families have no feasibility blocker; XLSB does: the only established Python XLSB library (`pyxlsb`) is read-only, and no sufficiently vetted, Owner-approved open-source or affordable writer has been established for HullQ. Full reproducible evidence, library/version findings, the examined alternatives (including the commercial Aspose.Cells for Python via .NET, not adopted) and the narrowly proposed seven-format scope amendment are recorded in `docs/SLICE_0088_XLSB_WRITER_FEASIBILITY_BLOCKER_2026-10-16.md`.
+
+No production code, tests, requirement-completion markers or acceptance criteria below have been changed by this handoff; the slice's declared eight-format objective and acceptance text remain exactly as READY-accepted. The Project Owner has agreed in principle with the proposed amendment (CSV, TSV, XLSX, XLS, ODS, structured JSON, NautiX 1.4; XLSB export explicitly deferred, XLSB import unaffected); independent review of this documented blocker precedes any implementation resuming. This branch was created before `origin/main` commit `7927ab7` (PR #361, docs-only controlling-gate update); that reconciliation is deferred to whoever resumes implementation, per the linked record.
 
 ## Objective
 
