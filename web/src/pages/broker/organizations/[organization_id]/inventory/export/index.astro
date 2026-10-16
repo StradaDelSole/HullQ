@@ -237,6 +237,20 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
 
       let lastFingerprint = null;
 
+      // Independent review Finding B (2026-10-16): a confirmed preview is
+      // bound to the *exact* selection/format/NautiX-profile it was taken
+      // against (the backend enforces this via the mandatory snapshot
+      // fingerprint -- see `inventory_export.py`'s STALE_SELECTION check).
+      // Any change to that selection/format/profile after a preview must
+      // immediately invalidate the stale confirmation client-side too, so
+      // Download is never clickable against a preview that no longer
+      // describes what would actually be downloaded.
+      function invalidatePreview(message) {
+        lastFingerprint = null;
+        downloadButton.disabled = true;
+        if (message) statusEl.textContent = message;
+      }
+
       function selectedIds() {
         const draftIds = Array.from(document.querySelectorAll(".draft-checkbox:checked")).map(
           (el) => el.value,
@@ -278,11 +292,31 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
         nautixFields.hidden = !isNautix;
         if (isNautix) renderSaleClassInputs();
       }
-      formatSelect?.addEventListener("change", updateFormatVisibility);
-      document.querySelectorAll(".listing-checkbox").forEach((el) => {
+      formatSelect?.addEventListener("change", () => {
+        updateFormatVisibility();
+        invalidatePreview("Format changed -- preview again before downloading.");
+      });
+      document.querySelectorAll(".draft-checkbox, .listing-checkbox").forEach((el) => {
         el.addEventListener("change", () => {
           if (formatSelect.value === "NAUTIX") renderSaleClassInputs();
+          invalidatePreview("Selection changed -- preview again before downloading.");
         });
+      });
+      accountTokenInput?.addEventListener("input", () => {
+        invalidatePreview("NautiX destination account token changed -- preview again before downloading.");
+      });
+      officeIdInput?.addEventListener("input", () => {
+        invalidatePreview("NautiX destination office id changed -- preview again before downloading.");
+      });
+      // The per-listing sale_class <select> elements are re-created by
+      // renderSaleClassInputs() on every format/selection change, so a
+      // single delegated listener on their stable container (rather than
+      // one attached per dynamically created element) catches every one
+      // of them, including ones that do not exist yet at page load.
+      nautixSaleClassesEl?.addEventListener("change", (event) => {
+        if (event.target && event.target.classList.contains("nautix-sale-class-select")) {
+          invalidatePreview("NautiX sale classification changed -- preview again before downloading.");
+        }
       });
 
       function buildNautixProfile() {
@@ -304,9 +338,7 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
           statusEl.textContent = "Select at least one draft or listing.";
           return;
         }
-        statusEl.textContent = "Loading preview…";
-        downloadButton.disabled = true;
-        lastFingerprint = null;
+        invalidatePreview("Loading preview…");
 
         const body = {
           draft_ids: draftIds,
@@ -372,6 +404,15 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
       });
 
       downloadButton?.addEventListener("click", async () => {
+        // Defense in depth alongside `disabled`: never issue a download
+        // without the exact fingerprint of the preview it was confirmed
+        // against (Finding B) -- the backend also enforces this as
+        // mandatory, but the button must never even attempt a request
+        // that it already knows is against a stale/absent confirmation.
+        if (!lastFingerprint) {
+          statusEl.textContent = "Preview again before downloading.";
+          return;
+        }
         const { draftIds, listingIds } = selectedIds();
         const fmt = formatSelect.value;
         statusEl.textContent = "Downloading…";
@@ -380,8 +421,8 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
           draft_ids: draftIds,
           native_listing_ids: listingIds,
           format: fmt,
+          expected_snapshot_fingerprint: lastFingerprint,
         };
-        if (lastFingerprint) body.expected_snapshot_fingerprint = lastFingerprint;
         const profile = buildNautixProfile();
         if (profile) {
           body.nautix_profile = {
@@ -404,7 +445,10 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
         }
         if (response.status !== 200) {
           const data = await response.json().catch(() => ({}));
-          statusEl.textContent = `Download failed: ${data.error ?? response.status}`;
+          // A stale/rejected confirmation must never remain usable for a
+          // retry -- force a fresh preview rather than leaving Download
+          // enabled against a fingerprint the server just rejected.
+          invalidatePreview(`Download failed: ${data.error ?? response.status}`);
           return;
         }
         const includedCount = response.headers.get("x-hullq-export-included-count");

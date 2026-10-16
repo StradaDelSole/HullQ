@@ -68,9 +68,11 @@ confirmed.
 from __future__ import annotations
 
 import hashlib
+import json
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
@@ -500,19 +502,40 @@ class ExportSnapshot:
         return _compute_snapshot_fingerprint(self.rows)
 
 
+def _canonical_json_value(value: Any) -> Any:
+    """JSON-safe canonical form for one `ExportRow` field value --
+    independent review amendment (2026-10-16): the fingerprint must bind
+    *every* export-relevant field (price/claims/location/media/NautiX
+    profile), not just identity/status/timestamp, or a changed offer/
+    claim/media/profile between preflight and download would silently
+    escape `STALE_SELECTION` detection."""
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, ExportSourceKind):
+        return value.value
+    if isinstance(value, (tuple, list)):
+        return [_canonical_json_value(v) for v in value]
+    raise TypeError(f"no canonical JSON form for fingerprint field of type {type(value).__name__}")
+
+
+def _row_canonical_json(row: ExportRow) -> str:
+    # `dataclasses.fields` returns declaration order, which is fixed and
+    # identical across calls -- stable key order without needing
+    # `sort_keys` (which would be wrong here: field *order* does not
+    # matter for correctness, only that it is the *same* order every time
+    # the identical row shape is hashed).
+    pairs = [(f.name, _canonical_json_value(getattr(row, f.name))) for f in fields(row)]
+    return json.dumps(pairs, separators=(",", ":"), ensure_ascii=True)
+
+
 def _compute_snapshot_fingerprint(rows: tuple[ExportRow, ...]) -> str:
     digest = hashlib.sha256()
     for row in rows:
-        digest.update(
-            "|".join(
-                (
-                    row.export_id,
-                    row.status,
-                    str(row.is_current_public),
-                    row.updated_at.isoformat(),
-                )
-            ).encode("utf-8")
-        )
+        digest.update(_row_canonical_json(row).encode("utf-8"))
         digest.update(b"\x00")
     return digest.hexdigest()
 
@@ -709,6 +732,10 @@ class ExportDownloadOutcome(StrEnum):
     OVERSIZE_SELECTION = "OVERSIZE_SELECTION"
     UNKNOWN_ITEM = "UNKNOWN_ITEM"
     INVALID_NAUTIX_PROFILE = "INVALID_NAUTIX_PROFILE"
+    #: `expected_snapshot_fingerprint` is mandatory (independent review
+    #: amendment, 2026-10-16) -- a download with no prior confirmed
+    #: preflight observation is rejected, never silently permitted.
+    MISSING_SNAPSHOT_FINGERPRINT = "MISSING_SNAPSHOT_FINGERPRINT"
     #: The broker's confirmed preflight no longer matches this selection's
     #: current revisions (module docstring: preflight-to-download binding)
     #: -- the underlying data changed between preflight and download.
@@ -800,8 +827,8 @@ def get_export_download(
     export_format: ExportFormat,
     as_of: datetime,
     public_base_url: str | None,
+    expected_snapshot_fingerprint: str,
     nautix_profile: NautixExportProfile | None = None,
-    expected_snapshot_fingerprint: str | None = None,
 ) -> ExportDownloadResult:
     """Authorize, build the snapshot, and serialize it as *export_format*.
 
@@ -809,6 +836,12 @@ def get_export_download(
     failure or success alike -- repeating this call with an identical
     selection against an unchanged snapshot produces byte-identical
     canonical field content every time.
+
+    *expected_snapshot_fingerprint* is mandatory (independent review
+    amendment, 2026-10-16): every download must be bound to an exact prior
+    `get_export_preflight` observation of every export-relevant field
+    (price/claims/location/media/NautiX profile, not only identity/status/
+    timestamp -- see `_row_canonical_json`), never merely optional.
 
     This function performs no admission control / concurrency bounding and
     runs entirely synchronously -- `hullq.api.app`'s route is responsible
@@ -819,6 +852,9 @@ def get_export_download(
     auth = authorize_export(conn, session, organization_id)
     if auth is not ExportAuthorizationOutcome.AUTHORIZED:
         return ExportDownloadResult(outcome=ExportDownloadOutcome(auth.value))
+
+    if not expected_snapshot_fingerprint:
+        return ExportDownloadResult(outcome=ExportDownloadOutcome.MISSING_SNAPSHOT_FINGERPRINT)
 
     try:
         validate_nautix_profile(nautix_profile, _selected_raw_ids(selection))
@@ -843,14 +879,13 @@ def get_export_download(
         return ExportDownloadResult(outcome=ExportDownloadOutcome(outcome.value))
     assert snapshot is not None
 
-    if (
-        expected_snapshot_fingerprint is not None
-        and expected_snapshot_fingerprint != snapshot.fingerprint
-    ):
+    if expected_snapshot_fingerprint != snapshot.fingerprint:
         # The broker confirmed a preflight against a different revision of
-        # this data (module docstring: preflight-to-download binding) --
-        # never silently download the now-current, possibly different data
-        # under the cover of the stale confirmation.
+        # this data -- *any* export-relevant field changed, including
+        # offer/price, claims, media or the NautiX profile itself (module
+        # docstring: preflight-to-download binding) -- never silently
+        # download the now-current, possibly different data under the
+        # cover of the stale confirmation.
         return ExportDownloadResult(outcome=ExportDownloadOutcome.STALE_SELECTION)
 
     rows = list(snapshot.rows)

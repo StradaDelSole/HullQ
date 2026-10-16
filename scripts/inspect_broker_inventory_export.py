@@ -97,6 +97,34 @@ _ACCOUNT_B = "ACC-0088-E2E-B"
 _EXPORT_CSRF_HEADER_VALUE = "broker-inventory-export-v1"
 
 
+def _process_rss_bytes(pid: int) -> int | None:
+    """*pid*'s own current resident set size, when the platform actually
+    supports a genuine cross-process query -- never a fabricated number.
+
+    On Linux this reads the kernel's own `/proc/<pid>/status` accounting
+    directly and is trustworthy. A Windows `OpenProcess`/
+    `GetProcessMemoryInfo` ctypes path was prototyped for this script but
+    deliberately removed after a direct experiment proved it unusable in
+    this tool's sandboxed execution environment: querying a *different*
+    process that had just allocated and touched 80MB (confirmed via a
+    readiness marker file written only after the allocation) still
+    returned the exact same fixed 4194304-byte constant on every sample,
+    regardless of the target's real memory state or elapsed time --
+    i.e. the cross-process query is intercepted/virtualized here, not a
+    real reading. Returning a plausible-looking number from that path
+    would be exactly the kind of fabricated evidence CLAUDE.md forbids, so
+    this function reports `None` (disclosed as "not measured") on Windows
+    rather than a number nobody should trust."""
+    try:
+        status_path = Path(f"/proc/{pid}/status")
+        for line in status_path.read_text().splitlines():
+            if line.startswith("VmRSS:"):
+                return int(line.split()[1]) * 1024
+    except Exception:
+        return None
+    return None
+
+
 def _base_db_url() -> str:
     url = os.environ.get("HULLQ_TEST_DATABASE_URL", "").strip()
     if not url:
@@ -673,13 +701,26 @@ def main() -> int:
             "office_id": "OFFICE-REAL-1",
             "sale_classes": {listing_id: "used"},
         }
+        # The profile itself is bound into the snapshot fingerprint (it
+        # populates export-relevant row fields -- see
+        # `_compute_snapshot_fingerprint`), so a fresh preflight *with*
+        # this exact profile is required before the download can use it;
+        # reusing the earlier no-profile fingerprint would correctly be
+        # rejected as stale.
+        profiled_selection = {"draft_ids": [], "native_listing_ids": [listing_id]}
+        status, _, body = session_a.post_json(
+            f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/preflight",
+            {**profiled_selection, "nautix_profile": nautix_profile},
+            extra_headers=_csrf_headers(web_base),
+        )
+        profiled_fingerprint = _json(body).get("snapshot_fingerprint") if status == 200 else None
         status, headers, body = session_a.post_json(
             f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/download",
             {
-                "draft_ids": [],
-                "native_listing_ids": [listing_id],
+                **profiled_selection,
                 "format": "NAUTIX",
                 "nautix_profile": nautix_profile,
+                "expected_snapshot_fingerprint": profiled_fingerprint,
             },
             extra_headers=_csrf_headers(web_base),
         )
@@ -784,6 +825,8 @@ def main() -> int:
         health_latencies: list[float] = []
         stop_polling = False
 
+        rss_samples: list[int] = []
+
         def _poll_health() -> None:
             poll_session = BrowserSession()
             while not stop_polling:
@@ -791,8 +834,14 @@ def main() -> int:
                 with contextlib.suppress(Exception):
                     poll_session.get(f"{api_base}/api/broker/context")
                 health_latencies.append(time.monotonic() - start)
+                assert api_proc is not None
+                sample = _process_rss_bytes(api_proc.pid)
+                if sample is not None:
+                    rss_samples.append(sample)
                 time.sleep(0.05)
 
+        assert api_proc is not None
+        rss_before = _process_rss_bytes(api_proc.pid)
         poll_thread = threading.Thread(target=_poll_health, daemon=True)
         poll_thread.start()
         try:
@@ -802,7 +851,7 @@ def main() -> int:
                 started = time.monotonic()
                 status, _headers, _body = session_a.post_json(
                     f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/download",
-                    {**selection, "format": "XLSX"},
+                    {**selection, "format": "XLSX", "expected_snapshot_fingerprint": fingerprint},
                     extra_headers=_csrf_headers(web_base),
                 )
                 return status, time.monotonic() - started
@@ -812,6 +861,7 @@ def main() -> int:
         finally:
             stop_polling = True
             poll_thread.join(timeout=5)
+        rss_after = _process_rss_bytes(api_proc.pid)
 
         export_statuses = [status for status, _ in results]
         # Every request must resolve to a real outcome (200 OK, or a
@@ -832,6 +882,21 @@ def main() -> int:
             f"{len(health_latencies)}x (max latency {max_health_latency * 1000:.1f}ms) -> "
             f"{'OK' if concurrency_ok else 'FAIL'}"
         )
+        # HIGH_RISK mechanical-invariants contract: genuine measured
+        # resident-set-size evidence for the real FastAPI process under
+        # this concurrent load -- never only the structural row/cell/
+        # output-byte bounding constants read from code. `None` samples
+        # (the platform probe itself unavailable) are disclosed as such,
+        # never silently treated as "0 bytes used".
+        if rss_before is not None and rss_after is not None and rss_samples:
+            peak_rss = max(rss_samples)
+            print(
+                f"    RSS before={rss_before / 1e6:.1f}MB peak-during={peak_rss / 1e6:.1f}MB "
+                f"after={rss_after / 1e6:.1f}MB (bounded by MAX_EXPORT_ROWS/"
+                f"MAX_EXPORT_OUTPUT_BYTES, {_EXPORT_MAX_CONCURRENT_JOBS} concurrent writer slots)"
+            )
+        else:
+            print("    RSS sampling unavailable on this platform -- not measured, not claimed")
 
         status, _, _ = session_a.get(f"{web_base}/broker/organizations/{_ORG_A}/inventory")
         web_regression_ok = status == 200

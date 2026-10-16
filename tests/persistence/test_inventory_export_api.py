@@ -589,7 +589,7 @@ class TestInventoryExportFormats:
         # skips every selected listing.
         no_profile_nautix = client.post(
             "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
-            json={**selection, "format": "NAUTIX"},
+            json={**selection, "format": "NAUTIX", "expected_snapshot_fingerprint": fingerprint},
             headers=_EXPORT_CSRF_HEADER,
         )
         assert no_profile_nautix.status_code == 422
@@ -597,15 +597,34 @@ class TestInventoryExportFormats:
 
         # With a broker-confirmed profile, the listing (never the private
         # draft) becomes genuinely NautiX-exportable -- the real positive
-        # end-to-end path, not just the domain-unit synthetic fixture.
+        # end-to-end path, not just the domain-unit synthetic fixture. The
+        # profile itself is bound into the snapshot fingerprint (it
+        # populates export-relevant row fields), so a fresh preflight
+        # observation *with* this exact profile is required first --
+        # reusing the no-profile fingerprint would correctly be rejected
+        # as stale.
         nautix_profile = {
             "account_token": "BROKER-ACCT-REAL-1",
             "office_id": "OFFICE-REAL-1",
             "sale_classes": {"LIST-EXP-FULL": "used"},
         }
+        profiled_preflight = client.post(
+            "/api/broker/organizations/ORG-EXP-FULL/inventory/export/preflight",
+            json={**selection, "nautix_profile": nautix_profile},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert profiled_preflight.status_code == 200, profiled_preflight.text
+        profiled_fingerprint = profiled_preflight.json()["snapshot_fingerprint"]
+        assert isinstance(profiled_fingerprint, str) and profiled_fingerprint
+        assert profiled_fingerprint != fingerprint
         with_profile_nautix = client.post(
             "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
-            json={**selection, "format": "NAUTIX", "nautix_profile": nautix_profile},
+            json={
+                **selection,
+                "format": "NAUTIX",
+                "nautix_profile": nautix_profile,
+                "expected_snapshot_fingerprint": profiled_fingerprint,
+            },
             headers=_EXPORT_CSRF_HEADER,
         )
         assert with_profile_nautix.status_code == 200, with_profile_nautix.text
@@ -627,6 +646,11 @@ class TestInventoryExportFormats:
                 **selection,
                 "format": "NAUTIX",
                 "nautix_profile": {**nautix_profile, "sale_classes": {"LIST-EXP-FULL": "mint"}},
+                # Invalid-profile rejection happens before the fingerprint
+                # comparison (see get_export_download) -- any non-empty
+                # value satisfies the mandatory-fingerprint precondition so
+                # this test isolates the profile-validation failure.
+                "expected_snapshot_fingerprint": profiled_fingerprint,
             },
             headers=_EXPORT_CSRF_HEADER,
         )
@@ -672,3 +696,442 @@ class TestInventoryExportFormats:
         )
         assert response.status_code == 400
         assert response.json()["error"] == "invalid_format"
+
+
+class TestInventoryExportStalenessOnRealDataChange:
+    """Independent review Finding A: the snapshot fingerprint must bind
+    *every* export-relevant field, not only identity/status/timestamp.
+    Each test here confirms -- against the real database, not a synthetic
+    domain-unit fixture -- that a genuine change of exactly one such field
+    between preflight and download is rejected closed as
+    `STALE_SELECTION`, never silently downloaded under the stale
+    confirmation."""
+
+    def _preflight_fingerprint(
+        self, client: TestClient, org_id: str, selection: dict[str, Any]
+    ) -> str:
+        preflight = client.post(
+            f"/api/broker/organizations/{org_id}/inventory/export/preflight",
+            json=selection,
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert preflight.status_code == 200, preflight.text
+        fingerprint = preflight.json()["snapshot_fingerprint"]
+        assert isinstance(fingerprint, str) and fingerprint
+        return fingerprint
+
+    def test_offer_price_change_after_preflight_is_stale(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-EXP-PRICE",
+            account_id="ACC-EXP-PRICE",
+            membership_id="MEM-EXP-PRICE",
+        )
+        _seed_full_active_listing(
+            api_url,
+            listing_id="LIST-EXP-PRICE",
+            account_id="ACC-EXP-PRICE",
+            org_id="ORG-EXP-PRICE",
+            membership_id="MEM-EXP-PRICE",
+            physical_boat_id="PB-EXP-PRICE",
+            market_episode_id="ME-EXP-PRICE",
+        )
+        _log_in(client, "ACC-EXP-PRICE")
+        selection = {"draft_ids": [], "native_listing_ids": ["LIST-EXP-PRICE"]}
+        fingerprint = self._preflight_fingerprint(client, "ORG-EXP-PRICE", selection)
+
+        conn = psycopg.connect(api_url)
+        try:
+            account = AccountId("ACC-EXP-PRICE")
+            org = _org_domain("ORG-EXP-PRICE")
+            membership = _membership_domain("MEM-EXP-PRICE", "ACC-EXP-PRICE", "ORG-EXP-PRICE")
+            offer_result = write_native_listing_offer_revision(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId("LIST-EXP-PRICE"),
+                revision_id=NativeListingOfferRevisionId("OFFER-LIST-EXP-PRICE-2"),
+                expected_current_revision_id=NativeListingOfferRevisionId("OFFER-LIST-EXP-PRICE"),
+                offer=NativeListingOfferSnapshot(
+                    asking_price_mode=AskingPriceMode.AMOUNT,
+                    location_country="FR",
+                    broker_description="A well-maintained cruising sloop = great value",
+                    asking_price_amount=Decimal("99000.00"),
+                    currency="EUR",
+                ),
+            )
+            assert offer_result.status.value in ("created", "already_exists", "revised"), (
+                offer_result
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        download = client.post(
+            "/api/broker/organizations/ORG-EXP-PRICE/inventory/export/download",
+            json={**selection, "format": "CSV", "expected_snapshot_fingerprint": fingerprint},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert download.status_code == 409, download.text
+        assert download.json()["error"] == "stale_selection"
+
+    def test_claim_change_after_preflight_is_stale(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-EXP-CLAIM",
+            account_id="ACC-EXP-CLAIM",
+            membership_id="MEM-EXP-CLAIM",
+        )
+        _seed_full_active_listing(
+            api_url,
+            listing_id="LIST-EXP-CLAIM",
+            account_id="ACC-EXP-CLAIM",
+            org_id="ORG-EXP-CLAIM",
+            membership_id="MEM-EXP-CLAIM",
+            physical_boat_id="PB-EXP-CLAIM",
+            market_episode_id="ME-EXP-CLAIM",
+        )
+        _log_in(client, "ACC-EXP-CLAIM")
+        selection = {"draft_ids": [], "native_listing_ids": ["LIST-EXP-CLAIM"]}
+        fingerprint = self._preflight_fingerprint(client, "ORG-EXP-CLAIM", selection)
+
+        conn = psycopg.connect(api_url)
+        try:
+            account = AccountId("ACC-EXP-CLAIM")
+            org = _org_domain("ORG-EXP-CLAIM")
+            membership = _membership_domain("MEM-EXP-CLAIM", "ACC-EXP-CLAIM", "ORG-EXP-CLAIM")
+            claim_result = write_physical_boat_claim_revision(
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                native_listing_id=NativeListingId("LIST-EXP-CLAIM"),
+                revision_id=PhysicalBoatClaimRevisionId("CLAIM-LIST-EXP-CLAIM-2"),
+                expected_current_revision_id=PhysicalBoatClaimRevisionId("CLAIM-LIST-EXP-CLAIM"),
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Beneteau",
+                    model_designation_claim="Oceanis 35.1",
+                    build_year=BuildYearClaim(
+                        assertion_kind=AssertionKind.VALUE_ASSERTION, value=2022
+                    ),
+                    loa_length=LoaLengthClaim(
+                        assertion_kind=AssertionKind.VALUE_ASSERTION, value=Decimal("10.70")
+                    ),
+                ),
+            )
+            assert claim_result.status.value in ("created", "already_exists", "revised"), (
+                claim_result
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+        download = client.post(
+            "/api/broker/organizations/ORG-EXP-CLAIM/inventory/export/download",
+            json={**selection, "format": "CSV", "expected_snapshot_fingerprint": fingerprint},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert download.status_code == 409, download.text
+        assert download.json()["error"] == "stale_selection"
+
+    def test_media_change_after_preflight_is_stale(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-EXP-MEDIA",
+            account_id="ACC-EXP-MEDIA",
+            membership_id="MEM-EXP-MEDIA",
+        )
+        _seed_full_active_listing(
+            api_url,
+            listing_id="LIST-EXP-MEDIA",
+            account_id="ACC-EXP-MEDIA",
+            org_id="ORG-EXP-MEDIA",
+            membership_id="MEM-EXP-MEDIA",
+            physical_boat_id="PB-EXP-MEDIA",
+            market_episode_id="ME-EXP-MEDIA",
+        )
+        _log_in(client, "ACC-EXP-MEDIA")
+        selection = {"draft_ids": [], "native_listing_ids": ["LIST-EXP-MEDIA"]}
+        fingerprint = self._preflight_fingerprint(client, "ORG-EXP-MEDIA", selection)
+
+        conn = psycopg.connect(api_url)
+        try:
+            org = _org_domain("ORG-EXP-MEDIA")
+            account = AccountId("ACC-EXP-MEDIA")
+            with conn.transaction():
+                asset = insert_approved_media_asset(
+                    conn,
+                    owner_organization_id=org.id,
+                    uploaded_by_account_id=account,
+                    rights_declared=True,
+                    source_kind=MediaSourceKind.BROKER_UPLOAD,
+                    source_reference=None,
+                    original_object_key="original/LIST-EXP-MEDIA-2",
+                    derivative_object_key="derivative/LIST-EXP-MEDIA-2",
+                    content_hash="e4d909c290d0fb1ca068ffaddf22cbd0",
+                    mime_type="image/jpeg",
+                    width=800,
+                    height=600,
+                    byte_size=12345,
+                )
+                placement_result = create_uploaded_image_placement(
+                    conn,
+                    native_listing_id=NativeListingId("LIST-EXP-MEDIA"),
+                    owner_organization_id=org.id,
+                    media_asset=asset,
+                )
+                assert placement_result.media_placement_id is not None
+            conn.commit()
+        finally:
+            conn.close()
+
+        download = client.post(
+            "/api/broker/organizations/ORG-EXP-MEDIA/inventory/export/download",
+            json={**selection, "format": "CSV", "expected_snapshot_fingerprint": fingerprint},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert download.status_code == 409, download.text
+        assert download.json()["error"] == "stale_selection"
+
+
+class TestInventoryExportCrossOrganizationIsolation:
+    """A `PhysicalBoat` may legitimately be referenced by more than one
+    Organization's own `MarketEpisode` (independent review: a dedicated
+    shared-PhysicalBoat negative fixture). Each Organization's own claim
+    facts for that shared hull must never leak into the other's export --
+    `fetch_current_physical_boat_claim` is scoped by `organization_id`, and
+    this test proves that scoping holds through the real export route, not
+    merely by code inspection."""
+
+    def test_shared_physical_boat_claims_do_not_cross_tenant_boundary(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-EXP-SHARE-A", account_id="ACC-EXP-SHARE-A", membership_id="MEM-A"
+        )
+        _seed_org_and_membership(
+            api_url, org_id="ORG-EXP-SHARE-B", account_id="ACC-EXP-SHARE-B", membership_id="MEM-B"
+        )
+
+        conn = psycopg.connect(api_url)
+        try:
+            shared_physical_boat_id = PhysicalBoatId("PB-SHARED")
+            create_physical_boat(conn, physical_boat=PhysicalBoat(id=shared_physical_boat_id))
+            conn.commit()
+        finally:
+            conn.close()
+
+        for org_id, account_id, membership_id, listing_id, episode_id, brand in (
+            (
+                "ORG-EXP-SHARE-A",
+                "ACC-EXP-SHARE-A",
+                "MEM-A",
+                "LIST-SHARE-A",
+                "ME-SHARE-A",
+                "Beneteau",
+            ),
+            (
+                "ORG-EXP-SHARE-B",
+                "ACC-EXP-SHARE-B",
+                "MEM-B",
+                "LIST-SHARE-B",
+                "ME-SHARE-B",
+                "Jeanneau",
+            ),
+        ):
+            conn = psycopg.connect(api_url)
+            try:
+                account = AccountId(account_id)
+                org = _org_domain(org_id)
+                membership = _membership_domain(membership_id, account_id, org_id)
+                create_market_episode(
+                    conn,
+                    market_episode=MarketEpisode(
+                        id=MarketEpisodeId(episode_id), physical_boat_id=shared_physical_boat_id
+                    ),
+                )
+                result = create_native_listing(
+                    conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    listing=NativeListing(
+                        id=NativeListingId(listing_id),
+                        market_episode_id=MarketEpisodeId(episode_id),
+                    ),
+                    broker_listing_reference="REF-SHARE",
+                )
+                assert result.status.value in ("created", "already_exists"), result
+                offer_result = write_native_listing_offer_revision(
+                    conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    native_listing_id=NativeListingId(listing_id),
+                    revision_id=NativeListingOfferRevisionId(f"OFFER-{listing_id}"),
+                    expected_current_revision_id=None,
+                    offer=NativeListingOfferSnapshot(
+                        asking_price_mode=AskingPriceMode.AMOUNT,
+                        location_country="FR",
+                        broker_description="Shared hull, tenant-owned claim",
+                        asking_price_amount=Decimal("50000.00"),
+                        currency="EUR",
+                    ),
+                )
+                assert offer_result.status.value in ("created", "already_exists"), offer_result
+                claim_result = write_physical_boat_claim_revision(
+                    conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    native_listing_id=NativeListingId(listing_id),
+                    revision_id=PhysicalBoatClaimRevisionId(f"CLAIM-{listing_id}"),
+                    expected_current_revision_id=None,
+                    claims=PhysicalBoatClaimSnapshot(
+                        marketed_brand_claim=brand,
+                        model_designation_claim="Shared Hull Model",
+                        build_year=BuildYearClaim(
+                            assertion_kind=AssertionKind.VALUE_ASSERTION, value=2020
+                        ),
+                    ),
+                )
+                assert claim_result.status.value in ("created", "already_exists"), claim_result
+                _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
+                conn.commit()
+                publish_result = publish_native_listing(
+                    conn,
+                    account_id=account,
+                    candidate_organization=org,
+                    membership=membership,
+                    native_listing_id=NativeListingId(listing_id),
+                )
+                assert publish_result.status.value == "transitioned", publish_result
+            finally:
+                conn.close()
+
+        _log_in(client, "ACC-EXP-SHARE-A")
+        preflight_a = client.post(
+            "/api/broker/organizations/ORG-EXP-SHARE-A/inventory/export/preflight",
+            json={"draft_ids": [], "native_listing_ids": ["LIST-SHARE-A"]},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert preflight_a.status_code == 200, preflight_a.text
+        rows_a = preflight_a.json()["rows"]
+        assert len(rows_a) == 1
+        assert rows_a[0]["field_states"]["physical_boat.marketed_brand_claim"] == "PRESENT"
+
+        fingerprint_a = preflight_a.json()["snapshot_fingerprint"]
+        download_a = client.post(
+            "/api/broker/organizations/ORG-EXP-SHARE-A/inventory/export/download",
+            json={
+                "draft_ids": [],
+                "native_listing_ids": ["LIST-SHARE-A"],
+                "format": "JSON",
+                "expected_snapshot_fingerprint": fingerprint_a,
+            },
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert download_a.status_code == 200, download_a.text
+        assert b"Beneteau" in download_a.content
+        assert b"Jeanneau" not in download_a.content
+
+        # Org A must never be able to select/preview Org B's own listing
+        # merely because the two listings' underlying hull is the same
+        # PhysicalBoat -- the tenant boundary is the Organization, not the
+        # hull.
+        cross_preflight = client.post(
+            "/api/broker/organizations/ORG-EXP-SHARE-A/inventory/export/preflight",
+            json={"draft_ids": [], "native_listing_ids": ["LIST-SHARE-B"]},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert cross_preflight.status_code == 400
+        assert cross_preflight.json()["error"] == "unknown_item"
+
+
+class TestInventoryExportWriteAndDatabaseFailures:
+    def test_write_failure_surfaces_as_export_write_failed(
+        self, client: TestClient, api_url: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Induces a genuine writer failure via monkeypatch (there is no
+        organic malformed-data path through the real, already-bounded/
+        escaped writers) and confirms the real API route translates the
+        domain `WRITE_FAILED` outcome to a real HTTP 500 `export_write_failed`
+        response -- never a silently empty/truncated "successful" file."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-EXP-WRITEFAIL",
+            account_id="ACC-EXP-WRITEFAIL",
+            membership_id="MEM-EXP-WRITEFAIL",
+        )
+        _seed_full_active_listing(
+            api_url,
+            listing_id="LIST-EXP-WRITEFAIL",
+            account_id="ACC-EXP-WRITEFAIL",
+            org_id="ORG-EXP-WRITEFAIL",
+            membership_id="MEM-EXP-WRITEFAIL",
+            physical_boat_id="PB-EXP-WRITEFAIL",
+            market_episode_id="ME-EXP-WRITEFAIL",
+        )
+        _log_in(client, "ACC-EXP-WRITEFAIL")
+        selection = {"draft_ids": [], "native_listing_ids": ["LIST-EXP-WRITEFAIL"]}
+        preflight = client.post(
+            "/api/broker/organizations/ORG-EXP-WRITEFAIL/inventory/export/preflight",
+            json=selection,
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert preflight.status_code == 200, preflight.text
+        fingerprint = preflight.json()["snapshot_fingerprint"]
+
+        from hullq.domain.inventory_export import ExportWriteError
+
+        def _always_fail(*args: Any, **kwargs: Any) -> bytes:
+            raise ExportWriteError("induced failure for test coverage")
+
+        monkeypatch.setattr("hullq.application.inventory_export.write_csv", _always_fail)
+
+        download = client.post(
+            "/api/broker/organizations/ORG-EXP-WRITEFAIL/inventory/export/download",
+            json={**selection, "format": "CSV", "expected_snapshot_fingerprint": fingerprint},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert download.status_code == 500, download.text
+        assert download.json()["error"] == "export_write_failed"
+
+    def test_database_outage_fails_closed_not_fabricated_success(
+        self, api_url: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Independent review: a genuine backend/database failure must
+        surface as a real 5xx through the actual FastAPI route -- never a
+        fabricated empty/zero/success result. Mirrors the existing
+        `test_search_sensitivity_api.py` unreachable-database precedent:
+        reserved port 1, nothing listens there, a guaranteed immediate
+        connection failure."""
+        monkeypatch.setenv("HULLQ_SESSION_COOKIE_SECURE", "false")
+        from hullq.api.app import create_app
+
+        unreachable_app = create_app(
+            database_url="postgresql://hullq_test:hullq_test@127.0.0.1:1/hullq_test",
+            preview_signing_secret=os.urandom(32),
+            session_signing_secret=_SECRET,
+            web_base_url="http://api.test",
+            web_origin=_WEB_ORIGIN,
+        )
+        unreachable_client = TestClient(
+            unreachable_app, base_url="http://api.test", raise_server_exceptions=False
+        )
+        try:
+            unreachable_client.cookies.set(
+                "hullq_session", _session_cookie("ACC-EXP-OUTAGE"), domain="api.test"
+            )
+            response = unreachable_client.post(
+                "/api/broker/organizations/ORG-EXP-OUTAGE/inventory/export/preflight",
+                json={"draft_ids": [], "native_listing_ids": []},
+                headers=_EXPORT_CSRF_HEADER,
+            )
+            assert response.status_code >= 500
+            assert response.status_code != 400
+        finally:
+            unreachable_client.close()

@@ -2923,6 +2923,8 @@ def create_app(
             return JSONResponse({"error": "unknown_item"}, status_code=400)
         if outcome.name == "INVALID_NAUTIX_PROFILE":
             return JSONResponse({"error": "invalid_nautix_profile"}, status_code=400)
+        if outcome.name == "MISSING_SNAPSHOT_FINGERPRINT":
+            return JSONResponse({"error": "missing_snapshot_fingerprint"}, status_code=400)
         if outcome.name == "STALE_SELECTION":
             return JSONResponse({"error": "stale_selection"}, status_code=409)
         if outcome.name == "NO_EXPORTABLE_ROWS":
@@ -2969,8 +2971,14 @@ def create_app(
 
     async def _read_bounded_export_body(request: Request) -> JSONResponse | dict[str, Any]:
         """Bound request-body size from `Content-Length` *before* reading
-        any byte of the body (independent review amendment, 2026-10-16) --
-        mirrors the media-upload route's identical discipline."""
+        any byte of the body, then bound the *actual* streamed byte count
+        independently of that declared header (independent review
+        amendment, 2026-10-16: a declared `Content-Length` is not
+        trustworthy on its own -- a client can lie, and chunked transfer
+        encoding carries none at all). Rejects a mismatch between the
+        declared and actually-received byte count as a malformed/
+        truncated/excess request rather than silently accepting whichever
+        is smaller."""
         raw_content_length = request.headers.get("content-length")
         if raw_content_length is None:
             return JSONResponse({"error": "length_required"}, status_code=411)
@@ -2978,9 +2986,31 @@ def create_app(
             content_length = int(raw_content_length)
         except ValueError:
             return JSONResponse({"error": "invalid_content_length"}, status_code=400)
-        if content_length > _MAX_EXPORT_REQUEST_BYTES:
+        if content_length < 0 or content_length > _MAX_EXPORT_REQUEST_BYTES:
             return JSONResponse({"error": "payload_too_large"}, status_code=413)
-        raw_body = await _read_json_body(request, allow_empty=False)
+
+        chunks: list[bytes] = []
+        received = 0
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > _MAX_EXPORT_REQUEST_BYTES:
+                # Fail closed immediately -- never buffer past the bound
+                # regardless of what Content-Length claimed.
+                return JSONResponse({"error": "payload_too_large"}, status_code=413)
+            chunks.append(chunk)
+        if received != content_length:
+            # The declared Content-Length does not match what was actually
+            # received -- a truncated, excess, or otherwise malformed
+            # request; never parsed as if it were well-formed.
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+
+        raw_bytes = b"".join(chunks)
+        if not raw_bytes:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        try:
+            raw_body = json.loads(raw_bytes)
+        except json.JSONDecodeError:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
         if not isinstance(raw_body, dict):
             return JSONResponse({"error": "invalid_selection"}, status_code=400)
         return raw_body
@@ -3070,8 +3100,11 @@ def create_app(
         if selection is None or not profile_ok:
             return JSONResponse({"error": "invalid_selection"}, status_code=400)
         expected_fingerprint = raw_body.get("expected_snapshot_fingerprint")
-        if expected_fingerprint is not None and not isinstance(expected_fingerprint, str):
-            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        # Mandatory (independent review amendment, 2026-10-16): every
+        # download must be bound to an exact prior preflight observation --
+        # never silently permitted with no confirmation at all.
+        if not isinstance(expected_fingerprint, str) or not expected_fingerprint:
+            return JSONResponse({"error": "missing_snapshot_fingerprint"}, status_code=400)
 
         def _work() -> Any:
             conn = open_connection(resolved_database_url)
