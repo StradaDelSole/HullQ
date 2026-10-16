@@ -18,23 +18,39 @@ I/O. Assembling the canonical, authorization-checked rows from PostgreSQL
 is `hullq.application.inventory_export`'s job; this module only ever sees
 already-authorized, already-selected rows.
 
-NautiX representability gap (deliberate, disclosed, not a fabrication):
-HullQ's broker draft/offer schema (`hullq.domain.listing_draft_payload`)
-does not capture a new/used `sale_class` distinction or a marketing
-`boat_type` style category, and `loa_length`/`boat_name` are two of several
-fields that may be explicit UNKNOWN or simply absent. Per the slice's own
-"Absence-vs-error / fail-closed behavior" invariant, a row missing any
-NautiX-mandatory field is `NOT_EXPORTABLE` with an explicit reason --
-**never** a fabricated default. The single exception is `boat_type`: every
-HullQ listing is, by definition of HullQ's current sailboat-only catalog
-scope, a sailing boat, so the generic catalog-wide `sail-yacht` category is
-a true structural fact about HullQ itself, not a per-row marketing
-assertion about any particular boat, and is used unconditionally.
-`sale_class` has no such catalog-wide default and is always `None` on an
-application-built row; `ExportRow.sale_class` exists as a constructor field
-purely so this module's own NautiX writer/XSD-roundtrip correctness can be
-proven directly against a hypothetically complete synthetic row,
-independent of whether any *real* current HullQ listing can ever supply it.
+NautiX representability gap and its resolution (review amendment,
+2026-10-16): HullQ's broker draft/offer schema (`hullq.domain
+.listing_draft_payload`) does not itself capture a new/used `sale_class`
+distinction, nor a destination-platform account token / office id, and
+`loa_length`/`boat_name` are two of several fields that may be explicit
+UNKNOWN or simply absent. Per the slice's own "Absence-vs-error / fail-
+closed behavior" invariant, a row missing any NautiX-mandatory field is
+`NOT_EXPORTABLE` with an explicit reason -- **never** a fabricated
+default, and never a placeholder identity value (a prior revision of this
+module hardcoded `office_id="default"`; that was exactly the kind of
+fabrication this invariant forbids and has been removed).
+
+Three fields -- `sale_class`, `nautix_account_token`, `nautix_office_id`
+-- are therefore never read from stored HullQ listing/offer/claim data at
+all. They are populated only from an explicit, per-download, broker-
+confirmed **NautiX export profile** (`hullq.application.inventory_export
+.NautixExportProfile`): the broker's own destination-platform account
+token and office id (data only the broker can know -- HullQ has no
+opinion on any other platform's account namespace), and, per selected
+listing, the broker's own new/used sale classification. This is the
+broker's own confirmed assertion for this one download, scoped to this
+export and never persisted as HullQ listing/offer/claim truth -- the
+identical discipline already accepted for `listing_offer.broker_summary`/
+`vat_tax_status_claim` ("a stored value here is always a broker claim,
+never a HullQ legal verification"). Omitting the profile leaves every row
+honestly `NOT_EXPORTABLE` for NautiX; the other six formats are
+unaffected.
+
+`boat_type` remains the sole unconditional default: every HullQ listing
+is, by definition of HullQ's current sailboat-only catalog scope, a
+sailing boat, so the generic catalog-wide `sail-yacht` category is a true
+structural fact about HullQ itself, not a per-row marketing assertion
+about any particular boat.
 """
 
 from __future__ import annotations
@@ -55,8 +71,10 @@ from lxml import etree
 from hullq.domain.import_nautix import NAUTIX_V14_NAMESPACE
 
 __all__ = [
+    "ALLOWED_NAUTIX_SALE_CLASSES",
     "EXPORT_COLUMNS",
     "MAX_EXPORT_MEDIA_PER_ROW",
+    "MAX_EXPORT_OUTPUT_BYTES",
     "MAX_EXPORT_ROWS",
     "MAX_XLS_ROWS",
     "ExportFieldState",
@@ -117,6 +135,33 @@ MAX_EXPORT_MEDIA_PER_ROW = 20
 #: field is already bounded well below this), so writers raise rather than
 #: silently truncate.
 MAX_EXPORT_CELL_CHARS = 4_000
+
+#: Bounded total serialized output size (mechanical invariants: "Output
+#: size/listing count ... limits are deterministic"). `MAX_EXPORT_ROWS *
+#: (len(EXPORT_COLUMNS) * MAX_EXPORT_CELL_CHARS)` bounds worst-case
+#: table-format text well under this; enforced explicitly after writing
+#: (never during, which would require re-architecting each writer) so an
+#: unexpectedly oversized result fails closed as a writer error rather
+#: than being returned as a successful partial/complete file.
+MAX_EXPORT_OUTPUT_BYTES = 25_000_000
+
+#: The pinned XSD's `SaleClass` enumeration, excluding `not-applicable`
+#: ("not usable for boats" per the schema's own comment). Never inferred
+#: from HullQ listing/offer/claim data (module docstring) -- only ever
+#: set from an explicit broker-confirmed `NautixExportProfile` value.
+ALLOWED_NAUTIX_SALE_CLASSES: frozenset[str] = frozenset(
+    {
+        "used",
+        "used-excharter",
+        "demo-inwater",
+        "demo-exhibition",
+        "new",
+        "new-instock",
+        "new-inorder",
+        "new-onorder",
+    }
+)
+_ALLOWED_SALE_CLASSES = ALLOWED_NAUTIX_SALE_CLASSES
 
 
 class ExportWriteError(Exception):
@@ -187,9 +232,13 @@ class ExportRow:
     #: `mime_type` (`hullq.persistence.media_gallery.MediaAssetRecord
     #: .mime_type`), never guessed from the URL/filename extension.
     media_mime_types: tuple[str | None, ...] = ()
-    #: Test/fixture-only -- see module docstring. Always `None` on an
-    #: application-built row.
+    #: Broker-confirmed NautiX export-profile attestations (module docstring)
+    #: -- never read from stored HullQ listing/offer/claim data, never
+    #: persisted beyond this one export call. All three are `None` unless
+    #: the caller explicitly supplied a `NautixExportProfile` for this row.
     sale_class: str | None = None
+    nautix_account_token: str | None = None
+    nautix_office_id: str | None = None
 
     def __post_init__(self) -> None:
         if len(self.media_urls) != len(self.media_md5s) or len(self.media_urls) != len(
@@ -200,6 +249,8 @@ class ExportRow:
             )
         if len(self.media_urls) > MAX_EXPORT_MEDIA_PER_ROW:
             raise ValueError(f"ExportRow.media_urls exceeds {MAX_EXPORT_MEDIA_PER_ROW} entries")
+        if self.sale_class is not None and self.sale_class not in _ALLOWED_SALE_CLASSES:
+            raise ValueError(f"ExportRow.sale_class must be one of {sorted(_ALLOWED_SALE_CLASSES)}")
         for label, value in (
             ("broker_listing_reference", self.broker_listing_reference),
             ("marketed_brand_claim", self.marketed_brand_claim),
@@ -210,6 +261,12 @@ class ExportRow:
         ):
             if value is not None and len(value) > MAX_EXPORT_CELL_CHARS:
                 raise ValueError(f"ExportRow.{label} exceeds {MAX_EXPORT_CELL_CHARS} characters")
+        for label, value in (
+            ("nautix_account_token", self.nautix_account_token),
+            ("nautix_office_id", self.nautix_office_id),
+        ):
+            if value is not None and not (0 < len(value) <= 200):
+                raise ValueError(f"ExportRow.{label} must be 1-200 characters when provided")
 
 
 #: Canonical, stably ordered column/field set every table-like format
@@ -478,8 +535,18 @@ def _nautix_preflight(row: ExportRow) -> FormatPreflight:
         reasons.append("boat_data.dimensions.loa: value is outside the NautiX accepted range")
     if row.sale_class is None:
         reasons.append(
-            "sale_data.sale_class: HullQ's draft/offer schema does not currently capture a "
-            "new/used sale classification for this listing (never fabricated)"
+            "sale_data.sale_class: no broker-confirmed NautixExportProfile sale classification "
+            "was provided for this listing (never fabricated)"
+        )
+    if not row.nautix_account_token:
+        reasons.append(
+            "account.token: no broker-confirmed destination account token was provided "
+            "(never fabricated from the HullQ Organization id)"
+        )
+    if not row.nautix_office_id:
+        reasons.append(
+            "advert_data.office_id: no broker-confirmed destination office id was provided "
+            "(never a placeholder value)"
         )
     if row.asking_price_mode is None:
         reasons.append("sale_data.price: no asking_price_mode present")
@@ -584,7 +651,16 @@ def write_xlsx(rows: list[ExportRow]) -> bytes:
 
     buf = io.BytesIO()
     try:
-        workbook = xlsxwriter.Workbook(buf, {"in_memory": True, "constant_memory": True})
+        # independent review amendment (2026-10-16): xlsxwriter silently
+        # forces constant_memory=False whenever in_memory=True ("We can't
+        # do 'constant_memory' mode while doing 'in_memory' mode" --
+        # xlsxwriter's own Workbook.__init__). Passing both was therefore a
+        # contradiction that claimed a memory bound the combination never
+        # actually enforced. `in_memory=True` is kept (required so this
+        # function returns bytes rather than writing a temp file); the
+        # real memory bound is `MAX_EXPORT_ROWS * MAX_EXPORT_CELL_CHARS`
+        # enforced by `ExportRow.__post_init__`, not a writer flag.
+        workbook = xlsxwriter.Workbook(buf, {"in_memory": True})
         worksheet = workbook.add_worksheet("Listings")
         header_format = workbook.add_format({"bold": True})
         for col_idx, col in enumerate(EXPORT_COLUMNS):
@@ -707,7 +783,6 @@ def write_ods(rows: list[ExportRow]) -> bytes:
 # ---------------------------------------------------------------------------
 
 _ADVERT_ID_SAFE_RE = re.compile(r"[^-a-zA-Z0-9_]")
-_ACCOUNT_TOKEN_SAFE_RE = re.compile(r"[^A-Za-z0-9_.\-]")
 
 
 def _ns(tag: str) -> str:
@@ -734,13 +809,6 @@ def _sanitize_advert_id(export_id: str) -> str:
     return f"hq{digest}"[:36]
 
 
-def _sanitize_account_token(organization_id: str) -> str:
-    candidate = _ACCOUNT_TOKEN_SAFE_RE.sub("", organization_id)
-    if candidate:
-        return candidate
-    return hashlib.sha256(organization_id.encode("utf-8")).hexdigest()[:32]
-
-
 def _quantize_loa(value: Decimal) -> Decimal:
     return value.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
@@ -757,7 +825,8 @@ def _build_nautix_advert(adverts_el: Any, row: ExportRow) -> None:
     advert_el.set("modified", _format_nautix_datetime(row.updated_at))
 
     advert_data_el = etree.SubElement(advert_el, _ns("advert_data"))
-    etree.SubElement(advert_data_el, _ns("office_id")).text = "default"
+    assert row.nautix_office_id is not None
+    etree.SubElement(advert_data_el, _ns("office_id")).text = row.nautix_office_id
     if row.broker_description:
         subtitle = row.broker_description.replace("\n", " ").replace("\r", " ")[:60]
         etree.SubElement(advert_data_el, _ns("subtitle")).text = subtitle
@@ -806,9 +875,7 @@ def _build_nautix_advert(adverts_el: Any, row: ExportRow) -> None:
         image_el.text = url
 
 
-def build_nautix_document(
-    rows: list[ExportRow], *, organization_id: str, generated_at: datetime
-) -> bytes:
+def build_nautix_document(rows: list[ExportRow], *, generated_at: datetime) -> bytes:
     """Build one NautiX 1.4 `adverts.xml` document from *rows*.
 
     Only rows whose `_nautix_preflight` is exportable are ever written as an
@@ -819,25 +886,37 @@ def build_nautix_document(
     `build_row_preflight` before download; this function's only job is to
     never put an incomplete/fabricated advert into the output bytes.
 
+    The document's `<account token="...">` is the exportable rows' own
+    broker-confirmed `nautix_account_token` (module docstring) -- there is
+    deliberately no *organization_id* parameter here any more: an earlier
+    revision derived the token from the HullQ Organization id when no
+    profile was supplied, which is exactly the fabricated-identity pattern
+    this invariant forbids. When zero rows are exportable the account
+    element still needs some `NotEmptyString` token to stay schema-valid;
+    `"no-export"` is used in that case precisely because it wraps zero
+    adverts and asserts nothing about any real account.
+
     The caller must validate the returned bytes against the pinned XSD
     (`hullq.domain.import_nautix.parse_and_validate_nautix` reuses the exact
     same pinned schema) before treating this as a finished download --
     this function alone is not the proof.
     """
+    exportable_rows = [row for row in rows if _nautix_preflight(row).exportable]
+
     root = etree.Element(_ns("nautix"), nsmap={None: NAUTIX_V14_NAMESPACE})
     root.set("version", "1.4")
     root.set("date", _format_nautix_datetime(generated_at))
 
     account_el = etree.SubElement(root, _ns("account"))
-    token = _sanitize_account_token(organization_id)
+    token = exportable_rows[0].nautix_account_token if exportable_rows else "no-export"
+    assert token
     account_el.set("token", token)
     account_el.set("status", "active")
     etree.SubElement(account_el, _ns("account_name")).text = token
     adverts_el = etree.SubElement(account_el, _ns("adverts"))
 
-    for row in rows:
-        if _nautix_preflight(row).exportable:
-            _build_nautix_advert(adverts_el, row)
+    for row in exportable_rows:
+        _build_nautix_advert(adverts_el, row)
 
     serialized: bytes = etree.tostring(
         root, xml_declaration=True, encoding="UTF-8", standalone=True

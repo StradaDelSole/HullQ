@@ -39,12 +39,13 @@ test("EXPORT_FORMATS never includes XLSB (2026-10-16 amendment)", () => {
   assert.equal(EXPORT_FORMATS.length, 7);
 });
 
-test("fetchExportPreflight: 200 body is surfaced as ok", async () => {
+test("fetchExportPreflight: 200 body is surfaced as ok with its snapshot_fingerprint", async () => {
   await withServer(
     (_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.end(
         JSON.stringify({
+          snapshot_fingerprint: "abc123",
           rows: [{ field_states: {}, formats: {} }],
         }),
       );
@@ -52,7 +53,50 @@ test("fetchExportPreflight: 200 body is surfaced as ok", async () => {
     async (baseUrl) => {
       const result = await fetchExportPreflight(baseUrl, "ORG-1", "hullq_session=abc", null, _selection);
       assert.equal(result.kind, "ok");
-      if (result.kind === "ok") assert.equal(result.rows.length, 1);
+      if (result.kind === "ok") {
+        assert.equal(result.rows.length, 1);
+        assert.equal(result.snapshotFingerprint, "abc123");
+      }
+    },
+  );
+});
+
+test("fetchExportPreflight: forwards an explicit NautixExportProfile", async () => {
+  await withServer(
+    (req, res) => {
+      let raw = "";
+      req.on("data", (chunk) => (raw += chunk));
+      req.on("end", () => {
+        const sent = JSON.parse(raw);
+        assert.deepEqual(sent.nautix_profile, {
+          account_token: "ACCT-1",
+          office_id: "OFFICE-1",
+          sale_classes: { "LIST-1": "used" },
+        });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ snapshot_fingerprint: "fp", rows: [] }));
+      });
+    },
+    async (baseUrl) => {
+      const result = await fetchExportPreflight(baseUrl, "ORG-1", "hullq_session=abc", null, _selection, {
+        accountToken: "ACCT-1",
+        officeId: "OFFICE-1",
+        saleClasses: { "LIST-1": "used" },
+      });
+      assert.equal(result.kind, "ok");
+    },
+  );
+});
+
+test("fetchExportPreflight: 400 invalid_nautix_profile is classified", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(400, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "invalid_nautix_profile" }));
+    },
+    async (baseUrl) => {
+      const result = await fetchExportPreflight(baseUrl, "ORG-1", "hullq_session=abc", null, _selection);
+      assert.equal(result.kind, "invalid_nautix_profile");
     },
   );
 });
@@ -96,12 +140,14 @@ test("fetchExportPreflight: 400 unknown_item is classified (no existence oracle 
   );
 });
 
-test("downloadExport: 200 bytes/content-type/filename are surfaced as ok", async () => {
+test("downloadExport: 200 bytes/content-type/filename/counts are surfaced as ok", async () => {
   await withServer(
     (_req, res) => {
       res.writeHead(200, {
         "Content-Type": "text/csv; charset=utf-8",
         "Content-Disposition": 'attachment; filename="hullq-inventory-export.csv"',
+        "X-HullQ-Export-Included-Count": "2",
+        "X-HullQ-Export-Rejected-Count": "1",
       });
       res.end("export_id,status\n");
     },
@@ -112,6 +158,8 @@ test("downloadExport: 200 bytes/content-type/filename are surfaced as ok", async
         assert.equal(result.contentType, "text/csv; charset=utf-8");
         assert.equal(result.filename, "hullq-inventory-export.csv");
         assert.equal(Buffer.from(result.bytes).toString("utf-8"), "export_id,status\n");
+        assert.equal(result.includedCount, 2);
+        assert.equal(result.rejectedCount, 1);
       }
     },
   );
@@ -126,6 +174,34 @@ test("downloadExport: 429 is surfaced as export_busy", async () => {
     async (baseUrl) => {
       const result = await downloadExport(baseUrl, "ORG-1", "hullq_session=abc", null, _selection, "CSV");
       assert.equal(result.kind, "export_busy");
+    },
+  );
+});
+
+test("downloadExport: 409 is surfaced as stale_selection", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(409, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "stale_selection" }));
+    },
+    async (baseUrl) => {
+      const result = await downloadExport(baseUrl, "ORG-1", "hullq_session=abc", null, _selection, "CSV", {
+        expectedSnapshotFingerprint: "stale-fp",
+      });
+      assert.equal(result.kind, "stale_selection");
+    },
+  );
+});
+
+test("downloadExport: 422 is surfaced as no_exportable_rows (never a silent empty success)", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(422, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ error: "no_exportable_rows" }));
+    },
+    async (baseUrl) => {
+      const result = await downloadExport(baseUrl, "ORG-1", "hullq_session=abc", null, _selection, "NAUTIX");
+      assert.equal(result.kind, "no_exportable_rows");
     },
   );
 });

@@ -1,0 +1,428 @@
+---
+// SLICE-0088: the broker inventory portability export surface. An
+// authenticated Account whose exact current matching ACTIVE
+// OrganizationMembership contains PUBLISHER may select own private
+// drafts and/or current promoted listings, preview per-row/per-format
+// exportability (never a silent complete download that skips every
+// selected listing), and download one of the seven Owner-accepted
+// formats. XLSB export is explicitly deferred (GitHub issue #362) and is
+// never offered here; XLSB import is unaffected.
+export const prerender = false;
+
+import { fetchProfessionalDrafts } from "../../../../../../lib/professionalDraftApi";
+import { fetchOrganizationInventory } from "../../../../../../lib/brokerApi";
+import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
+
+const organizationId = Astro.params.organization_id ?? "";
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+const cookieHeader = Astro.request.headers.get("cookie");
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+Astro.response.headers.set("Cache-Control", "private, no-store");
+
+const draftsResult = organizationId
+  ? await fetchProfessionalDrafts(apiBaseUrl, organizationId, cookieHeader, { pageSize: 100 })
+  : ({ kind: "not_found" } as const);
+const inventoryResult = organizationId
+  ? await fetchOrganizationInventory(apiBaseUrl, organizationId, cookieHeader, { pageSize: 100 })
+  : ({ kind: "not_found" } as const);
+
+const overallKind =
+  draftsResult.kind !== "ok"
+    ? draftsResult.kind
+    : inventoryResult.kind !== "ok"
+      ? inventoryResult.kind
+      : "ok";
+
+if (overallKind === "not_found") {
+  Astro.response.status = 404;
+} else if (overallKind === "mfa_required") {
+  Astro.response.status = 403;
+} else if (overallKind === "publisher_role_required") {
+  Astro.response.status = 403;
+} else if (overallKind === "service_error") {
+  Astro.response.status = 503;
+}
+
+const drafts = draftsResult.kind === "ok" ? draftsResult.data.drafts : [];
+const listings = inventoryResult.kind === "ok" ? inventoryResult.data.items : [];
+
+const nextPath = `/broker/organizations/${organizationId}/inventory/export`;
+const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPath)}`;
+const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
+const preflightPath = `/broker/organizations/${organizationId}/inventory/export/preflight`;
+const downloadPath = `/broker/organizations/${organizationId}/inventory/export/download`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>HullQ Broker Workspace — Inventory Export</title>
+  </head>
+  <body>
+    <main>
+      <h1>Export inventory</h1>
+      <p>
+        Select your own private drafts and/or current listings, preview per-listing/per-format
+        completeness, then download a genuine CSV, TSV, Excel (XLSX/XLS), OpenDocument (ODS),
+        JSON or NautiX 1.4 <code>adverts.xml</code> file. Legacy binary Excel (XLSB) export is not
+        yet available (<a href="https://github.com/StradaDelSole/HullQ/issues/362">issue #362</a>);
+        XLSB import is unaffected.
+      </p>
+      {
+        overallKind === "unauthenticated" ? (
+          <p>
+            Please <a href={loginUrl}>log in</a> to export inventory.
+          </p>
+        ) : overallKind === "not_found" ? (
+          <>
+            <h2>Not found</h2>
+            <p>This Organization export workspace is not available.</p>
+          </>
+        ) : overallKind === "mfa_required" ? (
+          <>
+            <h2>Additional verification required</h2>
+            <a href={stepUpUrl}>Verify and continue</a>
+          </>
+        ) : overallKind === "publisher_role_required" ? (
+          <>
+            <h2>Not authorized to export inventory</h2>
+            <p>
+              Your current membership in this Organization does not include the PUBLISHER role.
+            </p>
+          </>
+        ) : overallKind === "service_error" ? (
+          <>
+            <h2>Export temporarily unavailable</h2>
+          </>
+        ) : (
+          <>
+            <p>
+              <a href={`/broker/organizations/${organizationId}`}>Back to workspace</a>
+            </p>
+
+            <section>
+              <h2>1. Select</h2>
+              {drafts.length === 0 && listings.length === 0 ? (
+                <p>No private drafts or listings yet.</p>
+              ) : (
+                <form id="selection-form">
+                  {drafts.length > 0 && (
+                    <>
+                      <h3>Private drafts</h3>
+                      <ul>
+                        {drafts.map((draft) => (
+                          <li>
+                            <label>
+                              <input
+                                type="checkbox"
+                                class="draft-checkbox"
+                                value={draft.draft_id}
+                              />{" "}
+                              {draft.broker_listing_reference ?? draft.draft_id}
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {listings.length > 0 && (
+                    <>
+                      <h3>Current listings</h3>
+                      <ul>
+                        {listings.map((item) => (
+                          <li>
+                            <label>
+                              <input
+                                type="checkbox"
+                                class="listing-checkbox"
+                                value={item.native_listing_id}
+                              />{" "}
+                              {item.broker_listing_reference ?? item.native_listing_id} (
+                              {item.lifecycle_state})
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <p>
+                    <label>
+                      Format
+                      <select id="export-format">
+                        <option value="CSV">CSV</option>
+                        <option value="TSV">TSV</option>
+                        <option value="XLSX">Excel XLSX</option>
+                        <option value="XLS">Excel XLS (legacy)</option>
+                        <option value="ODS">OpenDocument ODS</option>
+                        <option value="JSON">JSON</option>
+                        <option value="NAUTIX">NautiX 1.4 adverts.xml</option>
+                      </select>
+                    </label>
+                  </p>
+                  <fieldset id="nautix-profile-fields" hidden>
+                    <legend>
+                      NautiX destination profile (your own account on the receiving platform --
+                      never stored by HullQ, used only for this one download)
+                    </legend>
+                    <p>
+                      <label>
+                        Destination account token
+                        <input type="text" id="nautix-account-token" maxlength="200" />
+                      </label>
+                    </p>
+                    <p>
+                      <label>
+                        Destination office id
+                        <input type="text" id="nautix-office-id" maxlength="200" />
+                      </label>
+                    </p>
+                    <p>
+                      Per-listing sale classification (only listings you select above and intend
+                      to export as NautiX need a value):
+                    </p>
+                    <div id="nautix-sale-classes"></div>
+                  </fieldset>
+                  <p>
+                    <button type="button" id="preview-button">
+                      Preview
+                    </button>
+                    <button type="button" id="download-button" disabled>
+                      Download
+                    </button>
+                  </p>
+                  <p id="selection-status" role="status" />
+                </form>
+              )}
+            </section>
+
+            <section>
+              <h2>2. Preview</h2>
+              <div id="preview-results" />
+            </section>
+          </>
+        )
+      }
+    </main>
+    <script
+      define:vars={{
+        preflightPath,
+        downloadPath,
+        draftIds: drafts.map((d) => d.draft_id),
+        listingIds: listings.map((l) => l.native_listing_id),
+      }}
+    >
+      const SALE_CLASSES = [
+        "used",
+        "used-excharter",
+        "demo-inwater",
+        "demo-exhibition",
+        "new",
+        "new-instock",
+        "new-inorder",
+        "new-onorder",
+      ];
+
+      const formatSelect = document.getElementById("export-format");
+      const nautixFields = document.getElementById("nautix-profile-fields");
+      const nautixSaleClassesEl = document.getElementById("nautix-sale-classes");
+      const accountTokenInput = document.getElementById("nautix-account-token");
+      const officeIdInput = document.getElementById("nautix-office-id");
+      const previewButton = document.getElementById("preview-button");
+      const downloadButton = document.getElementById("download-button");
+      const statusEl = document.getElementById("selection-status");
+      const resultsEl = document.getElementById("preview-results");
+
+      let lastFingerprint = null;
+
+      function selectedIds() {
+        const draftIds = Array.from(document.querySelectorAll(".draft-checkbox:checked")).map(
+          (el) => el.value,
+        );
+        const listingIds = Array.from(document.querySelectorAll(".listing-checkbox:checked")).map(
+          (el) => el.value,
+        );
+        return { draftIds, listingIds };
+      }
+
+      function renderSaleClassInputs() {
+        const { listingIds } = selectedIds();
+        nautixSaleClassesEl.innerHTML = "";
+        for (const id of listingIds) {
+          const row = document.createElement("p");
+          const label = document.createElement("label");
+          label.textContent = `${id}: `;
+          const select = document.createElement("select");
+          select.dataset.listingId = id;
+          select.className = "nautix-sale-class-select";
+          const blank = document.createElement("option");
+          blank.value = "";
+          blank.textContent = "(not exported as NautiX)";
+          select.appendChild(blank);
+          for (const sc of SALE_CLASSES) {
+            const opt = document.createElement("option");
+            opt.value = sc;
+            opt.textContent = sc;
+            select.appendChild(opt);
+          }
+          label.appendChild(select);
+          row.appendChild(label);
+          nautixSaleClassesEl.appendChild(row);
+        }
+      }
+
+      function updateFormatVisibility() {
+        const isNautix = formatSelect.value === "NAUTIX";
+        nautixFields.hidden = !isNautix;
+        if (isNautix) renderSaleClassInputs();
+      }
+      formatSelect?.addEventListener("change", updateFormatVisibility);
+      document.querySelectorAll(".listing-checkbox").forEach((el) => {
+        el.addEventListener("change", () => {
+          if (formatSelect.value === "NAUTIX") renderSaleClassInputs();
+        });
+      });
+
+      function buildNautixProfile() {
+        if (formatSelect.value !== "NAUTIX") return undefined;
+        const saleClasses = {};
+        document.querySelectorAll(".nautix-sale-class-select").forEach((el) => {
+          if (el.value) saleClasses[el.dataset.listingId] = el.value;
+        });
+        return {
+          accountToken: accountTokenInput.value,
+          officeId: officeIdInput.value,
+          saleClasses,
+        };
+      }
+
+      previewButton?.addEventListener("click", async () => {
+        const { draftIds, listingIds } = selectedIds();
+        if (draftIds.length === 0 && listingIds.length === 0) {
+          statusEl.textContent = "Select at least one draft or listing.";
+          return;
+        }
+        statusEl.textContent = "Loading preview…";
+        downloadButton.disabled = true;
+        lastFingerprint = null;
+
+        const body = {
+          draft_ids: draftIds,
+          native_listing_ids: listingIds,
+        };
+        const profile = buildNautixProfile();
+        if (profile) {
+          body.nautix_profile = {
+            account_token: profile.accountToken,
+            office_id: profile.officeId,
+            sale_classes: profile.saleClasses,
+          };
+        }
+
+        let response;
+        try {
+          response = await fetch(preflightPath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+        } catch {
+          statusEl.textContent = "Preview failed: network error.";
+          return;
+        }
+        const data = await response.json().catch(() => ({}));
+        if (response.status !== 200) {
+          statusEl.textContent = `Preview failed: ${data.error ?? response.status}`;
+          return;
+        }
+        lastFingerprint = data.snapshot_fingerprint;
+        statusEl.textContent = `Preview ready (${data.rows.length} row(s)).`;
+        downloadButton.disabled = false;
+
+        resultsEl.innerHTML = "";
+        data.rows.forEach((row, index) => {
+          const fmt = formatSelect.value;
+          const fp = row.formats[fmt];
+          const div = document.createElement("div");
+          const title = document.createElement("strong");
+          title.textContent = `${row.export_id}: ${fp.exportable ? "exportable" : "NOT exportable"}`;
+          div.appendChild(title);
+          if (!fp.exportable) {
+            const ul = document.createElement("ul");
+            for (const reason of fp.reasons) {
+              const li = document.createElement("li");
+              li.textContent = reason;
+              ul.appendChild(li);
+            }
+            div.appendChild(ul);
+          }
+          if (fp.warnings.length > 0) {
+            const ul = document.createElement("ul");
+            for (const warning of fp.warnings) {
+              const li = document.createElement("li");
+              li.textContent = `Warning: ${warning}`;
+              ul.appendChild(li);
+            }
+            div.appendChild(ul);
+          }
+          resultsEl.appendChild(div);
+        });
+      });
+
+      downloadButton?.addEventListener("click", async () => {
+        const { draftIds, listingIds } = selectedIds();
+        const fmt = formatSelect.value;
+        statusEl.textContent = "Downloading…";
+
+        const body = {
+          draft_ids: draftIds,
+          native_listing_ids: listingIds,
+          format: fmt,
+        };
+        if (lastFingerprint) body.expected_snapshot_fingerprint = lastFingerprint;
+        const profile = buildNautixProfile();
+        if (profile) {
+          body.nautix_profile = {
+            account_token: profile.accountToken,
+            office_id: profile.officeId,
+            sale_classes: profile.saleClasses,
+          };
+        }
+
+        let response;
+        try {
+          response = await fetch(downloadPath, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+        } catch {
+          statusEl.textContent = "Download failed: network error.";
+          return;
+        }
+        if (response.status !== 200) {
+          const data = await response.json().catch(() => ({}));
+          statusEl.textContent = `Download failed: ${data.error ?? response.status}`;
+          return;
+        }
+        const includedCount = response.headers.get("x-hullq-export-included-count");
+        const rejectedCount = response.headers.get("x-hullq-export-rejected-count");
+        const disposition = response.headers.get("content-disposition") ?? "";
+        const match = /filename="([^"]+)"/.exec(disposition);
+        const filename = match ? match[1] : "hullq-inventory-export";
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        statusEl.textContent = `Downloaded ${filename} (${includedCount} included, ${rejectedCount} rejected).`;
+      });
+    </script>
+  </body>
+</html>

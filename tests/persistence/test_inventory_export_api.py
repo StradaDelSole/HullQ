@@ -429,6 +429,24 @@ class TestInventoryExportAuthorizationBoundary:
         assert response.status_code == 403
         assert response.json()["error"] == "mfa_required"
 
+    def test_revoked_membership_is_denied(self, client: TestClient, api_url: str) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-EXP-REVOKED",
+            account_id="ACC-EXP-REVOKED",
+            membership_id="MEM-EXP-REVOKED",
+            state=MembershipState.INACTIVE,
+        )
+        _log_in(client, "ACC-EXP-REVOKED")
+        response = client.post(
+            "/api/broker/organizations/ORG-EXP-REVOKED/inventory/export/preflight",
+            json={"draft_ids": [], "native_listing_ids": []},
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        # Contract: a revoked (INACTIVE) membership and no membership at all
+        # are indistinguishable -- no existence oracle.
+        assert response.status_code == 404
+
     def test_empty_selection_is_rejected(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
             api_url,
@@ -519,22 +537,28 @@ class TestInventoryExportFormats:
             headers=_EXPORT_CSRF_HEADER,
         )
         assert preflight.status_code == 200, preflight.text
-        rows = preflight.json()["rows"]
+        preflight_body = preflight.json()
+        fingerprint = preflight_body["snapshot_fingerprint"]
+        assert isinstance(fingerprint, str) and fingerprint
+        rows = preflight_body["rows"]
         assert len(rows) == 2
         draft_row, listing_row = rows[0], rows[1]
+        # Required Behavior: "Return stable listing identifiers ... in the
+        # preview" -- the broker must be able to tell which row is which.
+        assert draft_row["export_id"] == f"ORG-EXP-FULL:draft:{draft_id}"
+        assert draft_row["source_kind"] == "PRIVATE_DRAFT"
+        assert listing_row["export_id"] == "ORG-EXP-FULL:listing:LIST-EXP-FULL"
+        assert listing_row["source_kind"] == "PROMOTED_LISTING"
         assert draft_row["formats"]["NAUTIX"]["exportable"] is False
-        # NautiX representability gap (by design, documented in
-        # hullq.domain.inventory_export's module docstring): HullQ's
-        # draft/offer schema has no new/used sale_class field, so even a
-        # fully-populated real promoted listing is honestly NOT_EXPORTABLE
-        # for NautiX -- never fabricated. Every *other* NautiX-mandatory
-        # field (title/model/LOA/price/currency/location/photo) is present
-        # on this fixture, so sale_class must be the only reported reason.
+        # Without a broker-confirmed NautixExportProfile, sale_class AND
+        # the destination account_token/office_id are all honestly absent
+        # -- never fabricated from the HullQ Organization id or a
+        # placeholder (independent review amendment, 2026-10-16).
         assert listing_row["formats"]["NAUTIX"]["exportable"] is False
-        assert listing_row["formats"]["NAUTIX"]["reasons"] == [
-            "sale_data.sale_class: HullQ's draft/offer schema does not currently capture a "
-            "new/used sale classification for this listing (never fabricated)"
-        ]
+        listing_nautix_reasons = listing_row["formats"]["NAUTIX"]["reasons"]
+        assert any("sale_class" in r for r in listing_nautix_reasons)
+        assert any("account.token" in r for r in listing_nautix_reasons)
+        assert any("office_id" in r for r in listing_nautix_reasons)
         assert any("formula-injection" in w for w in draft_row["formats"]["CSV"]["warnings"])
 
         for fmt, magic in (
@@ -544,38 +568,85 @@ class TestInventoryExportFormats:
             ("XLSX", b"PK"),
             ("XLS", b"\xd0\xcf\x11\xe0"),
             ("ODS", b"PK"),
-            ("NAUTIX", b"<?xml"),
         ):
             download = client.post(
                 "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
-                json={**selection, "format": fmt},
+                json={**selection, "format": fmt, "expected_snapshot_fingerprint": fingerprint},
                 headers=_EXPORT_CSRF_HEADER,
             )
             assert download.status_code == 200, (fmt, download.text)
             assert download.content.startswith(magic), fmt
             assert "attachment" in download.headers["content-disposition"]
             assert "no-store" in download.headers["cache-control"]
+            assert download.headers["x-hullq-export-included-count"] == "2"
+            assert download.headers["x-hullq-export-rejected-count"] == "0"
             if fmt in ("CSV", "TSV"):
                 assert b",=2+2" not in download.content
                 assert b"'=2+2" in download.content
 
-        # No row in this selection is actually NautiX-exportable (the
-        # sale_class gap above applies to every real row), so the genuine,
-        # pinned-XSD-valid document correctly contains zero <advert>
-        # elements -- proving the writer never fabricates an advert for a
-        # NOT_EXPORTABLE row, not that any real row succeeded. The direct
-        # domain-level unit tests (test_inventory_export_domain.py) prove
-        # the positive case against a hypothetically complete synthetic row.
-        nautix_download = client.post(
+        # Without a profile, *no* row is NautiX-exportable -- Required
+        # Behavior: never a successful complete download that silently
+        # skips every selected listing.
+        no_profile_nautix = client.post(
             "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
             json={**selection, "format": "NAUTIX"},
             headers=_EXPORT_CSRF_HEADER,
         )
-        root = parse_and_validate_nautix(nautix_download.content)
-        mapped = map_nautix_adverts_to_rows(
-            root, attested_account_tokens=frozenset({"ORG-EXP-FULL"})
+        assert no_profile_nautix.status_code == 422
+        assert no_profile_nautix.json()["error"] == "no_exportable_rows"
+
+        # With a broker-confirmed profile, the listing (never the private
+        # draft) becomes genuinely NautiX-exportable -- the real positive
+        # end-to-end path, not just the domain-unit synthetic fixture.
+        nautix_profile = {
+            "account_token": "BROKER-ACCT-REAL-1",
+            "office_id": "OFFICE-REAL-1",
+            "sale_classes": {"LIST-EXP-FULL": "used"},
+        }
+        with_profile_nautix = client.post(
+            "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
+            json={**selection, "format": "NAUTIX", "nautix_profile": nautix_profile},
+            headers=_EXPORT_CSRF_HEADER,
         )
-        assert len(mapped) == 0
+        assert with_profile_nautix.status_code == 200, with_profile_nautix.text
+        assert with_profile_nautix.content.startswith(b"<?xml")
+        assert with_profile_nautix.headers["x-hullq-export-included-count"] == "1"
+        assert with_profile_nautix.headers["x-hullq-export-rejected-count"] == "1"
+        root = parse_and_validate_nautix(with_profile_nautix.content)
+        mapped = map_nautix_adverts_to_rows(
+            root, attested_account_tokens=frozenset({"BROKER-ACCT-REAL-1"})
+        )
+        assert len(mapped) == 1
+        assert mapped[0].classification.value == "VALID", mapped[0].reasons
+
+        # An invalid sale_class value is rejected closed, not silently
+        # dropped.
+        bad_profile = client.post(
+            "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
+            json={
+                **selection,
+                "format": "NAUTIX",
+                "nautix_profile": {**nautix_profile, "sale_classes": {"LIST-EXP-FULL": "mint"}},
+            },
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert bad_profile.status_code == 400
+        assert bad_profile.json()["error"] == "invalid_nautix_profile"
+
+        # A stale fingerprint (the data changed since this preflight) is
+        # rejected closed rather than silently downloading current data
+        # under cover of an old confirmation.
+        stale_download = client.post(
+            "/api/broker/organizations/ORG-EXP-FULL/inventory/export/download",
+            json={
+                **selection,
+                "format": "CSV",
+                "expected_snapshot_fingerprint": "not-the-real-one",
+            },
+            headers=_EXPORT_CSRF_HEADER,
+        )
+        assert stale_download.status_code == 409
+        assert stale_download.json()["error"] == "stale_selection"
 
     def test_invalid_format_is_rejected(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(

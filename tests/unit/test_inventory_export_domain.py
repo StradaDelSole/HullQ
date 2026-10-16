@@ -51,6 +51,8 @@ def _complete_row(**overrides: object) -> ie.ExportRow:
         "media_md5s": (_REAL_MD5,),
         "media_mime_types": ("image/jpeg",),
         "sale_class": "used",
+        "nautix_account_token": "BROKER-ACCT-123",
+        "nautix_office_id": "OFFICE-1",
     }
     defaults.update(overrides)
     return ie.ExportRow(**defaults)  # type: ignore[arg-type]
@@ -139,6 +141,19 @@ class TestTableWriters:
             ie.write_xls(rows * (ie.MAX_XLS_ROWS // 2 + 1))
 
 
+class TestExportRowValidation:
+    def test_invalid_sale_class_is_rejected_at_construction(self) -> None:
+        with pytest.raises(ValueError, match="sale_class"):
+            _complete_row(sale_class="not-a-real-sale-class")
+
+    def test_every_allowed_sale_class_constructs(self) -> None:
+        for value in ie.ALLOWED_NAUTIX_SALE_CLASSES:
+            _complete_row(sale_class=value)  # must not raise
+
+    def test_not_applicable_is_excluded(self) -> None:
+        assert "not-applicable" not in ie.ALLOWED_NAUTIX_SALE_CLASSES
+
+
 class TestPreflight:
     def test_complete_promoted_row_is_exportable_in_all_table_formats(self) -> None:
         preflight = ie.build_row_preflight(_complete_row())
@@ -162,6 +177,18 @@ class TestPreflight:
         nautix = preflight.formats[ie.ExportFormat.NAUTIX]
         assert nautix.exportable is False
         assert any("sale_class" in r for r in nautix.reasons)
+
+    def test_missing_account_token_is_not_exportable_never_fabricated_from_org_id(self) -> None:
+        preflight = ie.build_row_preflight(_complete_row(nautix_account_token=None))
+        nautix = preflight.formats[ie.ExportFormat.NAUTIX]
+        assert nautix.exportable is False
+        assert any("account.token" in r for r in nautix.reasons)
+
+    def test_missing_office_id_is_not_exportable_never_a_placeholder(self) -> None:
+        preflight = ie.build_row_preflight(_complete_row(nautix_office_id=None))
+        nautix = preflight.formats[ie.ExportFormat.NAUTIX]
+        assert nautix.exportable is False
+        assert any("office_id" in r for r in nautix.reasons)
 
     def test_active_but_not_current_public_is_never_nautix_active(self) -> None:
         preflight = ie.build_row_preflight(_complete_row(is_current_public=False))
@@ -195,9 +222,11 @@ class TestPreflight:
 class TestNautixWriterRoundtrip:
     def test_complete_row_passes_pinned_xsd_and_0083_reimport(self) -> None:
         row = _complete_row()
-        document = ie.build_nautix_document([row], organization_id="org1", generated_at=_NOW)
+        document = ie.build_nautix_document([row], generated_at=_NOW)
         root = parse_and_validate_nautix(document)
-        mapped = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"org1"}))
+        mapped = map_nautix_adverts_to_rows(
+            root, attested_account_tokens=frozenset({"BROKER-ACCT-123"})
+        )
         assert len(mapped) == 1
         assert mapped[0].classification is RowPreviewClassification.VALID, mapped[0].reasons
 
@@ -205,25 +234,31 @@ class TestNautixWriterRoundtrip:
         # Missing sale_class -> NOT_EXPORTABLE; the document must contain
         # zero adverts, never a fabricated sale_class value.
         row = _complete_row(sale_class=None)
-        document = ie.build_nautix_document([row], organization_id="org1", generated_at=_NOW)
+        document = ie.build_nautix_document([row], generated_at=_NOW)
         root = parse_and_validate_nautix(document)
-        mapped = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"org1"}))
+        mapped = map_nautix_adverts_to_rows(
+            root, attested_account_tokens=frozenset({"BROKER-ACCT-123"})
+        )
         assert len(mapped) == 0
 
     def test_withdrawn_listing_maps_to_inactive_status(self) -> None:
         row = _complete_row(status="WITHDRAWN", is_current_public=False)
-        document = ie.build_nautix_document([row], organization_id="org1", generated_at=_NOW)
+        document = ie.build_nautix_document([row], generated_at=_NOW)
         assert b'status="inactive"' in document
         root = parse_and_validate_nautix(document)
-        mapped = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"org1"}))
+        mapped = map_nautix_adverts_to_rows(
+            root, attested_account_tokens=frozenset({"BROKER-ACCT-123"})
+        )
         assert len(mapped) == 1
         assert mapped[0].classification is RowPreviewClassification.CONFLICT_REVIEW
 
     def test_poa_price_roundtrips(self) -> None:
         row = _complete_row(asking_price_mode="POA", asking_price_amount=None, currency=None)
-        document = ie.build_nautix_document([row], organization_id="org1", generated_at=_NOW)
+        document = ie.build_nautix_document([row], generated_at=_NOW)
         root = parse_and_validate_nautix(document)
-        mapped = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({"org1"}))
+        mapped = map_nautix_adverts_to_rows(
+            root, attested_account_tokens=frozenset({"BROKER-ACCT-123"})
+        )
         assert len(mapped) == 1
         assert mapped[0].draft_request_wire is not None
         assert mapped[0].draft_request_wire["listing_offer.asking_price_mode"] == "POA"
@@ -237,7 +272,7 @@ class TestNautixWriterRoundtrip:
         row = _complete_row(
             broker_description="<!DOCTYPE foo [ <!ENTITY xxe SYSTEM 'file:///etc/passwd'> ]>"
         )
-        document = ie.build_nautix_document([row], organization_id="org1", generated_at=_NOW)
+        document = ie.build_nautix_document([row], generated_at=_NOW)
         assert b"<!DOCTYPE" not in document
         # Still passes the pinned XSD/secure-parser roundtrip unchanged.
         parse_and_validate_nautix(document)

@@ -56,8 +56,12 @@ of a host-only cookie carrying the claims directly).
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
+import functools
 import json
 import os
+import threading
 import time
 import uuid
 from datetime import UTC, datetime
@@ -137,6 +141,7 @@ from hullq.application.inventory_export import (
     ExportDownloadOutcome,
     ExportPreflightOutcome,
     ExportSelectionItem,
+    NautixExportProfile,
     get_export_download,
     get_export_preflight,
 )
@@ -427,6 +432,52 @@ _IMPORT_INTAKE_CSRF_HEADER_VALUE = "broker-import-intake-v1"
 #: header can never be replayed against the export preflight/download
 #: routes.
 _INVENTORY_EXPORT_CSRF_HEADER_VALUE = "broker-inventory-export-v1"
+
+#: SLICE-0088 independent review amendment (2026-10-16): a selection body
+#: is only a bounded list of short id strings (`MAX_EXPORT_SELECTION_ITEMS`
+#: * a short id each) plus a small NautiX profile -- generous but bounded,
+#: checked from `Content-Length` before any byte of the body is read, same
+#: discipline as the media-upload route below.
+_MAX_EXPORT_REQUEST_BYTES = 200_000
+
+#: Bounded concurrent heavy export jobs (DB snapshot read + serialization),
+#: run on this small dedicated thread pool -- never on the asyncio event
+#: loop thread, and never on Starlette's own much larger default sync-route
+#: thread pool, so a burst of export requests cannot itself starve that
+#: shared pool for ordinary Search/health/broker traffic. Admission
+#: (`_export_admission_semaphore`) is acquired *before* this pool is even
+#: asked to run anything -- i.e. before the PostgreSQL snapshot read
+#: begins, not only around serialization (independent review amendment,
+#: 2026-10-16: a prior revision bounded only the write/serialize step,
+#: after the DB snapshot had already run unbounded on the request's own
+#: async task).
+_EXPORT_MAX_CONCURRENT_JOBS = 3
+_export_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=_EXPORT_MAX_CONCURRENT_JOBS, thread_name_prefix="hullq-export"
+)
+_export_admission_semaphore = threading.Semaphore(_EXPORT_MAX_CONCURRENT_JOBS)
+
+
+async def _run_export_job(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Run *fn* on the bounded `_export_executor` pool, with admission
+    control acquired *before* dispatch -- never blocking the calling
+    asyncio event loop thread. Returns a sentinel `_EXPORT_BUSY` if the
+    admission gate is already saturated rather than queuing indefinitely;
+    the caller must then return 429 `export_busy` immediately."""
+    if not _export_admission_semaphore.acquire(blocking=False):
+        return _EXPORT_BUSY
+    try:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(_export_executor, functools.partial(fn, *args, **kwargs))
+    finally:
+        _export_admission_semaphore.release()
+
+
+class _ExportBusySentinel:
+    __slots__ = ()
+
+
+_EXPORT_BUSY = _ExportBusySentinel()
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -2856,8 +2907,8 @@ def create_app(
 
     def _export_selection_error(outcome: Any) -> JSONResponse | None:
         # SLICE-0088: reuses the identical authorization-outcome names as
-        # `_import_intake_authorization_error`, plus the three additional
-        # bounded-selection outcomes every export entry point can return.
+        # `_import_intake_authorization_error`, plus the bounded-selection/
+        # profile/staleness outcomes every export entry point can return.
         auth_error = _import_intake_authorization_error(outcome)
         if auth_error is not None:
             return auth_error
@@ -2870,6 +2921,12 @@ def create_app(
             # the selection is indistinguishable from any other -- no
             # per-item existence oracle.
             return JSONResponse({"error": "unknown_item"}, status_code=400)
+        if outcome.name == "INVALID_NAUTIX_PROFILE":
+            return JSONResponse({"error": "invalid_nautix_profile"}, status_code=400)
+        if outcome.name == "STALE_SELECTION":
+            return JSONResponse({"error": "stale_selection"}, status_code=409)
+        if outcome.name == "NO_EXPORTABLE_ROWS":
+            return JSONResponse({"error": "no_exportable_rows"}, status_code=422)
         return None
 
     def _parse_export_selection(raw_body: Any) -> list[ExportSelectionItem] | None:
@@ -2887,6 +2944,47 @@ def create_app(
         selection.extend(ExportSelectionItem(native_listing_id=v) for v in raw_listings)
         return selection
 
+    def _parse_nautix_profile(raw_body: dict[str, Any]) -> tuple[bool, Any]:
+        """`(ok, profile)`. `ok=False` means the shape itself is malformed
+        (caller returns `invalid_selection`); semantic validation (enum
+        membership, selection membership) happens later inside
+        `validate_nautix_profile`, surfaced as `invalid_nautix_profile`."""
+        raw_profile = raw_body.get("nautix_profile")
+        if raw_profile is None:
+            return True, None
+        if not isinstance(raw_profile, dict):
+            return False, None
+        account_token = raw_profile.get("account_token")
+        office_id = raw_profile.get("office_id")
+        sale_classes = raw_profile.get("sale_classes", {})
+        if not isinstance(account_token, str) or not isinstance(office_id, str):
+            return False, None
+        if not isinstance(sale_classes, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in sale_classes.items()
+        ):
+            return False, None
+        return True, NautixExportProfile(
+            account_token=account_token, office_id=office_id, sale_classes=dict(sale_classes)
+        )
+
+    async def _read_bounded_export_body(request: Request) -> JSONResponse | dict[str, Any]:
+        """Bound request-body size from `Content-Length` *before* reading
+        any byte of the body (independent review amendment, 2026-10-16) --
+        mirrors the media-upload route's identical discipline."""
+        raw_content_length = request.headers.get("content-length")
+        if raw_content_length is None:
+            return JSONResponse({"error": "length_required"}, status_code=411)
+        try:
+            content_length = int(raw_content_length)
+        except ValueError:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length > _MAX_EXPORT_REQUEST_BYTES:
+            return JSONResponse({"error": "payload_too_large"}, status_code=413)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        return raw_body
+
     @app.post("/api/broker/organizations/{organization_id}/inventory/export/preflight")
     async def inventory_export_preflight_route(
         organization_id: str, request: Request
@@ -2895,23 +2993,33 @@ def create_app(
         if session is None:
             raise HTTPException(status_code=401, detail="authentication required")
         _require_inventory_export_csrf(request)
-        raw_body = await _read_json_body(request, allow_empty=False)
+
+        raw_body = await _read_bounded_export_body(request)
+        if isinstance(raw_body, JSONResponse):
+            return raw_body
         selection = _parse_export_selection(raw_body)
-        if selection is None:
+        profile_ok, nautix_profile = _parse_nautix_profile(raw_body)
+        if selection is None or not profile_ok:
             return JSONResponse({"error": "invalid_selection"}, status_code=400)
 
-        conn = open_connection(resolved_database_url)
-        try:
-            result = get_export_preflight(
-                conn,
-                session,
-                MarketplaceOrganizationId(organization_id),
-                selection=selection,
-                as_of=_current_as_of(),
-                public_base_url=_resolve_web_base_url(),
-            )
-        finally:
-            conn.close()
+        def _work() -> Any:
+            conn = open_connection(resolved_database_url)
+            try:
+                return get_export_preflight(
+                    conn,
+                    session,
+                    MarketplaceOrganizationId(organization_id),
+                    selection=selection,
+                    as_of=_current_as_of(),
+                    public_base_url=_resolve_web_base_url(),
+                    nautix_profile=nautix_profile,
+                )
+            finally:
+                conn.close()
+
+        result = await _run_export_job(_work)
+        if result is _EXPORT_BUSY:
+            return JSONResponse({"error": "export_busy"}, status_code=429)
 
         error = _export_selection_error(result.outcome)
         if error is not None:
@@ -2919,8 +3027,16 @@ def create_app(
         assert result.outcome is ExportPreflightOutcome.OK
         assert result.rows is not None
         body = {
+            "snapshot_fingerprint": result.snapshot_fingerprint,
             "rows": [
                 {
+                    # Stable per-Organization listing export identifier
+                    # (Required Behavior: "Return stable listing
+                    # identifiers ... in the preview") -- never omitted so
+                    # the broker can tell which selected draft/listing each
+                    # preview row corresponds to.
+                    "export_id": row.row.export_id,
+                    "source_kind": row.row.source_kind.value,
                     "field_states": {k: v.value for k, v in row.field_states.items()},
                     "formats": {
                         fmt.value: {
@@ -2932,7 +3048,7 @@ def create_app(
                     },
                 }
                 for row in result.rows
-            ]
+            ],
         }
         return JSONResponse(body)
 
@@ -2942,29 +3058,41 @@ def create_app(
         if session is None:
             raise HTTPException(status_code=401, detail="authentication required")
         _require_inventory_export_csrf(request)
-        raw_body = await _read_json_body(request, allow_empty=False)
-        if not isinstance(raw_body, dict):
-            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+
+        raw_body = await _read_bounded_export_body(request)
+        if isinstance(raw_body, JSONResponse):
+            return raw_body
         raw_format = raw_body.get("format")
         if not isinstance(raw_format, str) or raw_format not in {f.value for f in ExportFormat}:
             return JSONResponse({"error": "invalid_format"}, status_code=400)
         selection = _parse_export_selection(raw_body)
-        if selection is None:
+        profile_ok, nautix_profile = _parse_nautix_profile(raw_body)
+        if selection is None or not profile_ok:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        expected_fingerprint = raw_body.get("expected_snapshot_fingerprint")
+        if expected_fingerprint is not None and not isinstance(expected_fingerprint, str):
             return JSONResponse({"error": "invalid_selection"}, status_code=400)
 
-        conn = open_connection(resolved_database_url)
-        try:
-            result = get_export_download(
-                conn,
-                session,
-                MarketplaceOrganizationId(organization_id),
-                selection=selection,
-                export_format=ExportFormat(raw_format),
-                as_of=_current_as_of(),
-                public_base_url=_resolve_web_base_url(),
-            )
-        finally:
-            conn.close()
+        def _work() -> Any:
+            conn = open_connection(resolved_database_url)
+            try:
+                return get_export_download(
+                    conn,
+                    session,
+                    MarketplaceOrganizationId(organization_id),
+                    selection=selection,
+                    export_format=ExportFormat(raw_format),
+                    as_of=_current_as_of(),
+                    public_base_url=_resolve_web_base_url(),
+                    nautix_profile=nautix_profile,
+                    expected_snapshot_fingerprint=expected_fingerprint,
+                )
+            finally:
+                conn.close()
+
+        result = await _run_export_job(_work)
+        if result is _EXPORT_BUSY:
+            return JSONResponse({"error": "export_busy"}, status_code=429)
 
         error = _export_selection_error(result.outcome)
         if error is not None:
@@ -2984,6 +3112,8 @@ def create_app(
                 "Content-Disposition": f'attachment; filename="{result.filename}"',
                 "Cache-Control": "no-store",
                 "X-Robots-Tag": "noindex",
+                "X-HullQ-Export-Included-Count": str(result.included_count),
+                "X-HullQ-Export-Rejected-Count": str(result.rejected_count),
             },
         )
 

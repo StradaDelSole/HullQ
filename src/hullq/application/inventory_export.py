@@ -30,21 +30,46 @@ between two of this call's own statements. The transaction is always
 rolled back (never committed) -- a read-only export performs zero
 mutation, by construction, not merely by convention.
 
-**Bounded concurrency** (Post-0087 external review / mechanical
-invariants: "no new single-worker event-loop blocking work"): a module-
-level bounded semaphore limits how many *heavy* snapshot-assembly/
-serialization calls may run concurrently, independent of FastAPI's own
-thread-pool sizing for synchronous routes. A caller that cannot acquire it
-promptly gets `ExportDownloadOutcome.BUSY` rather than queuing
-indefinitely and risking starving the same shared thread pool that serves
-ordinary Search/health/broker requests.
+**Bounded concurrency / event-loop safety** (independent review amendment,
+2026-10-16; Post-0087 external review / mechanical invariants: "no new
+single-worker event-loop blocking work"): this module's functions are
+plain synchronous functions and own no admission control themselves.
+`hullq.api.app`'s two export routes are responsible for (a) bounding
+request-body size before any of this module runs, (b) acquiring a
+dedicated bounded admission gate *before* calling `get_export_preflight`/
+`get_export_download` at all (i.e. before the PostgreSQL snapshot read
+even begins, not only around serialization), and (c) running that whole
+call on a small dedicated thread pool via `loop.run_in_executor` so the
+asyncio event loop thread itself is never blocked by DB I/O or CPU-bound
+serialization. A prior revision placed a concurrency semaphore here
+around only the write/serialize step, after the DB snapshot had already
+run unbounded on the caller's own thread -- that was exactly the
+"admission control only during serialization" gap this amendment closes
+by moving admission entirely to the route layer.
+
+**NautiX broker-confirmed export profile** (independent review amendment,
+2026-10-16): `NautixExportProfile` carries the broker's own confirmed
+destination-platform account token, office id and per-listing sale
+classification for one download -- see `hullq.domain.inventory_export`'s
+module docstring for why these are never read from stored HullQ data.
+`validate_nautix_profile` is the one place a malformed/out-of-range
+profile is rejected before any row is built.
+
+**Preflight-to-download binding**: `ExportPreflightResult.snapshot_fingerprint`
+is a deterministic digest of the exact rows/revisions a preflight call
+observed. `get_export_download` accepts an optional
+*expected_snapshot_fingerprint*; if supplied and the freshly recomputed
+snapshot's fingerprint differs (the underlying data changed between
+preflight and download), the call fails closed as `STALE_SELECTION`
+rather than silently downloading different data than what the broker
+confirmed.
 """
 
 from __future__ import annotations
 
-import threading
+import hashlib
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -55,6 +80,8 @@ from hullq.application.broker_workspace_read import (
 )
 from hullq.application.public_listing_read import get_public_listing_read_model
 from hullq.domain.inventory_export import (
+    ALLOWED_NAUTIX_SALE_CLASSES,
+    MAX_EXPORT_OUTPUT_BYTES,
     MAX_EXPORT_ROWS,
     ExportFormat,
     ExportRow,
@@ -96,10 +123,13 @@ __all__ = [
     "ExportPreflightOutcome",
     "ExportPreflightResult",
     "ExportSelectionItem",
+    "NautixExportProfile",
+    "NautixProfileValidationError",
     "authorize_export",
     "build_export_snapshot",
     "get_export_download",
     "get_export_preflight",
+    "validate_nautix_profile",
 ]
 
 #: Identical bound to the domain layer's own `MAX_EXPORT_ROWS` -- kept as a
@@ -108,16 +138,42 @@ __all__ = [
 #: domain constant separately bounds what a writer will ever accept.
 MAX_EXPORT_SELECTION_ITEMS = MAX_EXPORT_ROWS
 
-#: Bounded concurrent heavy export jobs, independent of FastAPI/Starlette's
-#: own sync-route thread-pool capacity -- so a burst of export requests
-#: cannot itself starve that shared pool for ordinary Search/health/broker
-#: traffic. Deliberately small and explicit rather than left to the
-#: thread-pool's own much larger default limit.
-_MAX_CONCURRENT_EXPORTS = 3
-_export_concurrency_semaphore = threading.BoundedSemaphore(_MAX_CONCURRENT_EXPORTS)
-#: How long one caller waits to acquire a concurrency slot before the
-#: request fails closed as BUSY rather than queuing indefinitely.
-_EXPORT_ACQUIRE_TIMEOUT_SECONDS = 5.0
+
+@dataclass(frozen=True)
+class NautixExportProfile:
+    """The broker's own confirmed NautiX export attestation for exactly
+    this one download -- see `hullq.domain.inventory_export`'s module
+    docstring. Never persisted; never read back from any other call."""
+
+    account_token: str
+    office_id: str
+    #: Keyed by the raw selection id (`ExportSelectionItem.draft_id` or
+    #: `.native_listing_id`), not by `ExportRow.export_id`.
+    sale_classes: dict[str, str] = field(default_factory=dict)
+
+
+class NautixProfileValidationError(ValueError):
+    """*profile* is malformed, or a `sale_classes` key/value is out of
+    bounds. Callers must reject the whole request closed (400) -- never
+    silently drop the offending entry."""
+
+
+def validate_nautix_profile(profile: NautixExportProfile | None, selected_ids: set[str]) -> None:
+    if profile is None:
+        return
+    if not profile.account_token.strip() or len(profile.account_token) > 200:
+        raise NautixProfileValidationError("nautix_profile.account_token must be 1-200 characters")
+    if not profile.office_id.strip() or len(profile.office_id) > 200:
+        raise NautixProfileValidationError("nautix_profile.office_id must be 1-200 characters")
+    for item_id, sale_class in profile.sale_classes.items():
+        if item_id not in selected_ids:
+            raise NautixProfileValidationError(
+                f"nautix_profile.sale_classes key {item_id!r} is not part of this selection"
+            )
+        if sale_class not in ALLOWED_NAUTIX_SALE_CLASSES:
+            raise NautixProfileValidationError(
+                f"nautix_profile.sale_classes[{item_id!r}] is not an accepted NautiX sale_class"
+            )
 
 
 class ExportAuthorizationOutcome(StrEnum):
@@ -214,9 +270,24 @@ def _draft_build_year(payload_build_year: Any) -> tuple[int | None, bool]:
     return None, True
 
 
-def _draft_to_export_row(draft: Any, *, organization_id: str) -> ExportRow:
+def _nautix_attestation(
+    profile: NautixExportProfile | None, raw_id: str
+) -> tuple[str | None, str | None, str | None]:
+    """`(sale_class, account_token, office_id)` from *profile* for
+    *raw_id*, or `(None, None, None)` when no profile was supplied --
+    never a fabricated/inferred value (`hullq.domain.inventory_export`'s
+    module docstring)."""
+    if profile is None:
+        return None, None, None
+    return profile.sale_classes.get(raw_id), profile.account_token, profile.office_id
+
+
+def _draft_to_export_row(
+    draft: Any, *, organization_id: str, nautix_profile: NautixExportProfile | None
+) -> ExportRow:
     payload = draft.payload
     build_year, build_year_unknown = _draft_build_year(payload.build_year)
+    sale_class, account_token, office_id = _nautix_attestation(nautix_profile, draft.draft_id.value)
     return ExportRow(
         export_id=f"{organization_id}:draft:{draft.draft_id.value}",
         organization_id=organization_id,
@@ -239,6 +310,9 @@ def _draft_to_export_row(draft: Any, *, organization_id: str) -> ExportRow:
         location_country=payload.location_country,
         location_region=payload.location_region,
         broker_description=draft.broker_description,
+        sale_class=sale_class,
+        nautix_account_token=account_token,
+        nautix_office_id=office_id,
     )
 
 
@@ -331,6 +405,7 @@ def _promoted_to_export_row(
     organization_id: MarketplaceOrganizationId,
     as_of: datetime,
     public_base_url: str | None,
+    nautix_profile: NautixExportProfile | None,
 ) -> ExportRow | None:
     listing_record = fetch_native_listing(conn, native_listing_id)
     if listing_record is None or listing_record.publishing_organization_id != organization_id:
@@ -369,6 +444,9 @@ def _promoted_to_export_row(
     # read model can cheaply reuse; the listing's own created_at is the
     # safe, honest fallback (never a fabricated/guessed timestamp).
     updated_at = listing_record.created_at
+    sale_class, account_token, office_id = _nautix_attestation(
+        nautix_profile, native_listing_id.value
+    )
 
     return ExportRow(
         export_id=f"{organization_id.value}:listing:{native_listing_id.value}",
@@ -397,6 +475,9 @@ def _promoted_to_export_row(
         media_urls=media_urls,
         media_md5s=media_md5s,
         media_mime_types=media_mime_types,
+        sale_class=sale_class,
+        nautix_account_token=account_token,
+        nautix_office_id=office_id,
     )
 
 
@@ -412,6 +493,29 @@ class ExportSnapshot:
     organization_id: str
     rows: tuple[ExportRow, ...]
 
+    @property
+    def fingerprint(self) -> str:
+        """Deterministic digest of every row's identity/revision facts --
+        the preflight-to-download staleness binding (module docstring)."""
+        return _compute_snapshot_fingerprint(self.rows)
+
+
+def _compute_snapshot_fingerprint(rows: tuple[ExportRow, ...]) -> str:
+    digest = hashlib.sha256()
+    for row in rows:
+        digest.update(
+            "|".join(
+                (
+                    row.export_id,
+                    row.status,
+                    str(row.is_current_public),
+                    row.updated_at.isoformat(),
+                )
+            ).encode("utf-8")
+        )
+        digest.update(b"\x00")
+    return digest.hexdigest()
+
 
 def build_export_snapshot(
     conn: Any,
@@ -420,6 +524,7 @@ def build_export_snapshot(
     selection: list[ExportSelectionItem],
     as_of: datetime,
     public_base_url: str | None,
+    nautix_profile: NautixExportProfile | None = None,
 ) -> tuple[_SnapshotOutcome, ExportSnapshot | None]:
     """Assemble one bounded, deterministically ordered, single-consistent-
     snapshot set of `ExportRow` for *selection*.
@@ -428,7 +533,9 @@ def build_export_snapshot(
     `AUTHORIZED` for the exact same *organization_id* -- this function
     performs no authorization check of its own, only per-item ownership
     scoping (never trusting a caller-supplied id to belong to this
-    Organization without checking).
+    Organization without checking). Caller must also have already called
+    `validate_nautix_profile` against this exact *selection* -- this
+    function trusts *nautix_profile* is already well-formed.
     """
     if not selection:
         return _SnapshotOutcome.EMPTY_SELECTION, None
@@ -469,7 +576,11 @@ def build_export_snapshot(
                     # is represented by its resulting NativeListing instead,
                     # never exported twice under two identities.
                     return _SnapshotOutcome.UNKNOWN_ITEM, None
-                rows.append(_draft_to_export_row(draft, organization_id=organization_id.value))
+                rows.append(
+                    _draft_to_export_row(
+                        draft, organization_id=organization_id.value, nautix_profile=nautix_profile
+                    )
+                )
             else:
                 assert item.native_listing_id is not None
                 row = _promoted_to_export_row(
@@ -478,6 +589,7 @@ def build_export_snapshot(
                     organization_id=organization_id,
                     as_of=as_of,
                     public_base_url=public_base_url,
+                    nautix_profile=nautix_profile,
                 )
                 if row is None:
                     return _SnapshotOutcome.UNKNOWN_ITEM, None
@@ -500,6 +612,7 @@ class ExportPreflightOutcome(StrEnum):
     EMPTY_SELECTION = "EMPTY_SELECTION"
     OVERSIZE_SELECTION = "OVERSIZE_SELECTION"
     UNKNOWN_ITEM = "UNKNOWN_ITEM"
+    INVALID_NAUTIX_PROFILE = "INVALID_NAUTIX_PROFILE"
     OK = "OK"
 
 
@@ -507,12 +620,16 @@ class ExportPreflightOutcome(StrEnum):
 class ExportPreflightResult:
     outcome: ExportPreflightOutcome
     rows: tuple[RowPreflight, ...] | None = None
+    snapshot_fingerprint: str | None = None
 
     def __post_init__(self) -> None:
-        if self.outcome is ExportPreflightOutcome.OK and self.rows is None:
-            raise ValueError("An OK preflight result must carry rows")
-        if self.outcome is not ExportPreflightOutcome.OK and self.rows is not None:
-            raise ValueError("Only an OK preflight result may carry rows")
+        if self.outcome is ExportPreflightOutcome.OK:
+            if self.rows is None or self.snapshot_fingerprint is None:
+                raise ValueError(
+                    "An OK preflight result must carry rows and a snapshot_fingerprint"
+                )
+        elif self.rows is not None or self.snapshot_fingerprint is not None:
+            raise ValueError("Only an OK preflight result may carry rows/snapshot_fingerprint")
 
 
 _AUTH_TO_PREFLIGHT = {
@@ -527,6 +644,13 @@ _SNAPSHOT_TO_PREFLIGHT = {
 }
 
 
+def _selected_raw_ids(selection: list[ExportSelectionItem]) -> set[str]:
+    ids: set[str] = set()
+    for item in selection:
+        ids.add(item.draft_id if item.draft_id is not None else item.native_listing_id)  # type: ignore[arg-type]
+    return ids
+
+
 def get_export_preflight(
     conn: Any,
     session: SessionClaims,
@@ -535,12 +659,19 @@ def get_export_preflight(
     selection: list[ExportSelectionItem],
     as_of: datetime,
     public_base_url: str | None,
+    nautix_profile: NautixExportProfile | None = None,
 ) -> ExportPreflightResult:
     """Authorize, then build the snapshot and its per-row/per-format
     preflight -- no file is ever written by this call."""
     auth = authorize_export(conn, session, organization_id)
     if auth is not ExportAuthorizationOutcome.AUTHORIZED:
         return ExportPreflightResult(outcome=_AUTH_TO_PREFLIGHT[auth])
+
+    try:
+        validate_nautix_profile(nautix_profile, _selected_raw_ids(selection))
+    except NautixProfileValidationError:
+        return ExportPreflightResult(outcome=ExportPreflightOutcome.INVALID_NAUTIX_PROFILE)
+
     # authorize_export only read; return conn to IDLE so build_export_snapshot
     # can own one fresh REPEATABLE READ, READ ONLY transaction for the whole
     # snapshot read (never straddling the authorization check's own implicit
@@ -553,6 +684,7 @@ def get_export_preflight(
         selection=selection,
         as_of=as_of,
         public_base_url=public_base_url,
+        nautix_profile=nautix_profile,
     )
     if outcome is not _SnapshotOutcome.OK:
         return ExportPreflightResult(outcome=_SNAPSHOT_TO_PREFLIGHT[outcome])
@@ -560,6 +692,7 @@ def get_export_preflight(
     return ExportPreflightResult(
         outcome=ExportPreflightOutcome.OK,
         rows=tuple(build_row_preflight(row) for row in snapshot.rows),
+        snapshot_fingerprint=snapshot.fingerprint,
     )
 
 
@@ -575,6 +708,16 @@ class ExportDownloadOutcome(StrEnum):
     EMPTY_SELECTION = "EMPTY_SELECTION"
     OVERSIZE_SELECTION = "OVERSIZE_SELECTION"
     UNKNOWN_ITEM = "UNKNOWN_ITEM"
+    INVALID_NAUTIX_PROFILE = "INVALID_NAUTIX_PROFILE"
+    #: The broker's confirmed preflight no longer matches this selection's
+    #: current revisions (module docstring: preflight-to-download binding)
+    #: -- the underlying data changed between preflight and download.
+    STALE_SELECTION = "STALE_SELECTION"
+    #: Every selected row is `NOT_EXPORTABLE` for *export_format* --
+    #: Required Behavior: "Do not issue a successful complete download
+    #: that silently skips every selected listing." Never returned as a
+    #: successful empty/placeholder file.
+    NO_EXPORTABLE_ROWS = "NO_EXPORTABLE_ROWS"
     BUSY = "BUSY"
     WRITE_FAILED = "WRITE_FAILED"
     OK = "OK"
@@ -606,21 +749,32 @@ class ExportDownloadResult:
     content: bytes | None = None
     content_type: str | None = None
     filename: str | None = None
+    #: Always populated alongside `content` on `OK` -- explicit included/
+    #: rejected counts for *this exact format* (Required Behavior: "return
+    #: explicit included/rejected counts, reasons and safe error behavior").
+    included_count: int | None = None
+    rejected_count: int | None = None
 
     def __post_init__(self) -> None:
-        carries_content = (
-            self.content is not None or self.content_type is not None or self.filename is not None
+        ok_only_fields = (
+            self.content,
+            self.content_type,
+            self.filename,
+            self.included_count,
+            self.rejected_count,
         )
         if self.outcome is ExportDownloadOutcome.OK:
-            if self.content is None or self.content_type is None or self.filename is None:
-                raise ValueError("An OK download result must carry content/content_type/filename")
-        elif carries_content:
-            raise ValueError("Only an OK download result may carry content/content_type/filename")
+            if any(f is None for f in ok_only_fields):
+                raise ValueError(
+                    "An OK download result must carry content/content_type/filename/counts"
+                )
+        elif any(f is not None for f in ok_only_fields):
+            raise ValueError(
+                "Only an OK download result may carry content/content_type/filename/counts"
+            )
 
 
-def _write_format(
-    fmt: ExportFormat, rows: list[ExportRow], *, organization_id: str, generated_at: datetime
-) -> bytes:
+def _write_format(fmt: ExportFormat, rows: list[ExportRow], *, generated_at: datetime) -> bytes:
     if fmt is ExportFormat.CSV:
         return write_csv(rows)
     if fmt is ExportFormat.TSV:
@@ -634,7 +788,7 @@ def _write_format(
     if fmt is ExportFormat.JSON:
         return write_json(rows)
     assert fmt is ExportFormat.NAUTIX
-    return build_nautix_document(rows, organization_id=organization_id, generated_at=generated_at)
+    return build_nautix_document(rows, generated_at=generated_at)
 
 
 def get_export_download(
@@ -646,6 +800,8 @@ def get_export_download(
     export_format: ExportFormat,
     as_of: datetime,
     public_base_url: str | None,
+    nautix_profile: NautixExportProfile | None = None,
+    expected_snapshot_fingerprint: str | None = None,
 ) -> ExportDownloadResult:
     """Authorize, build the snapshot, and serialize it as *export_format*.
 
@@ -653,10 +809,22 @@ def get_export_download(
     failure or success alike -- repeating this call with an identical
     selection against an unchanged snapshot produces byte-identical
     canonical field content every time.
+
+    This function performs no admission control / concurrency bounding and
+    runs entirely synchronously -- `hullq.api.app`'s route is responsible
+    for running this whole call off the asyncio event loop on a bounded
+    dedicated thread pool with admission control applied before this is
+    ever invoked (module docstring).
     """
     auth = authorize_export(conn, session, organization_id)
     if auth is not ExportAuthorizationOutcome.AUTHORIZED:
         return ExportDownloadResult(outcome=ExportDownloadOutcome(auth.value))
+
+    try:
+        validate_nautix_profile(nautix_profile, _selected_raw_ids(selection))
+    except NautixProfileValidationError:
+        return ExportDownloadResult(outcome=ExportDownloadOutcome.INVALID_NAUTIX_PROFILE)
+
     # authorize_export only read; return conn to IDLE so build_export_snapshot
     # can own one fresh REPEATABLE READ, READ ONLY transaction for the whole
     # snapshot read (never straddling the authorization check's own implicit
@@ -669,25 +837,44 @@ def get_export_download(
         selection=selection,
         as_of=as_of,
         public_base_url=public_base_url,
+        nautix_profile=nautix_profile,
     )
     if outcome is not _SnapshotOutcome.OK:
         return ExportDownloadResult(outcome=ExportDownloadOutcome(outcome.value))
     assert snapshot is not None
 
-    acquired = _export_concurrency_semaphore.acquire(timeout=_EXPORT_ACQUIRE_TIMEOUT_SECONDS)
-    if not acquired:
-        return ExportDownloadResult(outcome=ExportDownloadOutcome.BUSY)
+    if (
+        expected_snapshot_fingerprint is not None
+        and expected_snapshot_fingerprint != snapshot.fingerprint
+    ):
+        # The broker confirmed a preflight against a different revision of
+        # this data (module docstring: preflight-to-download binding) --
+        # never silently download the now-current, possibly different data
+        # under the cover of the stale confirmation.
+        return ExportDownloadResult(outcome=ExportDownloadOutcome.STALE_SELECTION)
+
+    rows = list(snapshot.rows)
+    preflights = [build_row_preflight(row) for row in rows]
+    exportable_rows = [
+        row
+        for row, pf in zip(rows, preflights, strict=True)
+        if pf.formats[export_format].exportable
+    ]
+    if not exportable_rows:
+        # Required Behavior: never a successful complete download that
+        # silently skips every selected listing.
+        return ExportDownloadResult(outcome=ExportDownloadOutcome.NO_EXPORTABLE_ROWS)
+
     try:
-        content = _write_format(
-            export_format,
-            list(snapshot.rows),
-            organization_id=snapshot.organization_id,
-            generated_at=as_of,
-        )
+        content = _write_format(export_format, exportable_rows, generated_at=as_of)
     except ExportWriteError:
         return ExportDownloadResult(outcome=ExportDownloadOutcome.WRITE_FAILED)
-    finally:
-        _export_concurrency_semaphore.release()
+    if len(content) > MAX_EXPORT_OUTPUT_BYTES:
+        # Defense in depth: the input bounds (MAX_EXPORT_ROWS *
+        # MAX_EXPORT_CELL_CHARS) already make this practically unreachable;
+        # fail closed rather than return an oversized file if they are ever
+        # relaxed without revisiting this bound.
+        return ExportDownloadResult(outcome=ExportDownloadOutcome.WRITE_FAILED)
 
     extension = _FORMAT_EXTENSIONS[export_format]
     filename = f"hullq-inventory-export.{extension}"
@@ -696,4 +883,6 @@ def get_export_download(
         content=content,
         content_type=_FORMAT_CONTENT_TYPES[export_format],
         filename=filename,
+        included_count=len(exportable_rows),
+        rejected_count=len(rows) - len(exportable_rows),
     )

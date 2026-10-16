@@ -32,6 +32,29 @@ export interface ExportSelection {
   nativeListingIds: string[];
 }
 
+/**
+ * The broker's own confirmed NautiX export attestation for exactly one
+ * download -- never read from stored HullQ data, never persisted beyond
+ * this one call (see `hullq.domain.inventory_export`'s module docstring).
+ * `saleClasses` is keyed by the raw selected draft/native_listing id.
+ */
+export interface NautixExportProfile {
+  accountToken: string;
+  officeId: string;
+  saleClasses: Record<string, string>;
+}
+
+function nautixProfileBody(profile: NautixExportProfile | undefined): Record<string, unknown> {
+  if (!profile) return {};
+  return {
+    nautix_profile: {
+      account_token: profile.accountToken,
+      office_id: profile.officeId,
+      sale_classes: profile.saleClasses,
+    },
+  };
+}
+
 export type ExportFieldState = "PRESENT" | "UNKNOWN" | "OMITTED";
 
 export interface ExportFormatPreflight {
@@ -41,6 +64,9 @@ export interface ExportFormatPreflight {
 }
 
 export interface ExportRowPreflight {
+  /** Stable per-Organization listing export identifier. */
+  export_id: string;
+  source_kind: "PRIVATE_DRAFT" | "PROMOTED_LISTING";
   field_states: Record<string, ExportFieldState>;
   formats: Record<ExportFormat, ExportFormatPreflight>;
 }
@@ -93,8 +119,10 @@ export type ExportPreflightResult =
   | { kind: "oversize_selection" }
   | { kind: "unknown_item" }
   | { kind: "invalid_selection" }
+  | { kind: "invalid_nautix_profile" }
+  | { kind: "export_busy" }
   | { kind: "service_error" }
-  | { kind: "ok"; rows: ExportRowPreflight[] };
+  | { kind: "ok"; rows: ExportRowPreflight[]; snapshotFingerprint: string };
 
 export async function fetchExportPreflight(
   apiBaseUrl: string,
@@ -102,6 +130,7 @@ export async function fetchExportPreflight(
   cookieHeader: string | null,
   originHeader: string | null,
   selection: ExportSelection,
+  nautixProfile?: NautixExportProfile,
 ): Promise<ExportPreflightResult> {
   const base = apiBaseUrl.replace(/\/+$/, "");
   let response: Response;
@@ -113,7 +142,7 @@ export async function fetchExportPreflight(
         ...csrfHeaders(originHeader),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(selectionBody(selection)),
+      body: JSON.stringify({ ...selectionBody(selection), ...nautixProfileBody(nautixProfile) }),
       redirect: "manual",
     });
   } catch {
@@ -122,18 +151,22 @@ export async function fetchExportPreflight(
   if (response.status === 403) return await classify403(response);
   const authFailure = orgAuthFailureFromStatus(response.status);
   if (authFailure) return authFailure;
+  if (response.status === 429) return { kind: "export_busy" };
 
-  let body: { error?: string; rows?: ExportRowPreflight[] } = {};
+  let body: { error?: string; rows?: ExportRowPreflight[]; snapshot_fingerprint?: string } = {};
   try {
     body = await response.json();
   } catch {
     return { kind: "service_error" };
   }
-  if (response.status === 200 && body.rows) return { kind: "ok", rows: body.rows };
+  if (response.status === 200 && body.rows && body.snapshot_fingerprint) {
+    return { kind: "ok", rows: body.rows, snapshotFingerprint: body.snapshot_fingerprint };
+  }
   if (body.error === "empty_selection") return { kind: "empty_selection" };
   if (body.error === "oversize_selection") return { kind: "oversize_selection" };
   if (body.error === "unknown_item") return { kind: "unknown_item" };
   if (body.error === "invalid_selection") return { kind: "invalid_selection" };
+  if (body.error === "invalid_nautix_profile") return { kind: "invalid_nautix_profile" };
   return { kind: "service_error" };
 }
 
@@ -144,10 +177,20 @@ export type ExportDownloadResult =
   | { kind: "unknown_item" }
   | { kind: "invalid_selection" }
   | { kind: "invalid_format" }
+  | { kind: "invalid_nautix_profile" }
+  | { kind: "stale_selection" }
+  | { kind: "no_exportable_rows" }
   | { kind: "export_busy" }
   | { kind: "export_write_failed" }
   | { kind: "service_error" }
-  | { kind: "ok"; bytes: ArrayBuffer; contentType: string; filename: string };
+  | {
+      kind: "ok";
+      bytes: ArrayBuffer;
+      contentType: string;
+      filename: string;
+      includedCount: number;
+      rejectedCount: number;
+    };
 
 function filenameFromContentDisposition(value: string | null): string {
   if (!value) return "hullq-inventory-export";
@@ -162,6 +205,7 @@ export async function downloadExport(
   originHeader: string | null,
   selection: ExportSelection,
   format: ExportFormat,
+  options?: { nautixProfile?: NautixExportProfile; expectedSnapshotFingerprint?: string },
 ): Promise<ExportDownloadResult> {
   const base = apiBaseUrl.replace(/\/+$/, "");
   let response: Response;
@@ -173,7 +217,14 @@ export async function downloadExport(
         ...csrfHeaders(originHeader),
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ ...selectionBody(selection), format }),
+      body: JSON.stringify({
+        ...selectionBody(selection),
+        format,
+        ...nautixProfileBody(options?.nautixProfile),
+        ...(options?.expectedSnapshotFingerprint
+          ? { expected_snapshot_fingerprint: options.expectedSnapshotFingerprint }
+          : {}),
+      }),
       redirect: "manual",
     });
   } catch {
@@ -184,6 +235,8 @@ export async function downloadExport(
   if (authFailure) return authFailure;
   if (response.status === 429) return { kind: "export_busy" };
   if (response.status === 500) return { kind: "export_write_failed" };
+  if (response.status === 409) return { kind: "stale_selection" };
+  if (response.status === 422) return { kind: "no_exportable_rows" };
 
   if (response.status === 200) {
     const bytes = await response.arrayBuffer();
@@ -192,6 +245,8 @@ export async function downloadExport(
       bytes,
       contentType: response.headers.get("content-type") ?? "application/octet-stream",
       filename: filenameFromContentDisposition(response.headers.get("content-disposition")),
+      includedCount: Number(response.headers.get("x-hullq-export-included-count") ?? "0"),
+      rejectedCount: Number(response.headers.get("x-hullq-export-rejected-count") ?? "0"),
     };
   }
 
@@ -206,5 +261,6 @@ export async function downloadExport(
   if (body.error === "unknown_item") return { kind: "unknown_item" };
   if (body.error === "invalid_selection") return { kind: "invalid_selection" };
   if (body.error === "invalid_format") return { kind: "invalid_format" };
+  if (body.error === "invalid_nautix_profile") return { kind: "invalid_nautix_profile" };
   return { kind: "service_error" };
 }

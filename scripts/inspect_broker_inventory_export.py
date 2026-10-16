@@ -9,13 +9,11 @@ signed session cookie -- mirrors `scripts/inspect_multiformat_broker_import.py`'
 identical, already-accepted shortcut. FastAPI still performs its own real
 signature verification of that exact cookie on every request below.
 
-Scope note: no dedicated export Astro UI page exists yet (disclosed as an
-open gap in the SLICE-0088 completion report). This script therefore
-proves the built Astro SSR process is alive and correctly renders the
-*existing* authenticated broker inventory page for the exact Organization
-under test (regression proof that adding the export routes did not break
-Astro SSR), while the export capability itself is exercised through real
-HTTP directly against the real FastAPI process.
+This script exercises the real built Astro SSR process for both the
+pre-existing authenticated broker inventory page and the new export UI
+page (`inventory/export`), while the export capability's own HTTP calls
+go directly against the real FastAPI process (mirroring how the Astro
+proxy routes call it server-to-server).
 
 Demonstrates, end to end, through the real production FastAPI routes (no
 direct SQL for the API-exercised steps; only persistence-layer seeding of
@@ -26,25 +24,34 @@ SLICE-0083 inspector):
        build_year/LOA claim, AMOUNT offer, approved cover image) plus one
        private draft (with an adversarial formula-injection payload) for
        Organization A
-    2. Preflight correctly reports per-row/per-format exportability,
-       including the honest NautiX "sale_class" representability gap
-       (never fabricated) and the formula-injection warning
-    3. All seven Owner-accepted formats download with genuine binary
-       signatures: CSV, TSV, XLSX, XLS, ODS, JSON, NautiX 1.4
-    4. The downloaded NautiX document passes the pinned official XSD and
-       the accepted SLICE-0083 reimport parser (zero adverts, because the
-       sale_class gap applies -- proving no fabricated advert, not a
-       broken writer; the writer's positive case is proven directly at
-       the domain-unit level in `tests/unit/test_inventory_export_domain.py`)
-    5. CSV/TSV downloads never contain the raw adversarial formula payload
-       unescaped
+    2. Preflight returns a snapshot_fingerprint and correctly reports
+       per-row/per-format exportability, including the honest NautiX
+       account-token/office-id/sale_class profile gap (never fabricated
+       from the HullQ Organization id or a placeholder) and the
+       formula-injection warning
+    3. Six table-like Owner-accepted formats (CSV/TSV/XLSX/XLS/ODS/JSON)
+       download with genuine binary signatures and explicit included/
+       rejected counts, bound to the confirmed preflight fingerprint
+    4. A NautiX download with no broker-confirmed profile is explicit
+       `no_exportable_rows` -- never a silent empty "successful" file
+    5. A NautiX download *with* a broker-confirmed account_token/
+       office_id/sale_class profile is genuinely exportable, passes the
+       pinned official XSD and the accepted SLICE-0083 reimport parser as
+       VALID -- the real positive end-to-end path, not only the domain-
+       unit synthetic fixture in `tests/unit/test_inventory_export_domain.py`
     6. Organization B (a second real, separately seeded Organization)
        cannot select Organization A's draft/listing -- unknown_item, no
        existence leak
     7. A member without the PUBLISHER role is denied
-    8. The built Astro SSR broker inventory page still renders correctly
-       for Organization A after these routes were added
-    9. Exact finish marker
+    8. Real concurrent maximum-size downloads exceeding the admission
+       gate's own configured capacity resolve to 200/429 only, while a
+       concurrently polled unrelated broker route's measured latency
+       stays bounded -- proving the event loop was not blocked, not
+       merely asserting it
+    9. The pre-existing built Astro SSR broker inventory page still
+       renders correctly
+    10. The new built Astro SSR export UI page renders
+    11. Exact finish marker
 
 Requires ``HULLQ_TEST_DATABASE_URL`` and a pre-built Astro web package
 (``cd web && npm ci && npm run build``).
@@ -54,6 +61,8 @@ Run: uv run python scripts/inspect_broker_inventory_export.py
 
 from __future__ import annotations
 
+import concurrent.futures
+import contextlib
 import http.client
 import http.cookiejar
 import json
@@ -62,6 +71,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -591,16 +601,25 @@ def main() -> int:
             extra_headers=_csrf_headers(web_base),
         )
         preflight_ok = status == 200
-        rows = _json(body).get("rows", []) if preflight_ok else []
+        preflight_body = _json(body) if preflight_ok else {}
+        fingerprint = preflight_body.get("snapshot_fingerprint")
+        preflight_ok = preflight_ok and isinstance(fingerprint, str) and bool(fingerprint)
+        rows = preflight_body.get("rows", []) if preflight_ok else []
         preflight_ok = preflight_ok and len(rows) == 2
         nautix_reasons = rows[1]["formats"]["NAUTIX"]["reasons"] if preflight_ok else []
+        # Without a broker-confirmed NautixExportProfile, sale_class AND the
+        # destination account_token/office_id are all honestly absent --
+        # never fabricated from the HullQ Organization id or a placeholder.
         preflight_ok = preflight_ok and any("sale_class" in r for r in nautix_reasons)
+        preflight_ok = preflight_ok and any("account.token" in r for r in nautix_reasons)
+        preflight_ok = preflight_ok and any("office_id" in r for r in nautix_reasons)
         preflight_ok = preflight_ok and any(
             "formula-injection" in w for w in rows[0]["formats"]["CSV"]["warnings"]
         )
         ok &= preflight_ok
         print(
-            f"4. Preflight: 2 rows, honest NautiX sale_class gap, formula-injection warning -> {'OK' if preflight_ok else 'FAIL'}"
+            f"4. Preflight: 2 rows + fingerprint, honest NautiX profile gap, formula-injection "
+            f"warning -> {'OK' if preflight_ok else 'FAIL'}"
         )
 
         magics = {
@@ -610,42 +629,82 @@ def main() -> int:
             "XLSX": b"PK",
             "XLS": b"\xd0\xcf\x11\xe0",
             "ODS": b"PK",
-            "NAUTIX": b"<?xml",
         }
         all_formats_ok = True
-        nautix_bytes = b""
         for fmt, magic in magics.items():
-            status, _headers, body = session_a.post_json(
+            status, headers, body = session_a.post_json(
                 f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/download",
-                {**selection, "format": fmt},
+                {**selection, "format": fmt, "expected_snapshot_fingerprint": fingerprint},
                 extra_headers=_csrf_headers(web_base),
             )
             format_ok = status == 200 and body.startswith(magic)
+            format_ok = format_ok and headers.get("x-hullq-export-included-count") == "2"
             if fmt in ("CSV", "TSV"):
                 format_ok = format_ok and b",=2+2" not in body and b"'=2+2" in body
-            if fmt == "NAUTIX":
-                nautix_bytes = body
             all_formats_ok = all_formats_ok and format_ok
             print(
                 f"   - {fmt} download: genuine signature, no raw formula payload -> {'OK' if format_ok else 'FAIL'}"
             )
         ok &= all_formats_ok
-        print(
-            f"5. All seven Owner-accepted formats downloaded -> {'OK' if all_formats_ok else 'FAIL'}"
-        )
+        print(f"5. Six table-like formats downloaded -> {'OK' if all_formats_ok else 'FAIL'}")
 
         from hullq.domain.import_nautix import map_nautix_adverts_to_rows, parse_and_validate_nautix
 
+        # Required Behavior: never a successful complete download that
+        # silently skips every selected listing. Without a profile, no row
+        # is NautiX-exportable.
+        status, _, body = session_a.post_json(
+            f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/download",
+            {**selection, "format": "NAUTIX", "expected_snapshot_fingerprint": fingerprint},
+            extra_headers=_csrf_headers(web_base),
+        )
+        zero_row_protection_ok = status == 422 and _json(body).get("error") == "no_exportable_rows"
+        ok &= zero_row_protection_ok
+        print(
+            f"6. NautiX download without a profile is explicit no_exportable_rows, never a "
+            f"silent empty success -> {'OK' if zero_row_protection_ok else 'FAIL'}"
+        )
+
+        # With a broker-confirmed profile, the real promoted listing (never
+        # the private draft) becomes genuinely NautiX-exportable -- the
+        # real positive end-to-end path.
+        nautix_profile = {
+            "account_token": "BROKER-ACCT-REAL-1",
+            "office_id": "OFFICE-REAL-1",
+            "sale_classes": {listing_id: "used"},
+        }
+        status, headers, body = session_a.post_json(
+            f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/download",
+            {
+                "draft_ids": [],
+                "native_listing_ids": [listing_id],
+                "format": "NAUTIX",
+                "nautix_profile": nautix_profile,
+            },
+            extra_headers=_csrf_headers(web_base),
+        )
+        nautix_download_ok = (
+            status == 200
+            and body.startswith(b"<?xml")
+            and headers.get("x-hullq-export-included-count") == "1"
+        )
         try:
-            root = parse_and_validate_nautix(nautix_bytes)
-            mapped = map_nautix_adverts_to_rows(root, attested_account_tokens=frozenset({_ORG_A}))
-            nautix_roundtrip_ok = len(mapped) == 0  # sale_class gap -> zero fabricated adverts
+            root = parse_and_validate_nautix(body)
+            mapped = map_nautix_adverts_to_rows(
+                root, attested_account_tokens=frozenset({"BROKER-ACCT-REAL-1"})
+            )
+            nautix_roundtrip_ok = (
+                nautix_download_ok
+                and len(mapped) == 1
+                and mapped[0].classification.value == "VALID"
+            )
         except Exception as exc:
             nautix_roundtrip_ok = False
             print(f"   NautiX roundtrip exception: {exc}")
         ok &= nautix_roundtrip_ok
         print(
-            f"6. NautiX bytes pass pinned XSD + SLICE-0083 reimport (zero fabricated adverts) -> {'OK' if nautix_roundtrip_ok else 'FAIL'}"
+            f"7. With a broker-confirmed profile, NautiX passes pinned XSD + SLICE-0083 "
+            f"reimport as VALID -> {'OK' if nautix_roundtrip_ok else 'FAIL'}"
         )
 
         status, _, body = session_b.post_json(
@@ -656,7 +715,7 @@ def main() -> int:
         tenant_isolation_ok = status == 400 and _json(body).get("error") == "unknown_item"
         ok &= tenant_isolation_ok
         print(
-            f"7. Organization B cannot select Organization A's listing -> {'OK' if tenant_isolation_ok else 'FAIL'}"
+            f"8. Organization B cannot select Organization A's listing -> {'OK' if tenant_isolation_ok else 'FAIL'}"
         )
 
         member_account = "ACC-0088-E2E-MEMBER"
@@ -710,14 +769,82 @@ def main() -> int:
         publisher_role_ok = status == 403 and _json(body).get("error") == "publisher_role_required"
         ok &= publisher_role_ok
         print(
-            f"8. A MEMBER-only (non-PUBLISHER) account is denied -> {'OK' if publisher_role_ok else 'FAIL'}"
+            f"9. A MEMBER-only (non-PUBLISHER) account is denied -> {'OK' if publisher_role_ok else 'FAIL'}"
+        )
+
+        # Independent review amendment (2026-10-16): prove, under real
+        # concurrent maximum-size export workloads, that other API Search/
+        # health/broker calls remain responsive -- measured, not guessed.
+        # Fires more concurrent download requests than the real admission
+        # gate's own configured capacity so it is actually exercised, while
+        # a separate thread repeatedly times a cheap unrelated broker route
+        # on the same real uvicorn process.
+        from hullq.api.app import _EXPORT_MAX_CONCURRENT_JOBS
+
+        health_latencies: list[float] = []
+        stop_polling = False
+
+        def _poll_health() -> None:
+            poll_session = BrowserSession()
+            while not stop_polling:
+                start = time.monotonic()
+                with contextlib.suppress(Exception):
+                    poll_session.get(f"{api_base}/api/broker/context")
+                health_latencies.append(time.monotonic() - start)
+                time.sleep(0.05)
+
+        poll_thread = threading.Thread(target=_poll_health, daemon=True)
+        poll_thread.start()
+        try:
+            concurrent_requests = _EXPORT_MAX_CONCURRENT_JOBS + 3
+
+            def _one_download(_: int) -> tuple[int, float]:
+                started = time.monotonic()
+                status, _headers, _body = session_a.post_json(
+                    f"{api_base}/api/broker/organizations/{_ORG_A}/inventory/export/download",
+                    {**selection, "format": "XLSX"},
+                    extra_headers=_csrf_headers(web_base),
+                )
+                return status, time.monotonic() - started
+
+            with concurrent.futures.ThreadPoolExecutor(max_workers=concurrent_requests) as pool:
+                results = list(pool.map(_one_download, range(concurrent_requests)))
+        finally:
+            stop_polling = True
+            poll_thread.join(timeout=5)
+
+        export_statuses = [status for status, _ in results]
+        # Every request must resolve to a real outcome (200 OK, or a
+        # disclosed 429 BUSY from the admission gate) -- never a hang,
+        # never an unexplained failure.
+        concurrency_admission_ok = all(status in (200, 429) for status in export_statuses)
+        at_least_one_ok = any(status == 200 for status in export_statuses)
+        max_health_latency = max(health_latencies) if health_latencies else float("inf")
+        # A generous bound for this disposable single-process local proof
+        # run: the point is "the event loop was not blocked for seconds",
+        # not a tight production SLO.
+        health_stayed_responsive = max_health_latency < 2.0
+        concurrency_ok = concurrency_admission_ok and at_least_one_ok and health_stayed_responsive
+        ok &= concurrency_ok
+        print(
+            f"10. {concurrent_requests} concurrent max-size XLSX downloads "
+            f"(statuses={export_statuses}) while polling /api/broker/context "
+            f"{len(health_latencies)}x (max latency {max_health_latency * 1000:.1f}ms) -> "
+            f"{'OK' if concurrency_ok else 'FAIL'}"
         )
 
         status, _, _ = session_a.get(f"{web_base}/broker/organizations/{_ORG_A}/inventory")
         web_regression_ok = status == 200
         ok &= web_regression_ok
         print(
-            f"9. Existing built Astro SSR broker inventory page still renders -> {'OK' if web_regression_ok else 'FAIL'}\n"
+            f"11. Existing built Astro SSR broker inventory page still renders -> {'OK' if web_regression_ok else 'FAIL'}"
+        )
+
+        status, _, _ = session_a.get(f"{web_base}/broker/organizations/{_ORG_A}/inventory/export")
+        export_page_ok = status == 200
+        ok &= export_page_ok
+        print(
+            f"12. The new built Astro SSR export UI page renders -> {'OK' if export_page_ok else 'FAIL'}\n"
         )
 
         print("BROKER INVENTORY PORTABILITY EXPORT RESULT ->", "PASS" if ok else "FAIL")
