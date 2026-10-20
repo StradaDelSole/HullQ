@@ -340,3 +340,7 @@ The participant does not need to say `configuration truth`. Observable evidence 
 If the supposed advantage becomes compelling only after explanation, record it as prompted feedback rather than spontaneous product pull.
 
 The possibility that a proprietary configuration/evidence corpus becomes defensible later is likewise not permission to expand pre-Gate-1 data work beyond the bounded Seed Corpus, active/planned Concierge queries or real validation blockers.
+
+## Owner-accepted brand voice and product distinction — 2026-10-20
+
+For product-copy and marketing choices, also apply [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md): a distinct, candid, occasionally provocative voice directed at broken market practices, never disrespectful toward customers; substantiate public claims and make rigorous technical evidence easier to understand. The approved example territory includes “More listings don't make a better marketplace. Better decisions do.” **No** existing UX truth, internationalization, accessibility or launch gate is relaxed.
