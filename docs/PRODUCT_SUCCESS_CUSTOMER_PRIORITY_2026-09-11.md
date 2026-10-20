@@ -141,3 +141,9 @@ Where customer convenience conflicts with truth, safety, authorization or proven
 ## Controlling principle
 
 > **HullQ should win by making rigorous technical yacht discovery and trustworthy native inventory substantially easier for buyers and brokers than generic marketplaces do, while maintaining exceptional product and engineering quality.**
+
+## Owner-accepted positioning refinement — 2026-10-20
+
+The Owner has additionally accepted **customer-first strategy over competitor-following** and **deliberate differentiation/polarization through both product behavior and communication**. The controlling detail, six product stances, copy examples and future-decision filter are recorded in [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md).
+
+This refines, rather than replaces, the buyer/broker and exceptional-quality standards above: competitor research remains useful as a falsification/usability reference, but never automatically determines feature priorities. Deliberate contrast targets misleading industry practices, **never customers**. No change to accepted slice sequence, architecture invariants or launch gates follows from this addendum alone.
