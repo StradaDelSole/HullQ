@@ -71,3 +71,7 @@
 - NautiX 1.4 open standard and XSD: https://www.nautic-network.org/documentation
 
 **No feature in this ledger is claimed delivered solely because it appears here.** A later dated current vendor check and exact repo reconciliation are mandatory before technical selection.
+
+## Owner-accepted customer-first positioning clarification — 2026-10-20
+
+This register is **external research and explicit feature disposition**, not the controlling source of product strategy or permission to imitate competitors. See [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](../HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md) for the Owner's accepted customer-first, distinctively outspoken product/brand direction. Existing accepted P0 work, external-licensing limits, runtime STOP gates and actual evidence-based benchmarks remain mandatory. New items require a real buyer/broker outcome and normal Owner-selected slice readiness; the presence of an incumbent feature is never enough by itself.
