@@ -440,3 +440,7 @@ docs/governance/BROKER_WORKSPACE_MANDATORY_CAPABILITY_REGISTER.md
 ```
 
 A normal reassessment may change sequence, slice size or implementation approach. It may not silently remove a registered capability. The broker-workspace product may not be declared complete while a registered commitment remains `PENDING` or `DUE` unless an explicit later Project Owner decision supersedes that requirement in a reviewed repository change.
+
+## Owner-accepted customer-first positioning clarification — 2026-10-20
+
+The Owner's later accepted strategic direction is recorded in [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md). The required incumbent benchmark above **continues as measurable broker-usability validation**, not as an independent mandate to clone competitor feature lists, branding or monetization. User jobs, evidence, trust and broker freedom set priorities; competitive observations identify expectations, weaknesses and useful test baselines. There is no relaxation of the Broker Workspace Launch Gate, evidence requirements or accepted P0 commitments.
