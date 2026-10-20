@@ -444,3 +444,7 @@ A normal reassessment may change sequence, slice size or implementation approach
 ## Owner-accepted customer-first positioning clarification — 2026-10-20
 
 The Owner's later accepted strategic direction is recorded in [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md). The required incumbent benchmark above **continues as measurable broker-usability validation**, not as an independent mandate to clone competitor feature lists, branding or monetization. User jobs, evidence, trust and broker freedom set priorities; competitive observations identify expectations, weaknesses and useful test baselines. There is no relaxation of the Broker Workspace Launch Gate, evidence requirements or accepted P0 commitments.
+
+## Owner-accepted broker acquisition positioning — 2026-10-21
+
+See [`docs/HULLQ_CUSTOMER_ACQUISITION_AND_DIFFERENTIATION_2026-10-21.md`](HULLQ_CUSTOMER_ACQUISITION_AND_DIFFERENTIATION_2026-10-21.md). The first broker proposition should be **additive rather than anti-incumbent**: preserve existing distribution channels, minimise data-entry/onboarding risk, protect authorised data portability and build **measurable** qualified buyer context, without promising already-proven lead volume or requiring exclusivity. Proposed founding-broker discussions are discovery only until current security, external-data onboarding and launch readiness gates permit real inventory or pilot activation. This does not supersede the requirements or mandatory benchmarks above.
