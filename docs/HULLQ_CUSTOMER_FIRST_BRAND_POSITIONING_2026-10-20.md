@@ -115,3 +115,9 @@ HullQ should be prepared to document cases where it declines financially attract
 **Controlling principle:**
 
 > **HullQ exists to improve customer decisions and broker work—not to win a feature-count contest. Its distinct identity should be the natural consequence of uncompromising product choices, made visible in a confident and sometimes provocative voice.**
+
+## 9. Owner-accepted witty brand voice — 2026-10-21
+
+The Owner additionally approves a **lightly witty, intelligent, dry and sometimes pointed** HullQ voice, including the strategic opposition to *false certainty presented as truth*, a premium-without-luxury-clichés campaign aesthetic, tailored buyer/broker registers, humor-free actionable operational errors and the four traits **Intelligent (never pretentious), Independent (never indifferent), Provocative (never hostile), Witty (never silly)**.
+
+**Controlling accepted addendum:** [`docs/HULLQ_BRAND_VOICE_AND_WIT_2026-10-21.md`](HULLQ_BRAND_VOICE_AND_WIT_2026-10-21.md). It records the Owner-approved creative territory, including the two preferred signature candidates **“Nice yacht. Wrong keel.”** and **“Unknown isn't a flaw. Pretending otherwise is.”**, the further sample lines, and **“We'd rather lose a transaction than lose your trust.”** as a governing principle. The lines are **directional creative candidates**, not automatically approved production copy or claims of functionality not yet shipped.
