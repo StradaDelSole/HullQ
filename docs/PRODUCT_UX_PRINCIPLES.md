@@ -344,3 +344,7 @@ The possibility that a proprietary configuration/evidence corpus becomes defensi
 ## Owner-accepted brand voice and product distinction — 2026-10-20
 
 For product-copy and marketing choices, also apply [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md): a distinct, candid, occasionally provocative voice directed at broken market practices, never disrespectful toward customers; substantiate public claims and make rigorous technical evidence easier to understand. The approved example territory includes “More listings don't make a better marketplace. Better decisions do.” **No** existing UX truth, internationalization, accessibility or launch gate is relaxed.
+
+## Owner-accepted humor boundary and marketing/product voice — 2026-10-21
+
+See [`docs/HULLQ_BRAND_VOICE_AND_WIT_2026-10-21.md`](HULLQ_BRAND_VOICE_AND_WIT_2026-10-21.md). A restrained, dry, intelligent wit is accepted for appropriate marketing/editorial/low-stakes moments. **Marketing may provoke; operational UI must first be accurate, accessible and actionable.** Do not insert jokes where broker imports/exports fail, where data or media rights are disputed, where security/privacy is relevant, or where customers need clear recovery steps. Use substantiated technical truth, avoid shaming customers or brokers and keep localization/accessibility obligations intact.
