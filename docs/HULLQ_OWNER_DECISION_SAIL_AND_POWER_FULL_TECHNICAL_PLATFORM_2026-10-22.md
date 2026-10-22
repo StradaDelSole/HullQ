@@ -7,7 +7,9 @@
 **Baseline für Dokumentationsvorschlag:** main 7927ab7dbddac6e3c142c2f4847db5bd2d5cf700; Projektstatus-/0088-Dokumente können historisch ältere Statuswerte enthalten  
 **Zweck:** Kanonisch nachvollziehbarer Strategiebeschluss und eigenständig mit Claude überprüfbare Umsetzungsgrundlage.
 
-> **OWNER-BESCHLUSS (22.10.2026):** HullQ wird ein gemeinsamer, qualitativ hochwertiger Yachtmarktplatz für **Segelboote/Segelyachten und Motorboote/Motoryachten**. Beide Bereiche erhalten auf Dauer eine **eigenständige, fachlich anspruchsvolle technische Suche mit derselben methodischen Präzision, Nachvollziehbarkeit, Quellen- und Datenwahrheitsqualität**. Das Sail-Produkt wird zuerst zu einer nutzbaren, stabilen Referenz ausgebaut; anschließend werden die tragfähigen gemeinsamen Grundlagen für ein vollständig ausgearbeitetes Power-Produkt verwendet. Die erforderliche zusätzliche persönliche Entwicklungszeit, auch mehrere Wochen, ist für den Owner kein Grund, Motorboote fachlich nur zweitklassig zu behandeln. **Broker Excellence und Buyer/Technical Excellence sind gleichrangige strategische Säulen.**
+> **OWNER-BESCHLUSS (22.10.2026):** HullQ wird ein gemeinsamer, qualitativ hochwertiger Yachtmarktplatz für **Segelboote/Segelyachten und Motorboote/Motoryachten**. Beide Bereiche erhalten eine **eigenständige, fachlich anspruchsvolle technische Suche mit derselben methodischen Präzision, Nachvollziehbarkeit, Quellen- und Datenwahrheitsqualität**. Sail wird **intern zuerst** zur stabilen Architektur- und Produktreferenz ausgebaut; darauf entsteht eine vollwertige Power-Fachdomäne. **Broker Excellence und Buyer/Technical Excellence sind gleichrangig.** Die persönliche Entwicklungszeit rechtfertigt keine fachlich zweitklassige Power-Lösung.
+>
+> **VERBINDLICHE OWNER-PRÄZISIERUNG (22.10.2026, nach Review v0.6):** **Ein gemeinsamer externer Produkt-/Marktstart für Sail UND Power erst, wenn beide kategoriengerecht ausgereifte Technical Search und die jeweils erforderlichen Buyer-/Brokerfunktionen erfüllen.** Kein öffentlicher Sail-only-Prelaunch, kein externes C-light-Zwischenrelease und kein vorgezogener Broker-Produktpilot für ein halbfertiges Gesamtsystem. Entwicklungsphasen bleiben intern; unabhängige Marktrecherche, freiwillige Befragungen, technische Tests und interne Prototypen sind ausdrücklich zulässig. **Vollständig funktionsfähig bedeutet nicht: jedes historische Boot, Modell und jede denkbare technische Eigenschaft bereits erfasst.** Fehlende Design-/Modellinformationen dürfen durch ausdrückliche, quellmarkierte Angaben des Brokers **zum angebotenen konkreten Boot** ergänzt werden, niemals unbemerkt als unabhängig verifizierte Designwahrheit. Quellen mit unklarer Rechtslage dürfen untersucht und nach dokumentierter Rechte-/Risikoprüfung legal nutzbare Fakten können erschlossen werden; ein „Graubereich“ ist keine pauschale Nutzungserlaubnis für geschützte Texte, Medien, Datenbanken oder private Daten.
 
 ## 1. Entscheidung und eindeutige Grenzen
 
@@ -19,11 +21,14 @@
 4. **Differenzierung:** HullQ ist nicht nur Technical Search. Mindestens gleichrangig sind die aus dem Konkurrenz-/Beschwerde-Research und akzeptierten Produktanforderungen gewonnenen **brokerseitigen USPs**: geringer Aufwand, keine künstliche Bindung, starke Brokeridentität, nachvollziehbare Leadqualität und Geschäftswirkung, faire Vermarktungs-/Rankingregeln.
 5. **Echte Fachlichkeit:** Motorboote bekommen ein eigenes belastbares Modell für Rumpf-/Fahrverhalten, Antrieb, Motorisierungen, Varianten, Verbrauch, Reichweite, Ausstattung sowie tatsächliche konkrete Gebrauchtbootzustände.
 6. **Qualität statt bloßer Funktionalität:** Kein Feld, Filter, Score oder Badge darf eine gesicherte technische Eigenschaft behaupten, wenn Quellen, Konfiguration oder konkrete angebotene Yacht das nicht tragen.
+7. **Gemeinsamer Marktstart als verbindliche Freigabeentscheidung:** Sail + Power werden extern erst gemeinsam mit funktionsfähiger, fachlich eigener Technical Search und dem vollständigen notwendigen Broker-/Listing-/Lead-Loop gezeigt. Einfache Power-Browse/Basic-Listings dienen **nur als interne Entwicklungsstufe**. Eine frühere externe Sail-only- oder C-light-Produktfreigabe ist bis zu einer neuen ausdrücklichen Owner-Entscheidung ausgeschlossen.
+8. **Pragmatische Datenabdeckung:** Keine Forderung nach einer unmöglichen vollständigen globalen Design- oder Modell-Datenbank zum Start. Anspruch ist ein benutzbares, transparentes, anwendungsfallgerecht qualifiziertes Sail- und Power-Angebot. Quellen- und Ausstattungsangaben eines berechtigten Brokers können als explizite konkrete Bootsclaims beitragen, gerade wenn konstruktionsbezogene Quellen fehlen. Status und Aussagekraft sind sichtbar.
+9. **Marktforschung bleibt zulässig:** Interviews/Befragungen, Markt- und Datenquellenrecherche dürfen die Produktentwicklung begleiten; sie sind **keine** externe Vorführung eines unfertigen Marktplatzprodukts und kein neuer Grundsatzstreit über persönlich eingesetzte Entwicklungszeit.
 
 ### Nicht entschieden oder ausdrücklich nicht automatisch autorisiert
 
 - Kein neuer Slice, keine Slice-Nummer, keine Implementierung, keine automatische Zusammenlegung in main durch diesen Text.
-- Kein Terminversprechen, kein „beide Produktbereiche müssen vor dem allerersten Sail-Pilot gleichzeitig fertig sein“.
+- Kein Terminversprechen oder künstliches persönliches Arbeitszeitlimit. **Der gemeinsame externe Start von Sail + Power ist dagegen verbindlich.** Ein echter Broker-Produktpilot kann erst stattfinden, wenn das kombinierte Produkt die akzeptierten technischen, operativen und Sicherheits-Gates erfüllt; Marktbefragungen und interne Tests bleiben möglich.
 - Keine stillschweigende Änderung bereits akzeptierter Arbeitsabfolgen, von SLICE-0088, seiner Review-Situation oder dem Owner START_SLICE.bat / FINISH_SLICE.bat-Prozess.
 - Keine Zulassung realer externer Broker-Uploads/-Feeds/-Piloten vor den bestehenden Sicherheits-, Rechte- und Production-Readiness-STOP/GO-Gates, insbesondere Issue #355.
 - Keine unlimitierte automatische Erweiterung auf PWC/Jetskis, sonstige Kleinstwasserfahrzeuge oder spezielle kommerzielle Schiffssegmente; der präzise erste Power-Marktzuschnitt wird in einer eigenen Taxonomieentscheidung festgelegt. **Motorsegler und Mischantriebe dürfen nicht anhand oberflächlicher Labels geraten werden.**
@@ -35,9 +40,9 @@ Frühere Position: Sail-only bzw. Sail-first erschien wegen Differenzierung und 
 
 Ein zweiter Korrekturpunkt: **Sail Technical Search ist nur ein USP von mindestens zwei großen USP-Familien.** Die zweite, gleichberechtigte Familie ist die bessere, fairere und transparentere **Broker-Plattform**. Diese Vorteile sind überwiegend bootstypunabhängig. Es wäre wirtschaftlich fragwürdig, gemischte Broker dauerhaft von ihnen auszuschließen, wenn die Fachlogik technologisch sinnvoll auf Power erweitert werden kann.
 
-Daraus wurden zunächst C-light (Power-Listings mit Basissuche, vertiefte Sail-Technical Search) und dann eine noch weitergehende Richtung diskutiert. **Der Owner hat sich ausdrücklich für die vollständige, technisch hochwertige Sail+Power-Zielarchitektur entschieden.** C-light bleibt höchstens eine transparente **Zwischenstufe**; es ist nicht das Zielprodukt.
+Daraus wurden zunächst C-light (Power-Listings mit Basissuche, vertiefte Sail-Technical Search) und dann eine noch weitergehende Richtung diskutiert. **Der Owner hat sich ausdrücklich für die vollständige, technisch hochwertige Sail+Power-Zielarchitektur UND den gemeinsamen externen Start entschieden.** C-light ist höchstens eine **interne Baustufe**, weder die öffentliche Erstveröffentlichung noch das Zielprodukt.
 
-Wichtig: Diese Entscheidung ist eine **Owner-Priorität**, keine mathematisch erwiesene Umsatzprognose. Marktgröße, zahlungsbereite Broker, Käuferakquise und tatsächliche Datenverfügbarkeit müssen weiterhin gemessen werden. Die eigene Arbeitszeit wird nicht als entscheidendes monetäres Verhinderungsargument behandelt, aber Kalender-/Launch-Abhängigkeiten, Datenrechte, Sicherheitsprüfungen, Support, Hosting, Teamkapazität und Betriebsrisiken verschwinden dadurch nicht.
+Wichtig: Diese Entscheidung ist eine **Owner-Priorität**, keine mathematisch erwiesene Umsatzprognose. Marktgröße, zahlungsbereite Broker, Käuferakquise und tatsächliche Datenverfügbarkeit müssen weiterhin erforscht und nach dem gemeinsamen Marktstart gemessen werden. Die eigene Arbeitszeit ist **kein monetäres Verhinderungsargument und keine Deadline-Vorgabe**. Gesetzliche Daten-/Nutzungsrechte, Sicherheit, Support, Hosting, Betrieb, Launch-Gates und tatsächliche Marktnachfrage bleiben sachliche Erfolgsfaktoren.
 
 ## 3. Gleichrangige Produkt-Säulen und nachzuhaltende Broker-USPs
 
@@ -109,6 +114,15 @@ Die Research-Funde sind produktstrategische Hinweise, keine pauschalen Tatsachen
 
 Eine umfangreiche Power-Datenbasis benötigt ein **breites Modellidentitätsuniversum mit progressiver Verifizierung**. Ein schmales Demo-Korpus bleibt Forschungs-/Proof-of-Concept-Grundlage und darf nicht als Marktdeckung ausgegeben werden. Quellenrechte, Herstellerbroschüren, Varianten, historische Daten und Datenqualität müssen eigens untersucht werden.
 
+### Verbindliche Datenbeschaffungs- und Broker-Claim-Strategie (Owner-Präzisierung)
+
+- **Beschaffen, was seriös und zulässig beschaffbar ist:** Herstellerunterlagen, historische Daten, fachlich geeignete Referenzen, belegbare technische Aussagen, vom Broker rechtmäßig bereitgestellte Informationen und andere nutzbare Quellen aktiv erschließen. Rechte-/Lizenz-, Vertrags-, Datenbank-, Datenschutz- und Provenienzfragen quellenbezogen dokumentieren, nicht pauschal abschrecken oder pauschal genehmigen.
+- **Rechtliche Ungewissheit differenziert prüfen:** Frei zugängliche **Fakten** können rechtlich anders zu behandeln sein als geschützte Datenbankextrakte, Fotos, Texte, technische Dokumente, Zugangsbeschränkungen oder vertrauliche Informationen. Bei „Grauzonen“ erforderliche Rechtsgrundlage und Risiko prüfen, Datenumfang begrenzen, zulässige Alternative/Lizenz/Erlaubnis erwägen; keine Umgehung technischer Zugangshürden und keine pauschale Übernahme unklar lizenzierter Inhalte. Fehlende Quellberechtigung ist keine zu umgehende Produktschranke.
+- **Brokerangaben sind echte Angebotsinformationen, aber nicht automatisch unabhängig verifiziert:** Eine ausdrücklich attestierte, datierte, dem konkreten PhysicalBoat zugeordnete Information über **dieses** angebotene Boot kann trotz fehlendem BoatDesign-Datensatz sichtbar und, bei geeignetem fachlich zugelassenem Nachweisniveau, technisch suchbar sein. Den Ursprung (Broker / Messung / Dokument / Hersteller) und Qualifikationsgrad zeigen; **nicht** als unabhängige Modell-, Serien- oder Factory-Variant-Wahrheit ausgeben.
+- **Sucharchitektur darf gute konkrete Brokerdaten nicht grundsätzlich ausschließen:** Der heutige rein designverknüpfte Native-Search-Kandidatenpfad reicht hierfür nicht. Für Sail + Power wird **gesondert fachlich spezifiziert**, wie und unter welchen Evidenz-/Rechte-/Konfigurationsbedingungen design-unresolved Listings mit qualifizierten konkreten Claims suchbar werden können, ohne bestätigte Design-Übereinstimmung zu erfinden oder Hard-Filter zu verwässern. Die bestehende Suchlogik wird bis zur eigenen Slice-Review nicht stillschweigend geändert.
+- **Sichere Match-Klassifikation:** „Broker hat X angegeben“ ist nicht dasselbe wie „HullQ hat X unabhängig geprüft“. Für einfache dokumentierte Eigenschaften kann eine klar ausgewiesene Broker-Attestation ggf. eine qualifizierte konkrete Angabe liefern; besonders bei Motorleistung, Verbrauch, Reichweite, Messbedingungen, Motorstunden oder behauptetem Zustand muss der jeweilige Kriterienvertrag die zulässige Evidenz ausdrücklich bestimmen. Ohne tragfähige Evidenz: **INSUFFICIENT_DATA/UNKNOWN**, bei Widerspruch **CONFLICT**, niemals erfundene positive Bestätigung.
+- **Abdeckung versus Produktreife:** Gemeinsamer Sail+Power-Go-live fordert **funktionierende Kern-Journeys**, beweisbar korrekte Suche/Leads/Reports, ausreichende brauchbare und ehrlich klassifizierte Daten für definierte Startsegmente, Rechte und betriebliche Stabilität – **nicht** die vollständige historische Marktabdeckung oder die Behauptung, jedes unbekannte Datenfeld sei bereits recherchiert.
+
 ## 6. Reihenfolge der Umsetzung – verpflichtendes Ziel, bewusst gestufter Weg
 
 ### Phase 0 — Laufende Arbeit ordnungsgemäß schließen
@@ -127,26 +141,27 @@ Eine umfangreiche Power-Datenbasis benötigt ein **breites Modellidentitätsuniv
 
 - Aktuelles Repo/DB/API/Web gegen den Owner-Beschluss prüfen: Typ/Kategorie, Designmodell, konkrete Claims, Search Engine, Import NautiX/Spreadsheet, Export, Discovery, SEO, Locale, Berechtigungen.
 - Vorhersagen über „wenige Wochen“ oder „N Slices“ vermeiden; echte Engineering-Delta-Analyse mit Test-/Migrations-/Review-Pfaden erstellen.
-- Validierte Power-Quellen/Rechte und ein schwierig ausgewähltes Modell-/Motorisierung-Benchmark-Korpus bestimmen; Problemfälle inkludieren (gleiche Baureihe mit verschiedenen Motorsätzen, Motorumbau, echte/reduzierte Reichweite, Datenausfall).
+- Rechte-/Quellenlage **quellenbezogen** bewerten und ein schwierig ausgewähltes Modell-/Motorisierung-Benchmark-Korpus bestimmen; Problemfälle inkludieren (gleiche Baureihe mit verschiedenen Motorsätzen, Motorumbau, echte/reduzierte Reichweite, Datenausfall). Die Erhebung und Verträge zu **Broker-Claims ohne verfügbaren BoatDesign-Nachweis** gehören zur Technikvorbereitung, nicht erst zu einer späteren Datenpflege.
 
 ### Phase 3 — Gemeinsame Vessel-Klassifikation und Native Browse
 
 - Explizite Sail/Power/Motorsegler/unklar-Klassifikationssemantik inkl. Broker-Origin, UNKNOWN/CONFLICT, manueller Klärung; keine willkürliche Verifikation von Importlabels.
 - Backward-kompatibler, abgesicherter Schema-/Migrations- und Exportvertrag; Rechte/ACL/tenant isolation/unbekannte Kategorien und importbedingte Updates testen.
-- Verifizierbare allgemeine Browse-/Basis-Suche für native Listings, fünf vorhandene Locales, klare kategoriale Eingänge, Indexability/Canonical/SEO ohne Duplicate-/thin-content-Missbrauch.
+- **Interne** verifizierbare allgemeine Browse-/Basis-Suche für native Listings, fünf vorhandene Locales, klare kategoriale Eingänge, Indexability/Canonical/SEO ohne Duplicate-/thin-content-Missbrauch; **kein externes Zwischenrelease** dieser Phase.
 - Klares Testinvariant: Nur zulässige Sail-Designkonfigurationen erreichen Sail-Technical-Confirmed-Match; Power darf nicht aufgrund von Hull/Model-Namen als Sail erscheinen.
 
 ### Phase 4 — Vollwertige Power Technical Search
 
 - Fachdomäne mit Generationen, Varianten, Motorisierungskonfigurationen, aktuellen PhysicalBoat-Claims, technischer Source Registry/Bridges, UNKNOWN/CONFLICT und Suchkriterien entwickeln.
 - Multi-Kriterium-Suche mit **derselben epistemischen Strenge** wie Sail; ernsthafte Power-Buyer-Scenarios und No-False-Positive-Tests; tatsächliche angebotsbezogene Evidence in Buyer Search und Broker Search-fit.
-- Spezialisierte technische Oberflächen, Vergleiche und später Monitoring/Alerts in kontrollierten, überprüften Erweiterungen.
+- Spezialisierte technische Oberflächen, Vergleiche und die für den gemeinsamen Produktstart erforderlichen Buyer-/Broker-Funktionen in kontrollierten, überprüften Erweiterungen. **Phase 4 ist interner technischer Meilenstein, kein automatisch genehmigter externer Marktstart.**
 
 ### Phase 5 — Power-Datenuniversum und nachgewiesener Marktplatzbetrieb
 
-- Breites Bootstyp-/Modelluniversum mit ehrlicher Evidenzabdeckung; auf echte Käuferjobs optimiert, nicht allein Anzeigemenge.
-- Gezielte Akquise von Brokersegmenten (Sail, Mixed, Power), Rückmeldungen/Arbeitsaufwand/Preisbereitschaft und tatsächliche Leads messen.
-- Launch-Reihenfolge anhand **separater technischer und kommerzieller Gates** freigeben. Ein ggf. früher freigegebener Power-Listingmodus muss öffentlich auffindbar und klar als reduzierte Funktionsstufe bezeichnet werden, ohne den verbindlichen Endzustand auf C-light abzusenken.
+- Breites Bootstyp-/Modelluniversum mit **progressiver, ehrlicher Evidenzabdeckung**; auf echte Käuferjobs optimiert, nicht allein Anzeigemenge. **Kein Vollständigkeitszwang aller Modell-/Variantendaten zum Start.**
+- **Vor dem gemeinsamen Go-live:** zulässige Marktforschung, Käufer-/Brokerbefragungen, Markt- und Rechteanalyse sowie interne/synthetische Produkttests. Keine Sail-only-Produktveröffentlichung und kein C-light-Brokerpilot als Kompromiss.
+- **Nach den verbindlichen Produkt-, Datenqualitäts-, Rechts-, Sicherheits- und Produktions-Gates:** gemeinsamer externer Marktstart für Sail + Power; anschließend belegte Lead-/Akquise-/Preis-/Nutzungsdaten messen und Produkt verbessern. Der erste echte Broker-Produktpilot mit Zugriff auf HullQ benötigt das kombinierte reife Produkt und weiterhin sämtliche vorher akzeptierten Pilot-/Production-Readiness-Gates.
+- Daten-Gate ist **geeignete, nach Herkunft gekennzeichnete Mindestnutzbarkeit für reale Suchaufgaben**, nicht ein fiktiver „vollständiger“ Sail- und Power-Katalog. Broker-bekannte konkrete Tatsachen sind nicht allein wegen fehlender Herstellerdaten nutzlos; zulässige Evidenzregeln entscheiden, ob sie für Confirmed-Matches ausreichen.
 
 **Diese Phasen sind Leitplanken, keine automatisch gestarteten nummerierten Slices.** Vor jedem neuen Slice: kurzer Owner-Überblick, ordnungsgemäße Reconciliation, unabhängige READY/Review, normale START-/FINISH-Prozedur; Owner wählt und akzeptiert Implementierung ausdrücklich.
 
@@ -154,12 +169,12 @@ Eine umfangreiche Power-Datenbasis benötigt ein **breites Modellidentitätsuniv
 
 - Keine Wahrheitserfindung: Design-, Varianten- und konkrete Bootsbehauptungen strikt separieren; UNKNOWN/CONFLICT bleiben sichtbar.
 - Keine falschen bestätigten technischen Treffer bei fehlendem Kontext, widersprüchlichen Quellen, unzulässigen Messbedingungen oder Design-/PhysicalBoat-Mismatch.
-- Kein Import fremder Medien, Drittbrokerdaten oder proprietärer Portalinhalte ohne Berechtigung und vereinbarte Datennutzung.
+- Kein Import fremder Medien, fremder Brokerbestände, privater Daten oder geschützter Portalinhalte ohne erforderliche Rechtsgrundlage/Nutzungsrechte. Öffentlich zugängliche Fakten und unklare Quellenlagen **differenziert rechts-/risikobasiert** beurteilen; „Grauzone“ ist kein automatisches Verbot, aber auch keine automatische Erlaubnis.
 - Kein Power-Launch allein aufgrund ausreichenden Speichers; zusätzliche Rohdaten, Medien, Lead-/Moderations-/Supportpflichten benötigen operative Budget-/Limit-/Retention-Gates.
 - Keine bezahlte Manipulation der organischen technischen Klassifikation; Werbung von organischem Match strikt getrennt.
 - Kein Exklusivzwang und kein künstliches erschwerendes Export-/Exit-Verhalten gegenüber Brokern.
 - Kein neues Power-Material darf die bisher akzeptierten Sail-Funktionalitäten, Datenschutz-/MFA-/Rollenregeln, Publishing-Lifecycle oder Monitoring/Backup/Incident-Readiness stillschweigend verändern.
-- Produktversprechen extern nur gemäß tatsächlich gelieferten Fähigkeiten; künftige Power-Suche nicht vorzeitig als vollständig/gleichwertig ausgeben.
+- Produktversprechen extern nur gemäß tatsächlich gelieferten Fähigkeiten; **keine Sail-only-/C-light-Produktveröffentlichung vor dem gemeinsamen Freigabegate**. Beim gemeinsamen Start echte Abdeckungs-/Quellengrenzen transparent machen, nicht mit vermeintlich vollständigem Korpus oder unabhängig geprüften Broker-Claims werben.
 
 ## 8. Brand-, Produkt- und Markteintrittsfolgen
 
@@ -184,8 +199,8 @@ Claude soll **nicht erneut abstimmen, ob Sail-only schöner wäre**, sondern die
 5. Wie würde bedingungsabhängige Geschwindigkeit/Verbrauch/Reichweite modelliert und im Search fail-closed beurteilt? Muss das ein Curve/OperatingPoint-Modell sein?
 6. Wo bestehen echte Doppelcode-, Migration-, Import-/Export-, SEO-, Locale-, Berechtigung-/Privacy- und Sicherheitsrisiken? Bitte Dateien, Tests, Invarianten, DB-Migrationen nennen.
 7. Welche Referenz- und Primärquellen können ein ausreichend breites Power-Modelluniversum **rechtssicher** und mit nachvollziehbarem Prüfaufwand tragen? Welche Felder bleiben vorerst UNKNOWN?
-8. Wie wird die Arbeit am Power-Fachprodukt gestuft, **ohne** SLICE-0088, #355, #357, Freigaben und den ersten zulässigen Käufer-Broker-Test zu unterbrechen?
-9. Welcher Teil von C-light kann bei einer späteren vollständigen Power Technical Search sinnvoll wiederverwendet werden, statt zu Wegwerfcode zu führen?
+8. Wie wird die Arbeit am Power-Fachprodukt intern gestuft, **ohne** SLICE-0088, #355, #357 oder andere Gates zu umgehen, und wie führen wir anschließend einen **gemeinsamen Sail+Power-Erstpilot/-Go-live** ohne vorgezogenen Sail-only-/C-light-Produktstart durch?
+9. Welcher Teil des **internen C-light-Entwicklungsmeilensteins** wird für die vollständige Power Technical Search wiederverwendet, ohne ein externes Zwischenrelease anzukündigen?
 10. Wie testen wir die Gleichrangigkeit der Broker-USPs für Sail+Power sowie echten kommerziellen Mehrwert, statt nur größeren Listingbestand zu erzeugen?
 11. Welche kritischen Annahmen dieses Owner-Plans sind derzeit im Code **nicht** verifiziert? Evidenz bitte als CODE/TEST/CONTRACT/HYPOTHESIS markieren.
 12. Welche konkreten nächsten **docs-only** Architektur-/Readiness-Artefakte sollten wir nach regulärem Owner-Slice-Abschluss vorbereiten? Noch keine Implementierung/Branch-Neunummerierung ohne Owner-Auswahl.
@@ -198,6 +213,7 @@ Claude soll **nicht erneut abstimmen, ob Sail-only schöner wäre**, sondern die
 - Spätere bereits akzeptierte native Broker-first + Owner-Direct Marketplace-Entscheidungen überstimmen weiterhin ältere „HullQ ist kein Marketplace“-Abschnitte in PROJECT_CONTEXT.md/PRODUCT_SCOPE.md. Dieses Dokument ändert **keine** anderen bereits akzeptierten Verantwortlichkeiten.
 - docs/PRODUCT_EXECUTION_PLAN.md, docs/PROJECT_STATE.md, Broker Workspace Direction, Product Success & Customer Priority und Competitive Gap Register sind in ihrer operativen Reihenfolge/Quality Gate-Logik weiter controlling, soweit nicht konkret bei langfristiger Kategorie-/Product-Scope-Richtung durch diese Owner-Entscheidung superseded.
 - **Repositorystatus bei Dokumenterstellung:** docs-only Owner-Decision auf eigenem Branch und Draft-PR zur unabhängigen Prüfung; **nicht** automatisch main oder bereits Code. Die verbindliche Owner-Anweisung ist erteilt; ihre kanonische Wirkung im Repository erfordert Review/Merge entsprechend bestehender Verfahren.
+- **Nachträglich Owner-bestätigt:** gemeinsamer Sail+Power-Erststart, kein Sail-only-Prelaunch, kein öffentliches C-light-Zwischenrelease; Marktforschung bleibt davon getrennt. Vollständige globale Design-Datenbank ist keine Launch-Voraussetzung, qualifizierte Broker-Claims können als **konkrete Bootsangaben** fehlende Modellinformationen ergänzen. Diese Präzisierung **überstimmt widersprechende Passagen der ursprünglichen Review-/Release-Hypothesen**.
 - Kein impliziter Start von SLICE-0089 oder Power-Implementierung; nächste Umsetzung nur nach regulärem Slice-Reassessment und ausdrücklicher Owner-Auswahl.
 
 ### Relevante Quellen und Verweise
