@@ -58,7 +58,6 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
-import functools
 import json
 import os
 import threading
@@ -463,14 +462,49 @@ async def _run_export_job(fn: Any, *args: Any, **kwargs: Any) -> Any:
     control acquired *before* dispatch -- never blocking the calling
     asyncio event loop thread. Returns a sentinel `_EXPORT_BUSY` if the
     admission gate is already saturated rather than queuing indefinitely;
-    the caller must then return 429 `export_busy` immediately."""
+    the caller must then return 429 `export_busy` immediately.
+
+    Independent review amendment (2026-10-16, round 2): the semaphore
+    slot represents the real worker-thread job's own lifetime, never the
+    HTTP request coroutine's `await` lifetime. If the calling route's
+    task is cancelled (the client disconnected) while *fn* is already
+    running on its executor thread, that thread keeps running to
+    completion regardless -- `asyncio`/`concurrent.futures` cannot force-
+    stop a running thread -- so releasing the slot on cancellation (the
+    previous implementation's `finally` around the `await`) would free an
+    admission slot while a real job is still actively using one,
+    letting concurrently *running* jobs exceed `_EXPORT_MAX_CONCURRENT_JOBS`.
+    The release now happens exactly once, from whichever of two paths
+    actually reaches a terminal state first: *fn* itself finishing on its
+    worker thread (the common case), or the future being cancelled before
+    a worker ever started it (queued-but-never-run, the only case where
+    *fn*'s own `finally` never executes) -- guarded by a lock so a narrow
+    race between the two paths can never double-release the semaphore.
+    """
     if not _export_admission_semaphore.acquire(blocking=False):
         return _EXPORT_BUSY
-    try:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(_export_executor, functools.partial(fn, *args, **kwargs))
-    finally:
+
+    release_lock = threading.Lock()
+    released = False
+
+    def _release_once() -> None:
+        nonlocal released
+        with release_lock:
+            if released:
+                return
+            released = True
         _export_admission_semaphore.release()
+
+    def _run_and_release() -> Any:
+        try:
+            return fn(*args, **kwargs)
+        finally:
+            _release_once()
+
+    loop = asyncio.get_running_loop()
+    future = loop.run_in_executor(_export_executor, _run_and_release)
+    future.add_done_callback(lambda _: _release_once())
+    return await future
 
 
 class _ExportBusySentinel:

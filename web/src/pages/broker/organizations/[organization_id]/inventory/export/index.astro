@@ -245,7 +245,20 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
       // immediately invalidate the stale confirmation client-side too, so
       // Download is never clickable against a preview that no longer
       // describes what would actually be downloaded.
+      //
+      // Independent review amendment (2026-10-16, round 2): invalidating
+      // state synchronously is not enough on its own -- a *preview request
+      // already in flight* when the user changes the selection/format/
+      // profile (or starts a second preview) must never have its late
+      // response re-enable Download. `previewGeneration` is bumped by
+      // every invalidation (including starting a new preview); each
+      // preview request captures the generation it started at and
+      // discards its own response if that generation is no longer
+      // current by the time the response arrives.
+      let previewGeneration = 0;
+
       function invalidatePreview(message) {
+        previewGeneration += 1;
         lastFingerprint = null;
         downloadButton.disabled = true;
         if (message) statusEl.textContent = message;
@@ -339,6 +352,11 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
           return;
         }
         invalidatePreview("Loading preview…");
+        // Captured immediately after invalidatePreview() bumps the
+        // counter, so this request's own "Loading preview…" invalidation
+        // does not make it discard itself -- only a *later* invalidation
+        // (another change, or another preview click) does.
+        const myGeneration = previewGeneration;
 
         const body = {
           draft_ids: draftIds,
@@ -361,10 +379,20 @@ const downloadPath = `/broker/organizations/${organizationId}/inventory/export/d
             body: JSON.stringify(body),
           });
         } catch {
-          statusEl.textContent = "Preview failed: network error.";
+          if (myGeneration === previewGeneration) {
+            statusEl.textContent = "Preview failed: network error.";
+          }
           return;
         }
         const data = await response.json().catch(() => ({}));
+        // The selection/format/profile changed (or another preview
+        // started) while this request was in flight -- this response no
+        // longer describes what the user currently has selected, so it
+        // must never re-enable Download or overwrite the newer status/
+        // results the later generation already established.
+        if (myGeneration !== previewGeneration) {
+          return;
+        }
         if (response.status !== 200) {
           statusEl.textContent = `Preview failed: ${data.error ?? response.status}`;
           return;

@@ -909,7 +909,47 @@ def main() -> int:
         export_page_ok = status == 200
         ok &= export_page_ok
         print(
-            f"12. The new built Astro SSR export UI page renders -> {'OK' if export_page_ok else 'FAIL'}\n"
+            f"12. The new built Astro SSR export UI page renders -> {'OK' if export_page_ok else 'FAIL'}"
+        )
+
+        # Independent review Finding 6 (2026-10-16, round 2): an HTTP 200
+        # on the SSR page alone proves nothing about the client-side
+        # JavaScript actually working. Drives a real headless-Chromium
+        # browser against this exact already-running stack: selection,
+        # format change, NautiX profile entry, warning disclosure, the
+        # Finding 1 async stale-preview race, and a genuine
+        # browser-triggered download with real downloaded bytes.
+        playwright_proc = subprocess.run(
+            [
+                "node",
+                str(WEB_DIR / "scripts" / "inspect_export_ui_playwright.mjs"),
+                "--web-base",
+                web_base,
+                "--org-id",
+                _ORG_A,
+                "--session-cookie",
+                _mint_cookie(_ACCOUNT_A),
+                "--listing-id",
+                listing_id,
+                "--draft-id",
+                draft_id,
+            ],
+            cwd=WEB_DIR,
+            capture_output=True,
+            text=True,
+            # A real headless-Chromium launch alone can cost ~10s on a cold
+            # cache, plus 14 real browser actions and four explicit 10s
+            # `waitFor` bounds -- 120s proved too tight on this machine.
+            timeout=240,
+        )
+        print(playwright_proc.stdout, end="")
+        if playwright_proc.stderr:
+            print(playwright_proc.stderr, file=sys.stderr, end="")
+        browser_ui_ok = playwright_proc.returncode == 0
+        ok &= browser_ui_ok
+        print(
+            f"13. Real headless-browser UI exercise (selection/preview/NautiX/race/download) -> "
+            f"{'OK' if browser_ui_ok else 'FAIL'}\n"
         )
 
         print("BROKER INVENTORY PORTABILITY EXPORT RESULT ->", "PASS" if ok else "FAIL")
