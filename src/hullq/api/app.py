@@ -464,47 +464,53 @@ async def _run_export_job(fn: Any, *args: Any, **kwargs: Any) -> Any:
     admission gate is already saturated rather than queuing indefinitely;
     the caller must then return 429 `export_busy` immediately.
 
-    Independent review amendment (2026-10-16, round 2): the semaphore
-    slot represents the real worker-thread job's own lifetime, never the
-    HTTP request coroutine's `await` lifetime. If the calling route's
-    task is cancelled (the client disconnected) while *fn* is already
-    running on its executor thread, that thread keeps running to
+    Independent review amendment (2026-10-16, round 3 -- Finding A): the
+    admission slot's lifetime MUST be bound to the real
+    `concurrent.futures.Future` that `_export_executor.submit()` returns,
+    never to the `asyncio.Future` wrapper that `await`ing it exposes to
+    the caller. `asyncio.Future.cancel()` unconditionally transitions a
+    still-pending asyncio future to CANCELLED -- firing its done
+    callbacks immediately -- the instant the awaiting Task is cancelled
+    (e.g. the client disconnects), regardless of whether the *real*
+    underlying `concurrent.futures.Future` could actually be cancelled.
+    `concurrent.futures.Future.cancel()` only succeeds while the job has
+    not yet started running on a worker thread; once a worker has picked
+    it up, `cancel()` returns `False` and that thread keeps running to
     completion regardless -- `asyncio`/`concurrent.futures` cannot force-
-    stop a running thread -- so releasing the slot on cancellation (the
-    previous implementation's `finally` around the `await`) would free an
-    admission slot while a real job is still actively using one,
-    letting concurrently *running* jobs exceed `_EXPORT_MAX_CONCURRENT_JOBS`.
-    The release now happens exactly once, from whichever of two paths
-    actually reaches a terminal state first: *fn* itself finishing on its
-    worker thread (the common case), or the future being cancelled before
-    a worker ever started it (queued-but-never-run, the only case where
-    *fn*'s own `finally` never executes) -- guarded by a lock so a narrow
-    race between the two paths can never double-release the semaphore.
+    stop a running thread. Round 2's fix attached the release callback to
+    this asyncio-level wrapper (via `future.add_done_callback`), so it
+    still fired the instant the *caller's* await was cancelled even while
+    *fn* was still actively running on its worker thread -- freeing an
+    admission slot a real job was still using and letting concurrently
+    *running* jobs exceed `_EXPORT_MAX_CONCURRENT_JOBS` (round 2's lock
+    only prevented a *double* release, not this earlier *premature* one).
+
+    Attaching the release exclusively to the real `concurrent.futures.
+    Future`'s own `add_done_callback` instead means it fires only when
+    that future is genuinely done: *fn* actually returned or raised on
+    its worker thread, or the job was genuinely cancelled *before* any
+    worker ever started it. `concurrent.futures.Future.add_done_callback`
+    guarantees exactly one invocation per registered callback -- either
+    immediately (synchronously, in the calling thread) if the future is
+    already done, or exactly once later from the worker thread that
+    completes it -- so no additional locking is needed to prevent a
+    double release; the only other release path (a `submit()` failure,
+    which never produces a future to attach a callback to) is mutually
+    exclusive with it.
     """
     if not _export_admission_semaphore.acquire(blocking=False):
         return _EXPORT_BUSY
 
-    release_lock = threading.Lock()
-    released = False
-
-    def _release_once() -> None:
-        nonlocal released
-        with release_lock:
-            if released:
-                return
-            released = True
+    try:
+        job_future = _export_executor.submit(fn, *args, **kwargs)
+    except BaseException:
         _export_admission_semaphore.release()
+        raise
 
-    def _run_and_release() -> Any:
-        try:
-            return fn(*args, **kwargs)
-        finally:
-            _release_once()
+    job_future.add_done_callback(lambda _future: _export_admission_semaphore.release())
 
     loop = asyncio.get_running_loop()
-    future = loop.run_in_executor(_export_executor, _run_and_release)
-    future.add_done_callback(lambda _: _release_once())
-    return await future
+    return await asyncio.wrap_future(job_future, loop=loop)
 
 
 class _ExportBusySentinel:
