@@ -1,5 +1,7 @@
 # HullQ — Customer-First Strategy & Deliberately Distinctive Brand
 
+> **Superseding Owner category/launch scope (2026-10-22/23):** HullQ is one future **Sail + Power** technical marketplace with buyer excellence and broker excellence on equal footing, governed by the [Sail+Power Owner decision](HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md), [post-0088 reconciliation](POST_SLICE_0088_SAIL_POWER_CLAIM_AND_GAP_RECONCILIATION_2026-10-23.md), and tracking [#372](https://github.com/StradaDelSole/HullQ/issues/372). Sail-specific copy, customer segments and organic acquisition experiments in these historical strategy records are **domain-specific prototypes, not the exclusive product identity**. The tagline “Built for sailing. Not everything that floats.” is **not appropriate as the overall HullQ positioning** under the Owner's accepted dual-domain decision. “Nice yacht. Wrong keel.” remains optional Sail-specific creative territory, not a blanket Power product claim. No Sail-only/C-light external product release or broker-product pilot; no premature Power capability claims, campaign authorization or Launch Pack bypass.
+
 **Status:** ACCEPTED OWNER DIRECTION — 2026-10-20  
 **Decision type:** Product strategy, positioning, communication, prioritization  
 **Applies to:** Future product/slice selection, UX, broker/buyer workflows, go-to-market, copywriting and brand reviews  

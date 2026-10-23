@@ -348,3 +348,7 @@ For product-copy and marketing choices, also apply [`docs/HULLQ_CUSTOMER_FIRST_B
 ## Owner-accepted humor boundary and marketing/product voice — 2026-10-21
 
 See [`docs/HULLQ_BRAND_VOICE_AND_WIT_2026-10-21.md`](HULLQ_BRAND_VOICE_AND_WIT_2026-10-21.md). A restrained, dry, intelligent wit is accepted for appropriate marketing/editorial/low-stakes moments. **Marketing may provoke; operational UI must first be accurate, accessible and actionable.** Do not insert jokes where broker imports/exports fail, where data or media rights are disputed, where security/privacy is relevant, or where customers need clear recovery steps. Use substantiated technical truth, avoid shaming customers or brokers and keep localization/accessibility obligations intact.
+
+## Binding dual-domain brand and evidence boundary — 2026-10-22
+
+The [Sail+Power Owner decision](HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md) supersedes historic Sail-only global brand/sample directions. Sail-focused examples (e.g. keel-oriented humor) are Sail-subdomain-only until approved; Power users require their own correct technically evidenced language. Unknown, issuer provenance, conflict and conditional Power measurements must remain intelligible; no public Sail-only/C-light interim product.

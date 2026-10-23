@@ -448,3 +448,7 @@ The Owner's later accepted strategic direction is recorded in [`docs/HULLQ_CUSTO
 ## Owner-accepted broker acquisition positioning — 2026-10-21
 
 See [`docs/HULLQ_CUSTOMER_ACQUISITION_AND_DIFFERENTIATION_2026-10-21.md`](HULLQ_CUSTOMER_ACQUISITION_AND_DIFFERENTIATION_2026-10-21.md). The first broker proposition should be **additive rather than anti-incumbent**: preserve existing distribution channels, minimise data-entry/onboarding risk, protect authorised data portability and build **measurable** qualified buyer context, without promising already-proven lead volume or requiring exclusivity. Proposed founding-broker discussions are discovery only until current security, external-data onboarding and launch readiness gates permit real inventory or pilot activation. This does not supersede the requirements or mandatory benchmarks above.
+
+## Later binding Sail+Power launch boundary — 2026-10-22
+
+Both specialist Sail and Power products share broker Excellence, branding, lawful portability, true zero-lead reporting, lead operations, rights and verified onboarding. Internal Sail-first building is not an external Sail-only pilot. The Owner decision [#366](https://github.com/StradaDelSole/HullQ/issues/366) and implementation tracker [#372](https://github.com/StradaDelSole/HullQ/issues/372) control future category-specific broker Search-fit, importer/exporter classification and conditionally supported concrete claims. No change to original safety or Owner approval gates.

@@ -147,3 +147,7 @@ Where customer convenience conflicts with truth, safety, authorization or proven
 The Owner has additionally accepted **customer-first strategy over competitor-following** and **deliberate differentiation/polarization through both product behavior and communication**. The controlling detail, six product stances, copy examples and future-decision filter are recorded in [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md).
 
 This refines, rather than replaces, the buyer/broker and exceptional-quality standards above: competitor research remains useful as a falsification/usability reference, but never automatically determines feature priorities. Deliberate contrast targets misleading industry practices, **never customers**. No change to accepted slice sequence, architecture invariants or launch gates follows from this addendum alone.
+
+## Binding dual-domain customer interpretation — 2026-10-22
+
+The accepted [Sail+Power Owner decision](HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md) makes both categories equal future buyer discovery domains with shared broker Excellence. Sail-first research/examples are not a product-wide Sail-only scope, external pilot, or permission to publish incomplete Power technical claims. Prior truth, safety and customer-first standards remain intact.

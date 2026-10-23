@@ -56,7 +56,7 @@ Before an actual external broker is permitted to upload inventory into HullQ pro
 
 **Tracking/implementation ownership:** [Issue #355](https://github.com/StradaDelSole/HullQ/issues/355) is the **named mandatory pre-pilot runtime-hardening work owner/stop-go tracker**. A future explicitly Owner-selected and independently accepted bounded remediation slice (or multiple separately sized slices, plus real provider/ops proof) must close each applicable finding **before the first real file is accepted**. An issue number is not a selected Slice ID; **no SLICE-0089 is selected automatically**. The final PASS/GO record must link exact implementation/closure HEADs, real adversarial parser/workload tests, active host/provider/process evidence and named accountable operational verification, not review prose alone.
 
-The Owner-selected **SLICE-0088** remains READY for synthetic/disposable test-data-only eight-format **export development**, including its own resource-isolation safety test. It is **not** the importer hardening slice and does not authorize real broker uploads, external vendor integrations, live pilots or production data.
+The Owner-selected **SLICE-0088** remains active for synthetic/disposable test-data-only **export development**, including its own resource-isolation safety test. Per the 2026-10-16 Owner-accepted scope amendment, its export target is seven formats (CSV, TSV, XLSX, XLS, ODS, structured JSON, NautiX 1.4); XLSB export is explicitly deferred, tracked in [GitHub issue #362](https://github.com/StradaDelSole/HullQ/issues/362), not cancelled. It is **not** the importer hardening slice and does not authorize real broker uploads, external vendor integrations, live pilots or production data.
 
 ## Why this is hard-gated
 
