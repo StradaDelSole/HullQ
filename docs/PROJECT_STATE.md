@@ -381,7 +381,7 @@ SLICE-0089 — OWNER-SELECTED / docs READY candidate; NOT YET STARTABLE
 
 **Remaining gates:** Production Readiness `IN_PROGRESS`, Launch Pack `NOT_STARTED`, the pre-external-broker-upload safety STOP tracked in issue #355, external provider/HA/backup/restore, the mandatory periodic broker engagement reports (`REQ-BROKER-028`), owner-direct trust/publication, buyer persistence/alerts and appropriate compliance remain separately open. No real external pilot or public Sail-only/Power-only launch is authorized. No SLICE-0089 implementation is preselected.
 
-**Prior accepted state:** SLICE-0087 and the nine technical hard Search dimensions remain unchanged. The Owner has not yet run the local `FINISH_SLICE.bat 0088`; do not claim the local worktree is closed before its observed success.
+**Prior accepted state:** SLICE-0087 and the nine technical hard Search dimensions remain unchanged. The Owner subsequently submitted an explicit successful local `FINISH_SLICE.bat 0088` transcript: main fast-forward to `feb1f4af03e300b232643a021b73d9a7d9fc427b`, Slice-0088 worktree and local/remote implementation branch safely removed. That historical transcript remains authoritative for local completion.
 
 ## Development workflow
 
@@ -396,6 +396,6 @@ SLICE-0089 — OWNER-SELECTED / docs READY candidate; NOT YET STARTABLE
 - acceptance closure follows implementation merge and advances `PROJECT_STATE_ACCEPTED_SLICE` atomically;
 - `FINISH_SLICE.bat` closes the local slice only after remote closure is independently reviewed and merged;
 - the next slice begins only after reassessment/readiness and uses a fresh Claude conversation;
-- the mandatory post-SLICE-0056 workflow reassessment remains PASS; SLICE-0079 through SLICE-0088 are Owner-accepted with reviewed implementation and separate closure. Owner-local `FINISH_SLICE.bat 0088` must be performed only after this closure merges; its completion is not asserted. All real provider/data/pilot/launch gates remain unchanged; `LONG_KEEL` stays publicly unsupported and nine public technical Search dimensions remain accepted. No later slice starts automatically.
+- the mandatory post-SLICE-0056 workflow reassessment remains PASS; SLICE-0079 through SLICE-0088 are Owner-accepted with reviewed implementation and separate closure. Owner-local `FINISH_SLICE.bat 0088` was subsequently observed SUCCESS after acceptance closure merged; this later reassessment records that fact without rewriting the historical closure document. All real provider/data/pilot/launch gates remain unchanged; `LONG_KEEL` stays publicly unsupported and nine public technical Search dimensions remain accepted. No later slice starts automatically.
 
 For exact hashes, amendments, gate runs and review history, read the corresponding acceptance closure rather than expanding this file into a second historical log.
