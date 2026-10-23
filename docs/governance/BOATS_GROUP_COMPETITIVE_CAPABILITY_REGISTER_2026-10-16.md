@@ -71,3 +71,15 @@
 - NautiX 1.4 open standard and XSD: https://www.nautic-network.org/documentation
 
 **No feature in this ledger is claimed delivered solely because it appears here.** A later dated current vendor check and exact repo reconciliation are mandatory before technical selection.
+
+## Owner-accepted customer-first positioning clarification — 2026-10-20
+
+This register is **external research and explicit feature disposition**, not the controlling source of product strategy or permission to imitate competitors. See [`docs/HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md`](../HULLQ_CUSTOMER_FIRST_BRAND_POSITIONING_2026-10-20.md) for the Owner's accepted customer-first, distinctively outspoken product/brand direction. Existing accepted P0 work, external-licensing limits, runtime STOP gates and actual evidence-based benchmarks remain mandatory. New items require a real buyer/broker outcome and normal Owner-selected slice readiness; the presence of an incumbent feature is never enough by itself.
+
+## Owner-accepted acquisition lens — 2026-10-21
+
+The additional accepted [customer acquisition and competitor differentiation strategy](../HULLQ_CUSTOMER_ACQUISITION_AND_DIFFERENTIATION_2026-10-21.md) treats incumbent scale, existing broker workflows and distribution as serious realities while deliberately **not** competing primarily on listing count, feature parity or budget. For every BG-xx consideration, distinguish mandatory competitive usability evidence and buyer/broker prerequisites from features that have no measured customer benefit. Any vendor statistics or comparisons intended for external communication need fresh source verification. This direction does not waive already accepted P0 delivery, integration licences, external broker STOP or paid/broad launch gates.
+
+## Post-0088 verified implementation boundary and Sail+Power direction — 2026-10-23
+
+BG-01 / broker-controlled inventory export is now **Owner-accepted SLICE-0088** in exactly seven genuine formats: CSV, TSV, XLSX, XLS, ODS, JSON, NautiX 1.4. XLSB *export* remains deferred (#362), XLSB *import* retained; no live external portal feeds or third-party entitlement. The original 0087-based matrix above is a dated historical snapshot, not current code status. The Owner's dual-domain decision [#366](https://github.com/StradaDelSole/HullQ/issues/366) and post-0088 [implementation tracker #372](https://github.com/StradaDelSole/HullQ/issues/372) require future category-aware importer/exporter and exact evidence from concrete Sail/Power boat claims, not copying external portal features. BG-04/05 factual periodic reporting remains open (#357) and recommended for SLICE-0089, subject to independent readiness and explicit START. No premature production/pilot permission.
