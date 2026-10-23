@@ -11,7 +11,7 @@
 <!-- SUFFICIENT_SEARCH_VOLUME_FOR_BROKER_INSIGHTS_STATUS: NOT_REACHED -->
 <!-- POST_PILOT_REAL_BROKER_VALIDATION_STATUS: NOT_STARTED -->
 
-<!-- REQ_BROKER_022_STATUS: PENDING -->
+<!-- REQ_BROKER_022_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_023_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_024_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_025_STATUS: PENDING -->
@@ -49,7 +49,7 @@ IMPLEMENTED
 | Requirement | Capability | Timing class | Current status |
 |---|---|---|---|
 | REQ-BROKER-006 | explicit sale/outcome recording | mandatory before paid broker activation / broad public launch | IMPLEMENTED by SLICE-0074 |
-| REQ-BROKER-022 | inventory portability / no lock-in export | mandatory before paid broker activation / broad public launch | PENDING |
+| REQ-BROKER-022 | inventory portability / no lock-in export | mandatory before paid broker activation / broad public launch | IMPLEMENTED — Owner-accepted SLICE-0088, one broker-owned read-only bounded Select→Preview→Download workflow with seven genuine CSV/TSV/XLSX/XLS/ODS/JSON/NautiX 1.4 outputs and preflight fingerprint/rights/loss evidence. XLSB export deferred (#362); no remote feed/sync/pilot authorization. |
 | REQ-BROKER-023 | broker identity / branding preservation | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0063 |
 | REQ-BROKER-024 | connectivity-resilient draft/recovery behavior | launch/pilot baseline commitment | IMPLEMENTED by SLICE-0062 |
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
