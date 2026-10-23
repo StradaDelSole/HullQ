@@ -13,8 +13,10 @@
 
 An authorized broker opens its own Organization's performance page, reviews a clearly dated, source-defined factual portfolio and per-listing report, prints or downloads a shareable broker-branded representation, and opts in/out of periodic delivery. A deterministic, durable bounded dispatcher records which report period was due, generated and delivered/failed, including zero-lead windows. Repeated scheduler ticks do not double send. A failed attempt is visible/retryable without silently pretending delivery succeeded. This builds on the existing SLICE-0075 read model, not a new general analytics platform.
 
-**ONE-CAPABILITY CHECK:** PASS — one factual report as view/print/download and opt-in periodic delivery variants, with shared metric projection, not separate new statistics products. No paid ranking, Search-demand insights or external YachtWorld measurement.
-**VISIBLE-RESULT CHECK:** PASS only on disposable PostgreSQL18/FastAPI/built Astro SSR + Playwright: Organization A prints/downloads its own accurately branded report, selects a bounded schedule, a deterministic worker tick records one expected period and one delivery, replay is idempotent, Organization B cannot see A's report; a genuinely zero-lead period is represented, not omitted.
+**ONE-CAPABILITY CHECK:** PASS  
+One factual report as view/print/download and opt-in periodic delivery variants, with shared metric projection, not separate new statistics products. No paid ranking, Search-demand insights or external YachtWorld measurement.
+**VISIBLE-RESULT CHECK:** PASS  
+Real PASS evidence required in implementation on disposable PostgreSQL18/FastAPI/built Astro SSR + Playwright: Organization A prints/downloads its own accurately branded report, selects a bounded schedule, a deterministic worker tick records one expected period and one delivery, replay is idempotent, Organization B cannot see A's report; a genuinely zero-lead period is represented, not omitted.
 **MVP / BROKER GATE:** REQ-BROKER-028 and MVP-BROKER-008 stay PENDING until independently reviewed implementation + separate formal Owner acceptance closure. BROKER_WORKSPACE_PRODUCT_COMPLETION_STATUS remains OPEN; Production Readiness IN_PROGRESS, Launch Pack NOT_STARTED.
 
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS  
