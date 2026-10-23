@@ -3,7 +3,7 @@
 **Date:** 2026-10-24 (Europe/Vienna)  
 **Baseline:** SLICE-0088 Owner accepted, implementation PR #368 and formal closure PR #371 merged, local FINISH successful; nine technical Sail Search dimensions.  
 **Owner selection:** Prioritizes SLICE-0089 as one coherent truthful broker reporting/delivery slice (tracked #357) after the post-0088 Sail+Power and brand docs.  
-**Current blocking prerequisite:** newly reported filelock CVE-2026-112940 in baseline (issue #373, security PR #374) — all dependent docs/feature PRs must await separate Owner-approved fix and exact green CI; no audit ignore.  
+**Resolved security prerequisite:** filelock CVE-2026-112940 was fixed in independently reviewed, Owner-accepted merged PR #374. Issue #373 is closed; future PRs retain exact-head green dependency-audit requirement without any ignore.  
 
 ## Product priority outcome
 
