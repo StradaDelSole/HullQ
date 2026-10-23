@@ -56,8 +56,11 @@ of a host-only cookie carrying the claims directly).
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import json
 import os
+import threading
 import time
 import uuid
 from datetime import UTC, datetime
@@ -132,6 +135,14 @@ from hullq.application.inventory_editing import (
     get_inventory_edit_detail,
     save_organization_listing_claim,
     save_organization_listing_offer,
+)
+from hullq.application.inventory_export import (
+    ExportDownloadOutcome,
+    ExportPreflightOutcome,
+    ExportSelectionItem,
+    NautixExportProfile,
+    get_export_download,
+    get_export_preflight,
 )
 from hullq.application.inventory_search import DraftMaxSearchOutcome
 from hullq.application.lead_operations import (
@@ -214,6 +225,7 @@ from hullq.application.search_sensitivity import (
 )
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.import_intake import MAX_IMPORT_FILE_BYTES
+from hullq.domain.inventory_export import ExportFormat
 from hullq.domain.lead_operations import LeadCloseReason, LeadOperationalStatus
 from hullq.domain.lead_provenance import DiscoverySurface
 from hullq.domain.listing_telemetry import ListingViewOperationId
@@ -412,6 +424,100 @@ _LOGOUT_CSRF_HEADER_VALUE = "broker-logout-v1"
 #: be replayed against the multi-format import upload/mapping/confirm
 #: mutation routes.
 _IMPORT_INTAKE_CSRF_HEADER_VALUE = "broker-import-intake-v1"
+
+#: SLICE-0088: the identical fixed-header + exact-Origin CSRF discipline as
+#: every other authenticated broker-write channel, with its own distinct
+#: header value so a valid draft/owner-direct/lifecycle/gallery/import CSRF
+#: header can never be replayed against the export preflight/download
+#: routes.
+_INVENTORY_EXPORT_CSRF_HEADER_VALUE = "broker-inventory-export-v1"
+
+#: SLICE-0088 independent review amendment (2026-10-16): a selection body
+#: is only a bounded list of short id strings (`MAX_EXPORT_SELECTION_ITEMS`
+#: * a short id each) plus a small NautiX profile -- generous but bounded,
+#: checked from `Content-Length` before any byte of the body is read, same
+#: discipline as the media-upload route below.
+_MAX_EXPORT_REQUEST_BYTES = 200_000
+
+#: Bounded concurrent heavy export jobs (DB snapshot read + serialization),
+#: run on this small dedicated thread pool -- never on the asyncio event
+#: loop thread, and never on Starlette's own much larger default sync-route
+#: thread pool, so a burst of export requests cannot itself starve that
+#: shared pool for ordinary Search/health/broker traffic. Admission
+#: (`_export_admission_semaphore`) is acquired *before* this pool is even
+#: asked to run anything -- i.e. before the PostgreSQL snapshot read
+#: begins, not only around serialization (independent review amendment,
+#: 2026-10-16: a prior revision bounded only the write/serialize step,
+#: after the DB snapshot had already run unbounded on the request's own
+#: async task).
+_EXPORT_MAX_CONCURRENT_JOBS = 3
+_export_executor = concurrent.futures.ThreadPoolExecutor(
+    max_workers=_EXPORT_MAX_CONCURRENT_JOBS, thread_name_prefix="hullq-export"
+)
+_export_admission_semaphore = threading.Semaphore(_EXPORT_MAX_CONCURRENT_JOBS)
+
+
+async def _run_export_job(fn: Any, *args: Any, **kwargs: Any) -> Any:
+    """Run *fn* on the bounded `_export_executor` pool, with admission
+    control acquired *before* dispatch -- never blocking the calling
+    asyncio event loop thread. Returns a sentinel `_EXPORT_BUSY` if the
+    admission gate is already saturated rather than queuing indefinitely;
+    the caller must then return 429 `export_busy` immediately.
+
+    Independent review amendment (2026-10-16, round 3 -- Finding A): the
+    admission slot's lifetime MUST be bound to the real
+    `concurrent.futures.Future` that `_export_executor.submit()` returns,
+    never to the `asyncio.Future` wrapper that `await`ing it exposes to
+    the caller. `asyncio.Future.cancel()` unconditionally transitions a
+    still-pending asyncio future to CANCELLED -- firing its done
+    callbacks immediately -- the instant the awaiting Task is cancelled
+    (e.g. the client disconnects), regardless of whether the *real*
+    underlying `concurrent.futures.Future` could actually be cancelled.
+    `concurrent.futures.Future.cancel()` only succeeds while the job has
+    not yet started running on a worker thread; once a worker has picked
+    it up, `cancel()` returns `False` and that thread keeps running to
+    completion regardless -- `asyncio`/`concurrent.futures` cannot force-
+    stop a running thread. Round 2's fix attached the release callback to
+    this asyncio-level wrapper (via `future.add_done_callback`), so it
+    still fired the instant the *caller's* await was cancelled even while
+    *fn* was still actively running on its worker thread -- freeing an
+    admission slot a real job was still using and letting concurrently
+    *running* jobs exceed `_EXPORT_MAX_CONCURRENT_JOBS` (round 2's lock
+    only prevented a *double* release, not this earlier *premature* one).
+
+    Attaching the release exclusively to the real `concurrent.futures.
+    Future`'s own `add_done_callback` instead means it fires only when
+    that future is genuinely done: *fn* actually returned or raised on
+    its worker thread, or the job was genuinely cancelled *before* any
+    worker ever started it. `concurrent.futures.Future.add_done_callback`
+    guarantees exactly one invocation per registered callback -- either
+    immediately (synchronously, in the calling thread) if the future is
+    already done, or exactly once later from the worker thread that
+    completes it -- so no additional locking is needed to prevent a
+    double release; the only other release path (a `submit()` failure,
+    which never produces a future to attach a callback to) is mutually
+    exclusive with it.
+    """
+    if not _export_admission_semaphore.acquire(blocking=False):
+        return _EXPORT_BUSY
+
+    try:
+        job_future = _export_executor.submit(fn, *args, **kwargs)
+    except BaseException:
+        _export_admission_semaphore.release()
+        raise
+
+    job_future.add_done_callback(lambda _future: _export_admission_semaphore.release())
+
+    loop = asyncio.get_running_loop()
+    return await asyncio.wrap_future(job_future, loop=loop)
+
+
+class _ExportBusySentinel:
+    __slots__ = ()
+
+
+_EXPORT_BUSY = _ExportBusySentinel()
 
 #: SLICE-0070 contract §9: bounded request size before any unbounded
 #: buffering, mirroring the media-upload Content-Length discipline --
@@ -991,6 +1097,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _IMPORT_INTAKE_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_inventory_export_csrf(request: Request) -> None:
+        # SLICE-0088: identical exact-Origin-match + fixed non-simple header
+        # discipline as every other authenticated broker-write channel,
+        # with its own distinct header value (see
+        # `_INVENTORY_EXPORT_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _INVENTORY_EXPORT_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -2822,6 +2944,251 @@ def create_app(
         if outcome.name == "PUBLISHER_ROLE_REQUIRED":
             return JSONResponse({"error": "publisher_role_required"}, status_code=403)
         return None
+
+    def _export_selection_error(outcome: Any) -> JSONResponse | None:
+        # SLICE-0088: reuses the identical authorization-outcome names as
+        # `_import_intake_authorization_error`, plus the bounded-selection/
+        # profile/staleness outcomes every export entry point can return.
+        auth_error = _import_intake_authorization_error(outcome)
+        if auth_error is not None:
+            return auth_error
+        if outcome.name == "EMPTY_SELECTION":
+            return JSONResponse({"error": "empty_selection"}, status_code=400)
+        if outcome.name == "OVERSIZE_SELECTION":
+            return JSONResponse({"error": "oversize_selection"}, status_code=400)
+        if outcome.name == "UNKNOWN_ITEM":
+            # Contract: a foreign-Organization or unknown draft/listing id in
+            # the selection is indistinguishable from any other -- no
+            # per-item existence oracle.
+            return JSONResponse({"error": "unknown_item"}, status_code=400)
+        if outcome.name == "INVALID_NAUTIX_PROFILE":
+            return JSONResponse({"error": "invalid_nautix_profile"}, status_code=400)
+        if outcome.name == "MISSING_SNAPSHOT_FINGERPRINT":
+            return JSONResponse({"error": "missing_snapshot_fingerprint"}, status_code=400)
+        if outcome.name == "STALE_SELECTION":
+            return JSONResponse({"error": "stale_selection"}, status_code=409)
+        if outcome.name == "NO_EXPORTABLE_ROWS":
+            return JSONResponse({"error": "no_exportable_rows"}, status_code=422)
+        return None
+
+    def _parse_export_selection(raw_body: Any) -> list[ExportSelectionItem] | None:
+        if not isinstance(raw_body, dict):
+            return None
+        raw_drafts = raw_body.get("draft_ids", [])
+        raw_listings = raw_body.get("native_listing_ids", [])
+        if not isinstance(raw_drafts, list) or not isinstance(raw_listings, list):
+            return None
+        if not all(isinstance(v, str) and v for v in raw_drafts):
+            return None
+        if not all(isinstance(v, str) and v for v in raw_listings):
+            return None
+        selection = [ExportSelectionItem(draft_id=v) for v in raw_drafts]
+        selection.extend(ExportSelectionItem(native_listing_id=v) for v in raw_listings)
+        return selection
+
+    def _parse_nautix_profile(raw_body: dict[str, Any]) -> tuple[bool, Any]:
+        """`(ok, profile)`. `ok=False` means the shape itself is malformed
+        (caller returns `invalid_selection`); semantic validation (enum
+        membership, selection membership) happens later inside
+        `validate_nautix_profile`, surfaced as `invalid_nautix_profile`."""
+        raw_profile = raw_body.get("nautix_profile")
+        if raw_profile is None:
+            return True, None
+        if not isinstance(raw_profile, dict):
+            return False, None
+        account_token = raw_profile.get("account_token")
+        office_id = raw_profile.get("office_id")
+        sale_classes = raw_profile.get("sale_classes", {})
+        if not isinstance(account_token, str) or not isinstance(office_id, str):
+            return False, None
+        if not isinstance(sale_classes, dict) or not all(
+            isinstance(k, str) and isinstance(v, str) for k, v in sale_classes.items()
+        ):
+            return False, None
+        return True, NautixExportProfile(
+            account_token=account_token, office_id=office_id, sale_classes=dict(sale_classes)
+        )
+
+    async def _read_bounded_export_body(request: Request) -> JSONResponse | dict[str, Any]:
+        """Bound request-body size from `Content-Length` *before* reading
+        any byte of the body, then bound the *actual* streamed byte count
+        independently of that declared header (independent review
+        amendment, 2026-10-16: a declared `Content-Length` is not
+        trustworthy on its own -- a client can lie, and chunked transfer
+        encoding carries none at all). Rejects a mismatch between the
+        declared and actually-received byte count as a malformed/
+        truncated/excess request rather than silently accepting whichever
+        is smaller."""
+        raw_content_length = request.headers.get("content-length")
+        if raw_content_length is None:
+            return JSONResponse({"error": "length_required"}, status_code=411)
+        try:
+            content_length = int(raw_content_length)
+        except ValueError:
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+        if content_length < 0 or content_length > _MAX_EXPORT_REQUEST_BYTES:
+            return JSONResponse({"error": "payload_too_large"}, status_code=413)
+
+        chunks: list[bytes] = []
+        received = 0
+        async for chunk in request.stream():
+            received += len(chunk)
+            if received > _MAX_EXPORT_REQUEST_BYTES:
+                # Fail closed immediately -- never buffer past the bound
+                # regardless of what Content-Length claimed.
+                return JSONResponse({"error": "payload_too_large"}, status_code=413)
+            chunks.append(chunk)
+        if received != content_length:
+            # The declared Content-Length does not match what was actually
+            # received -- a truncated, excess, or otherwise malformed
+            # request; never parsed as if it were well-formed.
+            return JSONResponse({"error": "invalid_content_length"}, status_code=400)
+
+        raw_bytes = b"".join(chunks)
+        if not raw_bytes:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        try:
+            raw_body = json.loads(raw_bytes)
+        except json.JSONDecodeError:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        if not isinstance(raw_body, dict):
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        return raw_body
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/export/preflight")
+    async def inventory_export_preflight_route(
+        organization_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_export_csrf(request)
+
+        raw_body = await _read_bounded_export_body(request)
+        if isinstance(raw_body, JSONResponse):
+            return raw_body
+        selection = _parse_export_selection(raw_body)
+        profile_ok, nautix_profile = _parse_nautix_profile(raw_body)
+        if selection is None or not profile_ok:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+
+        def _work() -> Any:
+            conn = open_connection(resolved_database_url)
+            try:
+                return get_export_preflight(
+                    conn,
+                    session,
+                    MarketplaceOrganizationId(organization_id),
+                    selection=selection,
+                    as_of=_current_as_of(),
+                    public_base_url=_resolve_web_base_url(),
+                    nautix_profile=nautix_profile,
+                )
+            finally:
+                conn.close()
+
+        result = await _run_export_job(_work)
+        if result is _EXPORT_BUSY:
+            return JSONResponse({"error": "export_busy"}, status_code=429)
+
+        error = _export_selection_error(result.outcome)
+        if error is not None:
+            return error
+        assert result.outcome is ExportPreflightOutcome.OK
+        assert result.rows is not None
+        body = {
+            "snapshot_fingerprint": result.snapshot_fingerprint,
+            "rows": [
+                {
+                    # Stable per-Organization listing export identifier
+                    # (Required Behavior: "Return stable listing
+                    # identifiers ... in the preview") -- never omitted so
+                    # the broker can tell which selected draft/listing each
+                    # preview row corresponds to.
+                    "export_id": row.row.export_id,
+                    "source_kind": row.row.source_kind.value,
+                    "field_states": {k: v.value for k, v in row.field_states.items()},
+                    "formats": {
+                        fmt.value: {
+                            "exportable": fp.exportable,
+                            "reasons": list(fp.reasons),
+                            "warnings": list(fp.warnings),
+                        }
+                        for fmt, fp in row.formats.items()
+                    },
+                }
+                for row in result.rows
+            ],
+        }
+        return JSONResponse(body)
+
+    @app.post("/api/broker/organizations/{organization_id}/inventory/export/download")
+    async def inventory_export_download_route(organization_id: str, request: Request) -> Response:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_inventory_export_csrf(request)
+
+        raw_body = await _read_bounded_export_body(request)
+        if isinstance(raw_body, JSONResponse):
+            return raw_body
+        raw_format = raw_body.get("format")
+        if not isinstance(raw_format, str) or raw_format not in {f.value for f in ExportFormat}:
+            return JSONResponse({"error": "invalid_format"}, status_code=400)
+        selection = _parse_export_selection(raw_body)
+        profile_ok, nautix_profile = _parse_nautix_profile(raw_body)
+        if selection is None or not profile_ok:
+            return JSONResponse({"error": "invalid_selection"}, status_code=400)
+        expected_fingerprint = raw_body.get("expected_snapshot_fingerprint")
+        # Mandatory (independent review amendment, 2026-10-16): every
+        # download must be bound to an exact prior preflight observation --
+        # never silently permitted with no confirmation at all.
+        if not isinstance(expected_fingerprint, str) or not expected_fingerprint:
+            return JSONResponse({"error": "missing_snapshot_fingerprint"}, status_code=400)
+
+        def _work() -> Any:
+            conn = open_connection(resolved_database_url)
+            try:
+                return get_export_download(
+                    conn,
+                    session,
+                    MarketplaceOrganizationId(organization_id),
+                    selection=selection,
+                    export_format=ExportFormat(raw_format),
+                    as_of=_current_as_of(),
+                    public_base_url=_resolve_web_base_url(),
+                    nautix_profile=nautix_profile,
+                    expected_snapshot_fingerprint=expected_fingerprint,
+                )
+            finally:
+                conn.close()
+
+        result = await _run_export_job(_work)
+        if result is _EXPORT_BUSY:
+            return JSONResponse({"error": "export_busy"}, status_code=429)
+
+        error = _export_selection_error(result.outcome)
+        if error is not None:
+            return error
+        if result.outcome is ExportDownloadOutcome.BUSY:
+            return JSONResponse({"error": "export_busy"}, status_code=429)
+        if result.outcome is ExportDownloadOutcome.WRITE_FAILED:
+            return JSONResponse({"error": "export_write_failed"}, status_code=500)
+        assert result.outcome is ExportDownloadOutcome.OK
+        assert result.content is not None
+        assert result.content_type is not None
+        assert result.filename is not None
+        return Response(
+            content=result.content,
+            media_type=result.content_type,
+            headers={
+                "Content-Disposition": f'attachment; filename="{result.filename}"',
+                "Cache-Control": "no-store",
+                "X-Robots-Tag": "noindex",
+                "X-HullQ-Export-Included-Count": str(result.included_count),
+                "X-HullQ-Export-Rejected-Count": str(result.rejected_count),
+            },
+        )
 
     @app.post("/api/broker/organizations/{organization_id}/imports")
     async def upload_import_route(organization_id: str, request: Request) -> JSONResponse:
