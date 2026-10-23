@@ -16,10 +16,10 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest owner-accepted slice: SLICE-0088 (local FINISH pending until closure merged)
-Current queue:               SLICE-0089 — UNSELECTED / NOT READY
-Current capability:          No new slice selected; required production, trust, buyer and broker gates remain open
-Current readiness:           No SLICE-0089 READY or START authorization
+Latest owner-accepted slice: SLICE-0088 (local FINISH confirmed SUCCESS)
+Current queue:               SLICE-0089 — OWNER-SELECTED / docs READY candidate, NOT STARTABLE
+Current capability:          Periodic factual broker reporting from accepted 0075 telemetry, scoped #357
+Current readiness:           Owner START forbidden until docs READY review + green CI/repro merge; accepted security #373 remediation and exact-head CI
 ```
 
 Current boundary:
@@ -35,7 +35,8 @@ Current boundary:
 - SLICE-0085 is **Owner-accepted, fully remotely closed and locally finished**: bounded typed registry plus LOA range and qualified rudder configuration added as hard Buyer Search dimensions #3/#4, private broker Search-fit parity, five-locale real SSR proof; implementation PR #345, final review #5510329645, formal closure PR #346 and Owner-confirmed local `FINISH_SLICE.bat` 0085 on 2026-10-14. Exactly **4** public hard dimensions were accepted at 0085 closure, prior to accepted 0086's three-dimensional extension. `LONG_KEEL` remains unsupported; no new production authorization;
 - SLICE-0086 is **Owner-accepted, independently reviewed, implementation + separate closure merged and locally finished**: independent hull configuration, cockpit position and deck saloon/pilothouse structural Buyer filters, private authorized Broker Search-fit parity and durable current offered-boat claims; implementation PR #349, formal closure PR #350, Owner-confirmed local `FINISH_SLICE.bat 0086`. Exactly **7** public hard technical Search dimensions are accepted. Public subtype/legal-use categories for motorsailer, traditional and commercial sailing vessels remain deferred; no real production/pilot authorization.
 - SLICE-0087 is **Owner-accepted and implementation-merged**, exact reviewed final HEAD `88c8baa3e8451f9b0afaca776766b1f5a450f354` (PR #352, squash `e6d30f1671e6834d097068a7318a4d84c8f96e04`). Additional Buyer and private Broker Search-fit facets are inclusive overall beam min/max (one semantic dimension) and safely qualified GFK/steel/aluminium/wood hull material (one), with immutable claim revision/editor and retained real PostgreSQL18/FastAPI/built SSR proof. Both initial review Findings A/B closed; exact-head CI and manufacturer successful, Owner explicitly accepted. **9** public hard dimensions are recorded by the separate formal acceptance closure `docs/slices/SLICE-0087-acceptance-closure.md`; Owner-confirmed local `FINISH_SLICE.bat 0087` SUCCESS after the separate closure PR #353 merged;. No real provider/pilot/launch authorization;
-- SLICE-0088 is **Owner-accepted and implementation-merged**: exact reconciled final HEAD `5dbcccd61d5be8bbc5b448444d778b96ee5a0541`, implementation PR #368 squash `4cb5ec3ca03190575df1f8e753668c89d6d597f4`, all-green CI/manufacturer, separate closure `docs/slices/SLICE-0088-acceptance-closure.md`. Broker-owned Select→Preview→Download outputs seven genuine formats CSV/TSV/XLSX/XLS/ODS/JSON/NautiX 1.4. XLSB export is explicitly deferred to #362, import unchanged. `REQ-BROKER-022`/`MVP-BROKER-009` implemented in bounded portable-download scope; real broker upload, feeds, external pilot and launch remain blocked by separate gates. Local Owner `FINISH_SLICE.bat 0088` is pending.
+- SLICE-0088 is **Owner-accepted and implementation-merged**: exact reconciled final HEAD `5dbcccd61d5be8bbc5b448444d778b96ee5a0541`, implementation PR #368 squash `4cb5ec3ca03190575df1f8e753668c89d6d597f4`, all-green CI/manufacturer, separate closure `docs/slices/SLICE-0088-acceptance-closure.md`. Broker-owned Select→Preview→Download outputs seven genuine formats CSV/TSV/XLSX/XLS/ODS/JSON/NautiX 1.4. XLSB export is explicitly deferred to #362, import unchanged. `REQ-BROKER-022`/`MVP-BROKER-009` implemented in bounded portable-download scope; real broker upload, feeds, external pilot and launch remain blocked by separate gates. Owner-confirmed local `FINISH_SLICE.bat 0088` SUCCESS; canonical `main` updated to closure HEAD and implementation worktree/branch removed.
+- SLICE-0089 was subsequently Owner-selected in the post-0088 reassessment as factual periodic broker reporting, but is **not implemented and NOT STARTABLE** until exact-head independent docs-only READY/CI/repro+merge, closed security #373 and normal Owner START. No later slice is selected automatically.
 - no subsequent slice is authorized automatically.
 
 ## Historical execution ranges
@@ -45,7 +46,7 @@ Current boundary:
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0088 | accepted work; see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0089 | UNSELECTED; no implementation authorization or READY contract |
+| SLICE-0089 | OWNER-SELECTED factual periodic Broker Report; docs-only READY candidate awaiting review/CI/security merge; implementation NOT_STARTED |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
