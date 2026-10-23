@@ -1,5 +1,7 @@
 # HullQ — Canonical Project Context
 
+> **Owner vessel-market scope amendment — 2026-10-22 (binding product direction; implementation phased):** HullQ's long-term marketplace target includes **sailing and powered yachts/motorboats**, each with a dedicated technically rigorous search domain sharing truthful configuration/physical-vessel evidence and one professional broker platform. Sail is finalized **internally first** as the technical reference; Power is then developed to equivalent evidence quality. **The first external HullQ marketplace/product release and first real broker-product pilot are joint Sail+Power only**, with both complete category-appropriate technical searches; no Sail-only or public C-light interim product. Existing market research/surveys remain permitted. A complete worldwide model database is not a launch prerequisite; provenanced broker-provided facts about a *specific offered boat* may supply qualified concrete claims without impersonating verified design facts. The sail-only / non-marketplace role language below is historical and superseded **for vessel scope** by [the Owner decision](docs/HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md) and **for native marketplace supply** by previously accepted broker-first/owner-direct decisions. Existing rights, safety, launch and accepted slice processes remain unchanged.
+
 **Product:** HullQ  
 **Tagline:** Find boats by what they are.  
 **Role:** Sailboat design search engine + current-market finder; not a marketplace.

@@ -16,6 +16,8 @@
 
 This is the compact current-state entry point for HullQ. Historical implementation/review detail belongs in slice contracts, acceptance closures, retained research packages and Git history. Normative specs and accepted decisions remain authoritative where they apply.
 
+**Owner direction supersession (2026-10-22/23):** Owner accepted a **joint Sail+Power** native marketplace with **independent, equally trustworthy specialist technical searches** for both categories, Sail first only as internal reference, **no external Sail-only/C-light market release or broker product pilot**. This supersedes historical Sail-only target scope without altering the nine accepted Sail hard criteria, code, real-data STOP gates or explicit future slice/Owner governance. Canonical [decision](HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md), Owner tracking [#366](https://github.com/StradaDelSole/HullQ/issues/366), and **post-0088 source-checked claim/category implementation tracker** [#372](https://github.com/StradaDelSole/HullQ/issues/372) / [reconciliation](POST_SLICE_0088_SAIL_POWER_CLAIM_AND_GAP_RECONCILIATION_2026-10-23.md). The reconciled Sail+Power decision has not implemented Power Technical Search. Mandatory prior broker reporting #357 and pre-external-upload STOP #355 remain independent.
+
 ## Product direction
 
 HullQ is a native **broker-first mixed-supply** sailboat listing and technical-discovery marketplace:

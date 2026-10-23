@@ -1,5 +1,7 @@
 # Product Scope
 
+> **Superseding Owner product-scope direction — 2026-10-22:** HullQ's long-term product is a **single native marketplace for Sail + Power**, with **full category-specific technical discovery for both** (Sail first as validated reference; Power subsequently developed to equivalent epistemic quality) and equally important category-neutral Broker Excellence. Statements below that define HullQ permanently as Sail-only or not a native marketplace are historical; current accepted native-marketplace direction and [this new explicit Owner decision](HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md) control those narrow conflicts. The present Sail-first *implementation* scope remains in effect internally until reviewed Power implementations are accepted; **there is no Sail-only external prelaunch**. The Owner expressly requires a **joint Sail+Power initial product launch** with both substantive technical-search experiences ready. Market research and internal testing remain allowed; complete global design-model coverage is not required, and attributed broker facts about specific listed boats may inform honest search outcomes under separately approved evidence rules. No new release, slice, provider right or external broker upload is authorized.
+
 ## Product identity
 
 HullQ is a technical sailboat discovery engine and market finder. It is neither a Sailboatdata clone nor another listing marketplace.
