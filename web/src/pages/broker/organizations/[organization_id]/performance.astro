@@ -17,10 +17,18 @@ export const prerender = false;
 import { fetchOrganizationPerformance } from "../../../../lib/brokerPerformanceApi";
 import type { PerformanceWindow } from "../../../../lib/brokerPerformanceApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../lib/authConstants";
+import {
+  fetchReportSubscription,
+  setReportSubscription,
+  type ReportPeriodKind,
+  type ReportSubscriptionStatus,
+} from "../../../../lib/brokerReportSubscriptionApi";
+import { reportControlsText, SUPPORTED_LOCALES, type SupportedLocale } from "../../../../lib/brokerReportText";
 
 const organizationId = Astro.params.organization_id;
 const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
 const cookieHeader = Astro.request.headers.get("cookie");
+const originHeader = Astro.request.headers.get("origin");
 
 Astro.response.headers.set("X-Robots-Tag", "noindex");
 Astro.response.headers.set("Cache-Control", "private, no-store");
@@ -33,8 +41,65 @@ const window: PerformanceWindow | undefined = VALID_WINDOWS.includes(
   ? (requestedWindow as PerformanceWindow)
   : undefined;
 
+const requestedLocale = Astro.url.searchParams.get("locale");
+const locale: SupportedLocale = SUPPORTED_LOCALES.includes(requestedLocale as SupportedLocale)
+  ? (requestedLocale as SupportedLocale)
+  : "en";
+const rt = reportControlsText[locale];
+
+let subscriptionActionNotice: "saved" | "role_required" | "invalid_input" | "version_conflict" | "error" | null =
+  null;
+
+if (Astro.request.method === "POST" && organizationId) {
+  const formData = await Astro.request.formData();
+  if (formData.get("action") === "set_subscription") {
+    const status = formData.get("status");
+    const periodKind = formData.get("period_kind");
+    const recipientEmailRaw = formData.get("recipient_email");
+    const expectedRevision = Number(formData.get("expected_revision"));
+    const recipientEmail =
+      typeof recipientEmailRaw === "string" && recipientEmailRaw.trim()
+        ? recipientEmailRaw.trim()
+        : null;
+    if (
+      (status === "ACTIVE" || status === "INACTIVE") &&
+      (periodKind === "WEEKLY" || periodKind === "MONTHLY") &&
+      Number.isFinite(expectedRevision)
+    ) {
+      const setResult = await setReportSubscription(
+        apiBaseUrl,
+        organizationId,
+        {
+          status: status as ReportSubscriptionStatus,
+          periodKind: periodKind as ReportPeriodKind,
+          recipientEmail,
+          expectedRevision,
+        },
+        cookieHeader,
+        originHeader,
+      );
+      subscriptionActionNotice =
+        setResult.kind === "ok"
+          ? "saved"
+          : setResult.kind === "role_required"
+            ? "role_required"
+            : setResult.kind === "invalid_input"
+              ? "invalid_input"
+              : setResult.kind === "version_conflict"
+                ? "version_conflict"
+                : "error";
+    } else {
+      subscriptionActionNotice = "invalid_input";
+    }
+  }
+}
+
 const result = organizationId
   ? await fetchOrganizationPerformance(apiBaseUrl, organizationId, cookieHeader, window)
+  : ({ kind: "not_found" } as const);
+
+const subscriptionResult = organizationId
+  ? await fetchReportSubscription(apiBaseUrl, organizationId, cookieHeader)
   : ({ kind: "not_found" } as const);
 
 if (result.kind === "not_found") {
@@ -52,8 +117,21 @@ const loginUrl = `${apiBaseUrl}/api/auth/login?next=${encodeURIComponent(nextPat
 const stepUpUrl = `${loginUrl}&acr_values=${encodeURIComponent(AUTH0_MFA_STEP_UP_ACR_VALUE)}`;
 
 function windowLink(w: PerformanceWindow): string {
-  return `/broker/organizations/${organizationId}/performance?window=${w}`;
+  return `/broker/organizations/${organizationId}/performance?window=${w}&locale=${locale}`;
 }
+
+const LOCALE_LABEL: Record<SupportedLocale, string> = {
+  en: "English",
+  de: "Deutsch",
+  fr: "Français",
+  pt: "Português",
+  es: "Español",
+};
+
+const reportDownloadHref = `/broker/organizations/${organizationId}/performance/report?window=${
+  window ?? "LAST_30_DAYS"
+}&locale=${locale}`;
+const reportPrintHref = `${reportDownloadHref}&inline=1`;
 
 const WINDOW_LABEL: Record<PerformanceWindow, string> = {
   LAST_7_DAYS: "Last 7 days",
@@ -118,6 +196,29 @@ function formatLatency(seconds: number | null): string {
                 <a href={windowLink(w)}>{WINDOW_LABEL[w]}</a>
               ))}{" "}
             </nav>
+
+            <h2>{rt.reportHeading}</h2>
+            <form method="get" action={`/broker/organizations/${organizationId}/performance`}>
+              <input type="hidden" name="window" value={window ?? "LAST_30_DAYS"} />
+              <label for="report-locale">{rt.localeLabel}</label>{" "}
+              <select id="report-locale" name="locale">
+                {SUPPORTED_LOCALES.map((l) => (
+                  <option value={l} selected={l === locale}>
+                    {LOCALE_LABEL[l]}
+                  </option>
+                ))}
+              </select>{" "}
+              <button type="submit">{rt.saveLabel}</button>
+            </form>
+            <p>
+              <a id="download-report-link" href={reportDownloadHref} download>
+                {rt.downloadLabel}
+              </a>
+              {" | "}
+              <a id="print-report-link" href={reportPrintHref} target="_blank" rel="noopener">
+                {rt.printLabel}
+              </a>
+            </p>
 
             <h2>Organization summary</h2>
             <ul>
@@ -224,6 +325,69 @@ function formatLatency(seconds: number | null): string {
                 </tbody>
               </table>
             )}
+
+            <h2>{rt.subscriptionHeading}</h2>
+            {subscriptionActionNotice === "saved" ? (
+              <p id="subscription-saved-notice" role="status">{rt.savedNotice}</p>
+            ) : subscriptionActionNotice === "role_required" ? (
+              <p role="alert">{rt.errorRoleRequired}</p>
+            ) : subscriptionActionNotice === "invalid_input" ? (
+              <p role="alert">{rt.errorInvalidInput}</p>
+            ) : subscriptionActionNotice === "version_conflict" ? (
+              <p role="alert">{rt.errorVersionConflict}</p>
+            ) : subscriptionActionNotice === "error" ? (
+              <p role="alert">{rt.errorGeneric}</p>
+            ) : null}
+            {subscriptionResult.kind === "ok" ? (
+              <form method="post">
+                <input type="hidden" name="action" value="set_subscription" />
+                <input
+                  type="hidden"
+                  name="expected_revision"
+                  value={subscriptionResult.data.revision}
+                />
+                <p>
+                  <label for="sub-status">{rt.statusLabel}</label>{" "}
+                  <select id="sub-status" name="status">
+                    <option value="INACTIVE" selected={subscriptionResult.data.status === "INACTIVE"}>
+                      {rt.statusInactive}
+                    </option>
+                    <option value="ACTIVE" selected={subscriptionResult.data.status === "ACTIVE"}>
+                      {rt.statusActive}
+                    </option>
+                  </select>
+                </p>
+                <p>
+                  <label for="sub-period-kind">{rt.periodKindLabel}</label>{" "}
+                  <select id="sub-period-kind" name="period_kind">
+                    <option
+                      value="WEEKLY"
+                      selected={subscriptionResult.data.period_kind === "WEEKLY"}
+                    >
+                      {rt.periodWeekly}
+                    </option>
+                    <option
+                      value="MONTHLY"
+                      selected={subscriptionResult.data.period_kind === "MONTHLY"}
+                    >
+                      {rt.periodMonthly}
+                    </option>
+                  </select>
+                </p>
+                <p>
+                  <label for="sub-recipient">{rt.recipientLabel}</label>{" "}
+                  <input
+                    id="sub-recipient"
+                    type="email"
+                    name="recipient_email"
+                    placeholder={rt.recipientPlaceholder}
+                    value={subscriptionResult.data.recipient_email ?? ""}
+                  />
+                </p>
+                <p class="hint">{rt.activeRequiresRecipientHint}</p>
+                <button id="subscription-save-button" type="submit">{rt.saveLabel}</button>
+              </form>
+            ) : null}
           </>
         )
       }
