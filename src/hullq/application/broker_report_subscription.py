@@ -127,7 +127,7 @@ def set_report_subscription(
     elif isinstance(raw_recipient_email, str):
         try:
             recipient_email = normalize_notification_recipient_email(raw_recipient_email)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return ReportSubscriptionResultView(outcome=ReportSubscriptionOutcome.INVALID_INPUT)
     else:
         return ReportSubscriptionResultView(outcome=ReportSubscriptionOutcome.INVALID_INPUT)
@@ -145,6 +145,7 @@ def set_report_subscription(
         updated_by_account_id=session.account_id,
         expected_revision=expected_revision,
         bootstrap_anchor_date=as_of.date(),
+        bootstrap_initial_period_kind=period_kind,
     )
     if not result.updated:
         return ReportSubscriptionResultView(

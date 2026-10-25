@@ -309,7 +309,9 @@ def main() -> int:
             )
         web_ready = _wait_for_http(f"{web_base}/broker")
         ok &= web_ready
-        print(f"2. Astro SSR serving (real built Node process) -> {'OK' if web_ready else 'FAIL'}\n")
+        print(
+            f"2. Astro SSR serving (real built Node process) -> {'OK' if web_ready else 'FAIL'}\n"
+        )
 
         if not ok:
             print("BROKER PERIODIC PERFORMANCE REPORTING RESULT -> FAIL")
@@ -361,15 +363,43 @@ def main() -> int:
         session_a = BrowserSession()
         session_a.jar.set_cookie(
             http.cookiejar.Cookie(
-                0, "hullq_session", _mint_cookie(_ACCOUNT_A), None, False, "127.0.0.1", False,
-                False, "/", True, False, None, True, None, None, {},
+                0,
+                "hullq_session",
+                _mint_cookie(_ACCOUNT_A),
+                None,
+                False,
+                "127.0.0.1",
+                False,
+                False,
+                "/",
+                True,
+                False,
+                None,
+                True,
+                None,
+                None,
+                {},
             )
         )
         session_b = BrowserSession()
         session_b.jar.set_cookie(
             http.cookiejar.Cookie(
-                0, "hullq_session", _mint_cookie(_ACCOUNT_B), None, False, "127.0.0.1", False,
-                False, "/", True, False, None, True, None, None, {},
+                0,
+                "hullq_session",
+                _mint_cookie(_ACCOUNT_B),
+                None,
+                False,
+                "127.0.0.1",
+                False,
+                False,
+                "/",
+                True,
+                False,
+                None,
+                True,
+                None,
+                None,
+                {},
             )
         )
 
@@ -417,7 +447,9 @@ def main() -> int:
         )
         subscribe_ok = status == 200 and _json(body).get("status") == "ACTIVE"
         ok &= subscribe_ok
-        print(f"5. Organization A activates a MONTHLY subscription -> {'OK' if subscribe_ok else 'FAIL'}")
+        print(
+            f"5. Organization A activates a MONTHLY subscription -> {'OK' if subscribe_ok else 'FAIL'}"
+        )
 
         # Step 6: deterministic worker tick -- in-process callable (no HTTP
         # trigger route exists by design); admits exactly one newly-closed,
@@ -437,9 +469,7 @@ def main() -> int:
             # deterministically nowhere near period index 1's own close
             # (every calendar month is >= 28 days), regardless of which
             # day-of-month "now" happens to be.
-            _, period0_end = period_bounds(
-                datetime.now(UTC).date(), ReportPeriodKind.MONTHLY, 0
-            )
+            _, period0_end = period_bounds(datetime.now(UTC).date(), ReportPeriodKind.MONTHLY, 0)
             as_of = period0_end + timedelta(days=1)
             adapter = DeterministicLocalReportDeliveryAdapter()
             first_tick = run_report_dispatch_worker_once(
@@ -466,7 +496,9 @@ def main() -> int:
                 and len(adapter.sent) == 1
             )
             ok &= replay_ok
-            print(f"7. Repeated tick is idempotent (no double admission/send) -> {'OK' if replay_ok else 'FAIL'}")
+            print(
+                f"7. Repeated tick is idempotent (no double admission/send) -> {'OK' if replay_ok else 'FAIL'}"
+            )
         finally:
             worker_conn.close()
 
@@ -475,9 +507,7 @@ def main() -> int:
         status, _, periodic_body_a = session_a.get(
             f"{web_base}/broker/organizations/{_ORG_A}/performance/report/{period_run_id}"
         )
-        periodic_fetch_ok = (
-            status == 200 and "No observed views" in periodic_body_a.decode("utf-8")
-        )
+        periodic_fetch_ok = status == 200 and "No observed views" in periodic_body_a.decode("utf-8")
         ok &= periodic_fetch_ok
         print(
             f"8. Organization A fetches its periodic report via the real Astro SSR proxy; "

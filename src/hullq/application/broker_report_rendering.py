@@ -256,7 +256,7 @@ def render_report_html(
 <head>
 <meta charset="utf-8">
 <meta name="robots" content="noindex">
-<title>{escape(t['title'])} — {escape(organization_display_name)}</title>
+<title>{escape(t["title"])} — {escape(organization_display_name)}</title>
 <style>
 body {{ font-family: sans-serif; max-width: 860px; margin: 2rem auto; color: #111; }}
 table {{ border-collapse: collapse; width: 100%; margin-bottom: 1.5rem; }}
@@ -266,27 +266,27 @@ h1, h2, h3 {{ margin-top: 1.5rem; }}
 </style>
 </head>
 <body>
-<h1>{escape(t['title'])} — {escape(organization_display_name)}</h1>
-<p>{escape(t['generated_at'])}: {escape(generated_at_iso)}</p>
-<p>{escape(t['window'])}: {escape(str(facts['window_start']))} - {escape(str(facts['window_end']))}</p>
+<h1>{escape(t["title"])} — {escape(organization_display_name)}</h1>
+<p>{escape(t["generated_at"])}: {escape(generated_at_iso)}</p>
+<p>{escape(t["window"])}: {escape(str(facts["window_start"]))} - {escape(str(facts["window_end"]))}</p>
 
-<h2>{escape(t['org_summary'])}</h2>
+<h2>{escape(t["org_summary"])}</h2>
 <table>
-<tr><td>{escape(t['views'])}</td><td>{escape(str(facts['public_listing_views']))}</td></tr>
-<tr><td>{escape(t['leads_received'])}</td><td>{escape(str(facts['leads_received']))}</td></tr>
-<tr><td>{escape(t['leads_contacted'])}</td><td>{escape(str(facts['leads_contacted']))} / {escape(str(facts['leads_received']))}</td></tr>
-<tr><td>{escape(t['leads_closed'])}</td><td>{escape(str(facts['leads_closed']))}</td></tr>
-<tr><td>{escape(t['sold'])}</td><td>{escape(str(facts['sold_outcomes']))} ({escape(str(facts['sold_outcomes_with_known_source']))} {escape(t['sold_known'])} / {escape(str(facts['sold_outcomes_with_unknown_source']))} {escape(t['sold_unknown'])})</td></tr>
-<tr><td>{escape(t['latency'])}</td><td>{escape(latency_display)} ({escape(latency_population)})</td></tr>
+<tr><td>{escape(t["views"])}</td><td>{escape(str(facts["public_listing_views"]))}</td></tr>
+<tr><td>{escape(t["leads_received"])}</td><td>{escape(str(facts["leads_received"]))}</td></tr>
+<tr><td>{escape(t["leads_contacted"])}</td><td>{escape(str(facts["leads_contacted"]))} / {escape(str(facts["leads_received"]))}</td></tr>
+<tr><td>{escape(t["leads_closed"])}</td><td>{escape(str(facts["leads_closed"]))}</td></tr>
+<tr><td>{escape(t["sold"])}</td><td>{escape(str(facts["sold_outcomes"]))} ({escape(str(facts["sold_outcomes_with_known_source"]))} {escape(t["sold_known"])} / {escape(str(facts["sold_outcomes_with_unknown_source"]))} {escape(t["sold_unknown"])})</td></tr>
+<tr><td>{escape(t["latency"])}</td><td>{escape(latency_display)} ({escape(latency_population)})</td></tr>
 </table>
 
-<h3>{escape(t['acquisition'])}</h3>
+<h3>{escape(t["acquisition"])}</h3>
 <table><tbody>{acquisition_rows}</tbody></table>
 
-<h3>{escape(t['discovery'])}</h3>
+<h3>{escape(t["discovery"])}</h3>
 <table><tbody>{discovery_rows}</tbody></table>
 
-<h2>{escape(t['listings'])}</h2>
+<h2>{escape(t["listings"])}</h2>
 {listings_html}
 </body>
 </html>

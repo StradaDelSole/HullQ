@@ -2,8 +2,10 @@
 
 Pure domain tests, no database. Prove: explicit deterministic UTC
 `[start, end)` boundaries for WEEKLY/MONTHLY periods, month-end/leap-year
-correctness, anchor-based catch-up semantics (oldest-missing-period-first,
-one period per call), and that a not-yet-closed period is never admitted.
+correctness, and the cursor-based continuation (amendment, independent
+review Finding B) that keeps period identity correct across a WEEKLY<->
+MONTHLY schedule switch and across any number of chained periods, without
+ever re-deriving from the original anchor date.
 """
 
 from __future__ import annotations
@@ -14,7 +16,8 @@ import pytest
 
 from hullq.domain.broker_report_subscription import (
     ReportPeriodKind,
-    next_due_period_index,
+    bootstrap_period_start,
+    next_period_bounds,
     period_bounds,
 )
 
@@ -59,40 +62,67 @@ def test_period_bounds_rejects_negative_index() -> None:
         period_bounds(date(2026, 1, 1), ReportPeriodKind.MONTHLY, -1)
 
 
-def test_next_due_period_index_none_when_not_yet_closed() -> None:
-    anchor = date(2026, 1, 1)
-    # The first MONTHLY period [2026-01-01, 2026-02-01) has not closed yet
-    # as of 2026-01-15.
-    as_of = datetime(2026, 1, 15, tzinfo=UTC)
-    assert (
-        next_due_period_index(
-            anchor, ReportPeriodKind.MONTHLY, last_admitted_index=None, as_of=as_of
-        )
-        is None
+def test_bootstrap_period_start_is_calendar_aligned() -> None:
+    assert bootstrap_period_start(date(2026, 10, 25), ReportPeriodKind.MONTHLY) == datetime(
+        2026, 10, 1, tzinfo=UTC
+    )
+    assert bootstrap_period_start(date(2026, 10, 25), ReportPeriodKind.WEEKLY) == datetime(
+        2026, 10, 19, tzinfo=UTC
     )
 
 
-def test_next_due_period_index_admits_oldest_missing_first() -> None:
-    anchor = date(2026, 1, 1)
-    # Three MONTHLY periods have fully closed by 2026-04-02 (Jan, Feb, Mar).
-    as_of = datetime(2026, 4, 2, tzinfo=UTC)
-    assert (
-        next_due_period_index(
-            anchor, ReportPeriodKind.MONTHLY, last_admitted_index=None, as_of=as_of
-        )
-        == 0
-    )
-    # Catch-up proceeds one period per call, oldest first -- never skips
-    # ahead to the latest closed period.
-    assert (
-        next_due_period_index(
-            anchor, ReportPeriodKind.MONTHLY, last_admitted_index=0, as_of=as_of
-        )
-        == 1
-    )
-    assert (
-        next_due_period_index(
-            anchor, ReportPeriodKind.MONTHLY, last_admitted_index=2, as_of=as_of
-        )
-        is None
-    )
+def test_next_period_bounds_chains_monthly_across_month_end_and_leap_year() -> None:
+    cursor = datetime(2026, 1, 1, tzinfo=UTC)
+    start, end = next_period_bounds(cursor, ReportPeriodKind.MONTHLY)
+    assert start == cursor
+    assert end == datetime(2026, 2, 1, tzinfo=UTC)
+
+    # Chain forward again from the returned end -- never re-derived from a
+    # fixed anchor_date.
+    start2, end2 = next_period_bounds(end, ReportPeriodKind.MONTHLY)
+    assert start2 == datetime(2026, 2, 1, tzinfo=UTC)
+    assert end2 == datetime(2026, 3, 1, tzinfo=UTC)  # 2026 is not a leap year
+
+    _, leap_end = next_period_bounds(datetime(2024, 1, 1, tzinfo=UTC), ReportPeriodKind.MONTHLY)
+    assert leap_end == datetime(2024, 2, 1, tzinfo=UTC)
+    _, leap_end2 = next_period_bounds(leap_end, ReportPeriodKind.MONTHLY)
+    assert leap_end2 == datetime(2024, 3, 1, tzinfo=UTC)  # Feb 2024 has 29 days
+
+
+def test_next_period_bounds_clamps_day_of_month_at_month_end() -> None:
+    # A cursor landing on the 31st (e.g. after a prior WEEKLY->MONTHLY
+    # switch mid-cycle) must clamp into the next month's own last valid
+    # day rather than overflowing into a third month.
+    cursor = datetime(2026, 1, 31, tzinfo=UTC)
+    _, end = next_period_bounds(cursor, ReportPeriodKind.MONTHLY)
+    assert end == datetime(2026, 2, 28, tzinfo=UTC)
+
+
+def test_next_period_bounds_weekly_is_a_plain_seven_day_window() -> None:
+    cursor = datetime(2026, 3, 15, tzinfo=UTC)  # an arbitrary non-Monday cursor
+    start, end = next_period_bounds(cursor, ReportPeriodKind.WEEKLY)
+    assert start == cursor
+    assert end == datetime(2026, 3, 22, tzinfo=UTC)
+
+
+def test_schedule_switch_mid_chain_never_reuses_an_unrelated_calendar_window() -> None:
+    """Finding B's exact scenario: MONTHLY for two periods, then a switch
+    to WEEKLY -- the next period must be the textually next calendar
+    window after the last MONTHLY period closed, never a window computed
+    from the original anchor_date under the new WEEKLY cadence."""
+    anchor = date(2026, 1, 15)
+    cursor = bootstrap_period_start(anchor, ReportPeriodKind.MONTHLY)  # 2026-01-01
+    _, cursor = next_period_bounds(cursor, ReportPeriodKind.MONTHLY)  # period 0 closes 2026-02-01
+    assert cursor == datetime(2026, 2, 1, tzinfo=UTC)
+    _, cursor = next_period_bounds(cursor, ReportPeriodKind.MONTHLY)  # period 1 closes 2026-03-01
+    assert cursor == datetime(2026, 3, 1, tzinfo=UTC)
+
+    # Now the subscription switches to WEEKLY -- the next period must
+    # start exactly where the last MONTHLY period left off.
+    next_start, next_end = next_period_bounds(cursor, ReportPeriodKind.WEEKLY)
+    assert next_start == datetime(2026, 3, 1, tzinfo=UTC)
+    assert next_end == datetime(2026, 3, 8, tzinfo=UTC)
+    # This is NOT the same window `period_bounds(anchor, WEEKLY, 2)` would
+    # have produced (a stale January week from the original anchor_date).
+    stale_start, stale_end = period_bounds(anchor, ReportPeriodKind.WEEKLY, 2)
+    assert (next_start, next_end) != (stale_start, stale_end)

@@ -229,6 +229,7 @@ from hullq.application.search_sensitivity import (
     SensitivityOutcomeKind,
     evaluate_requirement_sensitivity,
 )
+from hullq.domain.broker_report_subscription import MAX_REPORT_LISTING_ROWS
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.import_intake import MAX_IMPORT_FILE_BYTES
 from hullq.domain.inventory_export import ExportFormat
@@ -2399,7 +2400,7 @@ def create_app(
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         try:
             expected_revision = int(raw_body["expected_revision"])
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             return JSONResponse({"error": "invalid_input"}, status_code=400)
         conn = open_connection(resolved_database_url)
         try:
@@ -2423,6 +2424,20 @@ def create_app(
     def _resolve_report_locale(request: Request) -> str | None:
         raw_locale = request.query_params.get("locale")
         return raw_locale if raw_locale in SUPPORTED_REPORT_LOCALES else None
+
+    def _bounded_report_facts(facts: dict[str, Any]) -> dict[str, Any]:
+        # Independent review amendment, Finding C: the live on-demand
+        # report must honestly disclose the same bounded-listing-rows
+        # truncation the periodic worker-generated artifact already does
+        # -- aggregate totals (views/Leads/SOLD counts) are never
+        # truncated, only the enumerated per-listing rows.
+        listings = facts["listings"]
+        truncated = len(listings) > MAX_REPORT_LISTING_ROWS
+        if truncated:
+            facts = dict(facts)
+            facts["listings"] = listings[:MAX_REPORT_LISTING_ROWS]
+        facts["listings_truncated"] = truncated
+        return facts
 
     @app.get("/api/broker/organizations/{organization_id}/report/download")
     def download_organization_report_route(organization_id: str, request: Request) -> Response:
@@ -2464,7 +2479,7 @@ def create_app(
         html = render_report_html(
             organization_display_name=workspace_result.context.public_display_name,
             generated_at_iso=_current_as_of().isoformat(),
-            facts=result.to_public_dict(),
+            facts=_bounded_report_facts(result.to_public_dict()),
             locale=_resolve_report_locale(request),
         )
         response = Response(content=html, media_type="text/html; charset=utf-8")

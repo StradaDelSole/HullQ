@@ -367,9 +367,7 @@ def test_download_route_renders_identical_metrics_to_json_snapshot(
         roles=frozenset({MembershipRole.OWNER}),
     )
     _log_in(client, "ACC-DL-OK")
-    json_response = client.get(
-        "/api/broker/organizations/ORG-DL-OK/performance?window=ALL_TIME"
-    )
+    json_response = client.get("/api/broker/organizations/ORG-DL-OK/performance?window=ALL_TIME")
     assert json_response.status_code == 200
     html_response = client.get(
         "/api/broker/organizations/ORG-DL-OK/report/download?window=ALL_TIME"
@@ -415,6 +413,7 @@ def test_periodic_report_zero_lead_idempotent_tick_and_cross_org_isolation(
         updated_by_account_id=AccountId("ACC-PERIODIC-A"),
         expected_revision=0,
         bootstrap_anchor_date=date(2026, 1, 1),
+        bootstrap_initial_period_kind=ReportPeriodKind.MONTHLY,
     )
     assert set_result.updated
     api_conn.commit()
