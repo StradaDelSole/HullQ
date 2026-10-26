@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0088 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0089 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0089 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0090 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
-**Updated:** 2026-10-23  
-**Latest owner-accepted / DONE slice:** SLICE-0088  
-**Current queue:** SLICE-0089 — **OWNER-SELECTED periodic factual Broker Performance Reporting & Delivery; separate docs-only READY candidate under independent review/CI and NOT OPERATIVE until merged + Owner START**. Governing post-0088 reconciliation `docs/POST_SLICE_0088_BROKER_REPORTING_REASSESSMENT_2026-10-24.md`; contract `docs/slices/SLICE-0089-broker-periodic-performance-reporting.md`; mandatory `REQ-BROKER-028`/`MVP-BROKER-008` remain PENDING until future independently Owner-accepted 0089 implementation/closure. Owner first approved the v0.9 future claim/Power work but it is separately tracked under #372, not in this slice. Security PR #374 was Owner-accepted and merged; security issue #373 is CLOSED. Exact-head readiness verification and Owner START remain required. SLICE-0088 DONE/local FINISH observed; nine Sail criteria, production STOP/Launch Pack unchanged.
+**Updated:** 2026-10-26  
+**Latest owner-accepted implementation (local FINISH pending):** SLICE-0089  
+**Current queue:** SLICE-0090 — **UNSELECTED / NOT READY / NOT STARTED**. SLICE-0089 Broker factual periodic reporting and optional delivery was independently accepted on exact implementation HEAD `f57b2433db9d3a46ea49d7a5c2eec527c1ab6884`, implementation PR #376 squash-merged as `f6e45d13d517455fab7c07b2891f2708a559c680`; see `docs/slices/SLICE-0089-acceptance-closure.md`. `REQ-BROKER-028` and `MVP-BROKER-008` implemented within bounded nonproduction reporting/local-delivery proof only. Owner-local FINISH_SLICE.bat 0089 remains required after docs-only closure merge. No real production email, external broker uploads or pilot authorized: #355 STOP and production Launch Pack NOT_STARTED. Joint Sail+Power first public release and Power specialist Search #366/#372 remain mandatory; native Sail hard criteria remain nine. No new slice selected.
 
 **Pre-0088 external code-review triage (2026-10-16):** Owner-supplied Claude v0.3 dump review was independently checked against current `origin/main`; primary operational concerns are single-worker async-import synchronous parsing/DB, ZIP decompression resource limits, trusted proxy/client-IP, bounded DB/concurrent rate limiting, supervised import retention and lead notification work, broker onboarding and scaled Search. Explicit code-vs-inference classifications and answers to five technical questions: `docs/POST_SLICE_0087_EXTERNAL_CODE_REVIEW_RECONCILIATION_2026-10-16.md`, issue #355. **Pre-external-broker-upload / pre-pilot safety evidence NOT YET PASS**; the `docs/operations/PRODUCTION_LAUNCH_CHECKLIST.md` now points to it. **At this historical pre-implementation point SLICE-0088 was selected for eight formats (the subsequent Owner-accepted writer-feasibility amendment limits output to seven);** its READY contract has been tightened so the new exporter cannot repeat a single-worker blocking event loop, but the separate existing-import hardening is NOT silently smuggled into 0088. No change to already accepted or launch markers.
 

@@ -55,7 +55,7 @@ IMPLEMENTED
 | REQ-BROKER-025 | Search exclusion explainability: why a listing was not found | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-026 | pre-publication Search-fit diagnostics | mandatory before paid broker activation / broad public launch | IMPLEMENTED — Owner-accepted SLICE-0084 (implementation PR #342; bounded PUBLISHER/MFA authorized, read-only synthetic Search-fit on a promoted lifecycle-DRAFT NativeListing; uses accepted `draft_max` and `keel_configuration` truth with design/concrete evidence, no publication or new public criterion) |
 | REQ-BROKER-027 | structured CSV/bulk onboarding/import | scale-triggered mandatory capability | IMPLEMENTED — Owner-accepted SLICE-0083 (PR #335): bounded CSV/TSV/XLS/XLSX/XLSB/ODS/JSON/NautiX file upload into private professional drafts; no automated live publishing or syncing |
-| REQ-BROKER-028 | periodic engagement/performance reporting even without a lead | mandatory before paid broker activation / broad public launch | PENDING |
+| REQ-BROKER-028 | periodic engagement/performance reporting even without a lead | mandatory before paid broker activation / broad public launch | IMPLEMENTED — Owner-accepted SLICE-0089 scoped factual branded Organization report, print/download, opt-in bounded weekly/monthly period worker, persisted dispatch/authorization and zero-Lead reports. Uses deterministic local delivery only; real production provider and supervised delivery require separate Launch Pack evidence and #355 safety gate. |
 | REQ-BROKER-029 | privacy-safe aggregate demand insights by relevant configuration | search-volume-dependent mandatory capability | PENDING |
 | REQ-BROKER-030 | validation order: coherent product before real external broker pilot | immediate governance rule | IMPLEMENTED by this governance package when merged |
 
@@ -138,7 +138,7 @@ This is an architecture-preservation requirement, not authorization to build a g
 
 ## Periodic engagement reporting
 
-REQ-BROKER-028 remains mandatory even if its polished delivery is not part of the first external pilot. Once the underlying production exposure/view/Search-impression telemetry is accepted and reliable, the owning readiness reassessment must treat broker engagement reporting as `DUE` rather than silently leaving it as a vague later idea.
+REQ-BROKER-028 is implemented in SLICE-0089 for bounded factual reporting and deterministic local dispatch; real external email delivery remains gated before any external pilot. Once the underlying production exposure/view/Search-impression telemetry is accepted and reliable, the owning readiness reassessment must treat broker engagement reporting as `DUE` rather than silently leaving it as a vague later idea.
 
 It MUST be implemented before paid broker activation or broad public production launch. The eventual broker-facing report should make useful activity visible even when no lead was generated, while distinguishing observed facts from derived interpretation.
 
