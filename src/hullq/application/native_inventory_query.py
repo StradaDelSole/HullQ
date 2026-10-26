@@ -98,6 +98,7 @@ from typing import Any
 
 from hullq.application.current_public_eligibility import resolve_current_public_eligibility
 from hullq.application.native_listing_freshness import resolve_current_freshness
+from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.native_listing_freshness import FreshnessStatus
@@ -929,15 +930,32 @@ def evaluate_native_inventory_requirements(
         )
 
         if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
-            result_class, concrete_evidence = classify_concrete_candidate(
+            # SLICE-0091 §A/§C: category is an admission/type foundation,
+            # not a tenth technical Sail criterion -- this fail-closed
+            # pre-filter runs *before* the concrete nine-criterion
+            # classification, never alongside it as a CriterionDefinition.
+            # An explicit POWER/MOTORSAILER/CONFLICT resolution excludes the
+            # candidate from a confirmed Sail match outright; UNKNOWN
+            # (including every legacy null-category row) is deliberately
+            # untouched, preserving exact pre-0091 Sail-only behavior.
+            category_resolution = resolve_physical_boat_vessel_category(
                 conn,
-                native_listing_id=candidate.native_listing_id,
-                publishing_organization_id=candidate.publishing_organization_id,
                 physical_boat_id=candidate.physical_boat_id,
-                boat_design_id=candidate.boat_design_ref.value,
-                query=query,
-                active_definitions=active_definitions,
+                boat_design_ref=candidate.boat_design_ref,
             )
+            if category_resolution.is_explicitly_non_sail_or_conflicted:
+                result_class = ResultClass.CONFIRMED_NON_MATCH
+                concrete_evidence = ()
+            else:
+                result_class, concrete_evidence = classify_concrete_candidate(
+                    conn,
+                    native_listing_id=candidate.native_listing_id,
+                    publishing_organization_id=candidate.publishing_organization_id,
+                    physical_boat_id=candidate.physical_boat_id,
+                    boat_design_id=candidate.boat_design_ref.value,
+                    query=query,
+                    active_definitions=active_definitions,
+                )
         else:
             # Design/configuration eligibility never admitted this design to
             # the concrete funnel (Required Behavior §C) -- the listing is

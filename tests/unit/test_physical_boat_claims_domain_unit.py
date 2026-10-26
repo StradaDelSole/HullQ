@@ -69,6 +69,7 @@ def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name_and_sli
         "deck_saloon",
         "beam",
         "hull_material",
+        "vessel_category",
     }
 
 
