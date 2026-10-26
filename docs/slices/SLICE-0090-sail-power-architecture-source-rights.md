@@ -73,7 +73,9 @@ Research is repository documentation-only. Existing Launch Pack phase stays NOT_
 **Retry / replay / partial-failure behavior:** Re-running the source survey preserves row identity, URL, access date, evidence snapshot/reference and confidence; contradictory updates become reviewable revisions rather than overwriting prior rights decisions. A partially collected source corpus remains PARTIAL, not passed; nonaccessible vendor terms are UNKNOWN/NEEDS_PERMISSION and never approved by default.  
 **Absence-vs-error / fail-closed behavior:** A missing manufacturer record, nonexistent variant, inaccessible source page, contract denial or failed lookup must be independently labeled; errors are not transformed into lack of model, zero values, negative eligibility or publication permission. Under-supported Power operating claims and mixed-category types have no implied safe scalar fallback.  
 **Executable adversarial proof:** This slice executes documentation/contract validators plus a deterministic *tabletop* negative-fixture traceability inspection for refit engine vs original brochure, two Power variants, missing design reference, UNKNOWN and conflict category, publisher retraction, conditional consumption/range, rights-denied source and import→export category loss. Mark future PG18/API/built-Astro/browser runtime assertions as FUTURE, never PASS now.  
-**Slice sizing assessment:** COHERENT — a single read-only architecture/rights feasibility decision package, not code implementation, product UX or launch infrastructure. Subsequent category/search/Power/provider changes each require independent slices.
+**Slice sizing assessment:** COHERENT
+
+This is a single read-only architecture/rights feasibility decision package, not code implementation, product UX or launch infrastructure. Subsequent category/search/Power/provider changes each require independent slices.
 
 ## Why now
 
