@@ -2,8 +2,8 @@
 
 **ID:** SLICE-0089  
 **Type:** IMPLEMENTATION  
-**Status:** READY  
-**Readiness authority:** **NOT OPERATIVE** until this separate docs-only readiness PR receives independent exact-HEAD ACCEPT, successful GitHub CI and manufacturer reproducibility, and is merged into canonical main; the Owner must subsequently execute normal START_SLICE.bat 0089.  
+**Status:** OWNER_ACCEPTED — implementation PR #376 merged; separate docs acceptance closure; Owner-local FINISH pending  
+**Readiness authority:** Historical readiness gate satisfied before Owner START. Implementation independently reviewed, explicitly Owner accepted on 2026-10-26 and merged as `f6e45d13d517455fab7c07b2891f2708a559c680`; scope and outstanding production restrictions are recorded in `SLICE-0089-acceptance-closure.md`. Owner-local FINISH remains pending.  
 **Risk:** HIGH_RISK — durable telemetry accuracy, time-bound snapshots, broker organization/MFA rights, scheduled delivery ownership, PII minimization, cross-tenant isolation and on-demand artifact privacy.  
 **Owner choice:** Post-0088 Owner explicitly agreed to SLICE-0089 factual periodic broker reporting; recorded under issue #357.  
 **Depends on:** Owner accepted/fully locally FINISHED SLICE-0088, accepted SLICE-0075 factual broker performance snapshot, current security baseline, issue #357, governing broker requirement REQ-BROKER-028 / MVP-BROKER-008.  
