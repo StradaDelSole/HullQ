@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0091  
 **Type:** IMPLEMENTATION  
-**Status:** READY — proposed; **not operative before independent exact-HEAD readiness review, CI/manufacturer reproducibility, merge to canonical main and Owner-local START_SLICE.bat 0091**  
+**Status:** READY  
+**Readiness authority:** Proposed; not operative before independent exact-HEAD readiness review, CI/manufacturer reproducibility, merge to canonical main and Owner-local START_SLICE.bat 0091.  
 **Risk:** HIGH_RISK — legacy Sail Search exclusion, shared identity/claims, type conflict and category provenance, mixed-supply safety  
 **Owner selection:** 2026-10-26: after Owner-confirmed local FINISH_SLICE.bat 0090 SUCCESS and accepted research closure PR #380 merged, Owner approved proceeding with the proposed category foundation (“ok klingt gut, go ahead”). This authorizes **readiness preparation**; implementation only after this contract is independently reviewed/merged and Owner runs START.  
 **Depends on:** Owner-accepted SLICE-0090 research and separate acceptance closure, accepted Sail+Power product decision #366; implementation tracker #372; pre-real-data STOP #355.  
@@ -13,14 +14,64 @@
 
 Implement **one explicit, source-qualified and deterministic vessel category contract** for canonical design and concrete offered boats: SAIL, POWER, MOTORSAILER, UNKNOWN and an independently derivable CONFLICT resolution state. Provide persistent category claims, authorization/provenance and stable internal readback/decision evidence. Prevent unsupported category guesses and category leakage into Sail-specific evaluation **without enabling Power product search**. Synthetic/authorized internal inspector demonstrates each state, design/concrete disagreement, legacy-no-category compatibility and category-specific fail-closed behavior.
 
-**ONE-CAPABILITY CHECK:** PASS — one category truth foundation; no Power technical criterion, no unrelated feed/import rewrite, no general marketplace browse.  
-**VISIBLE-RESULT CHECK:** PASS — a deterministic, inspectable current category resolution with explicit source/evidence and reason, exposed through a safe internal authorized readback/inspector; observable negative cases for unknown/conflict, no manufactured Power matches.  
-**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS — joint Sail+Power target, one shared marketplace kernel, Buyer/Broker quality parity, no public Sail-only/C-light pilot, no Pay-to-win or truth guessing.  
+**ONE-CAPABILITY CHECK:** PASS
+
+ one category truth foundation; no Power technical criterion, no unrelated feed/import rewrite, no general marketplace browse.  
+**VISIBLE-RESULT CHECK:** PASS
+
+ a deterministic, inspectable current category resolution with explicit source/evidence and reason, exposed through a safe internal authorized readback/inspector; observable negative cases for unknown/conflict, no manufactured Power matches.  
+**PRODUCT EXECUTION PLAN ALIGNMENT:** PASS
+
+ joint Sail+Power target, one shared marketplace kernel, Buyer/Broker quality parity, no public Sail-only/C-light pilot, no Pay-to-win or truth guessing.  
 **REPOSITORY RECONCILIATION CHECK:** PASS, subject to implementer exact-main re-verification listed below.  
-**TRIGGER GATES CHECK:** PASS — nine accepted Sail criteria unchanged; category is an **admission/type foundation**, not technical hard Search criterion #10. Reassess POST_0051 gate only if an implementation unexpectedly introduces a public hard search facet.  
-**OVERALL MVP CAPABILITY REGISTER CHECK:** PASS — MVP-BUY-001/002 remain PARTIAL across Sail+Power, Buyer persistence/Saved Search and owner-direct trust stay OPEN; #355 higher-severity external broker-upload hardening remains mandatory before *any* external inventory; this purely synthetic internal foundational slice does not trigger its production/data gate.  
-**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS — required adversarial proof and STOP thresholds below.  
-**PRODUCTION LAUNCH PACK CHECK:** NOT_APPLICABLE — no production/pilot/data phase transition; Launch Pack remains NOT_STARTED.
+**TRIGGER GATES CHECK:** PASS
+
+ nine accepted Sail criteria unchanged; category is an **admission/type foundation**, not technical hard Search criterion #10. Reassess POST_0051 gate only if an implementation unexpectedly introduces a public hard search facet.  
+**OVERALL MVP CAPABILITY REGISTER CHECK:** PASS
+
+ MVP-BUY-001/002 remain PARTIAL across Sail+Power, Buyer persistence/Saved Search and owner-direct trust stay OPEN; #355 higher-severity external broker-upload hardening remains mandatory before *any* external inventory; this purely synthetic internal foundational slice does not trigger its production/data gate.  
+**MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS
+
+ required adversarial proof and STOP thresholds below.  
+**PRODUCTION LAUNCH PACK CHECK:** NOT_APPLICABLE
+
+ no production/pilot/data phase transition; Launch Pack remains NOT_STARTED.
+
+## Decision / implementation reconciliation
+
+**Accepted records checked:** docs/HULLQ_OWNER_DECISION_SAIL_AND_POWER_FULL_TECHNICAL_PLATFORM_2026-10-22.md, docs/research/SLICE-0090-SAIL-POWER-ARCHITECTURE-SOURCE-RIGHTS.md §2.1/§4A, docs/validation/SLICE-0090-HARD-CASE-FIXTURE-CORPUS.md, docs/governance/OVERALL_MVP_CAPABILITY_REGISTER.md, docs/governance/POST_0051_TRIGGER_GATES.md, docs/governance/PRODUCTION_READINESS_GATE.md, docs/PRODUCT_EXECUTION_PLAN.md, docs/PROJECT_STATE.md and issues #366/#372/#355.
+**Production implementation checked:** src/hullq/domain/market_identity.py PhysicalBoat optional BoatDesignRef; src/hullq/domain/physical_boat_claims.py typed AssertionKind wrappers; src/hullq/search/criteria_registry.py nine shared criterion instances; src/hullq/application/native_inventory_query.py same MUST/AND evaluation; src/hullq/persistence/inventory_search.py design-linked-only; src/hullq/domain/import_nautix.py Sail allowlist and src/hullq/domain/inventory_export.py fixed Sail tag. Implementation agent must inspect actual DB tables and APIs before migration.
+**Already implemented / not re-decided:** Nine accepted Sail hard criteria, design/current-boat distinction, immutable publisher-claim revisions, D29 eligibility, accepted 0083 import/0088 export/0089 reporting. No Power technical criterion added by category typing.
+**Exact remaining gap:** No explicit, persistently sourced Design-versus-PhysicalBoat Sail/Power/Motorsailer/UNKNOWN/CONFLICT category evidence and readback. This slice builds only this category foundation, not any Power search capability.
+**Accepted-but-unimplemented obligations:** #372 future design-unresolved search and Power criteria/SSR/API parity; #355 import/runtime hardening before real external data; #363 local browser check; Buyer Saved Search, owner-direct trust and Launch Pack remain OPEN.
+**Material classifications:** DECIDED_AND_IMPLEMENTED = nine Sail dimensions and unchanged shared kernel; DECIDED_NOT_YET_IMPLEMENTED = category persistence/resolution, later Power facets and concrete-only search; EXPLICITLY_DEFERRED = import/export Power mapping and external ingestion; GENUINELY_OPEN = motorsailer search policy and source-specific data rights; CONFLICT_OR_REGRESSION = a new category filter must never erase legacy Sail results or fabricate certainty.
+
+## Trigger gates
+
+**Production readiness gate:** IN_PROGRESS
+**Adds technical native Search criterion:** NO
+**Technical Search criterion ordinal:** NOT_APPLICABLE
+**Second-criterion bridge comparison:** NOT_APPLICABLE
+**Third-copy abstraction guard:** NOT_APPLICABLE
+**Workflow reassessment status:** PASS
+
+## Production phase transition check
+
+**Launch-pack phase before this slice:** NOT_APPLICABLE
+**Launch-pack phase after this slice:** NOT_APPLICABLE
+
+No Launch Pack stage advances; the existing PRODUCTION_LAUNCH_PACK_PHASE stays NOT_STARTED. Only synthetic internal category contracts/authorized nonproduction validation are in scope.
+
+## Mechanical invariants / failure modes
+
+**Risk classification:** HIGH_RISK
+**Why this classification:** Category mishandling can contaminate Sail technical matching, misstate an actual vessel's propulsion/category, or bypass publisher authorization and public eligibility.
+**Must-never-change invariant:** No label-based Sail/Power guess, no missing-category Sail backfill, no unauthorized category mutation, no unreviewed verified badge, no second truth kernel and no unqualified Power exposure.
+**Durable source of truth / loss boundary:** Canonical PostgreSQL-backed immutable, Organization-scoped concrete claim revisions and separately qualified design evidence; readback always resolves current version and retains conflict provenance.
+**Retry / replay / partial-failure behavior:** Revision writes preserve idempotency/uniqueness and current authorization; failed, stale, cancelled or conflicting writes cannot partially replace earlier valid current evidence or create implicit positive classification.
+**Absence-vs-error / fail-closed behavior:** No category value, explicit UNKNOWN, contradiction and read/query/auth errors remain distinct; unknown/conflict must not become SAIL by default, and legacy Sail-compatible search cannot be silently removed.
+**Executable adversarial proof:** Actual unit and PostgreSQL 18/authorized API/browser checks with synthetic SAIL/POWER/MOTORSAILER/UNKNOWN/CONFLICT, misleading labels, missing design, concurrent/retracted/current revisions, cross-tenant denial, legacy Sail inventory equivalence and explicit category exclusion; no falsely claimed live Power Search proof.
+**Slice sizing assessment:** COHERENT
 
 ## Repo reconciliation — accepted facts
 
