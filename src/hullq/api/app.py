@@ -89,6 +89,12 @@ from hullq.application.broker_performance_read import (
     PerformanceReadOutcome,
     get_organization_performance_snapshot,
 )
+from hullq.application.broker_report_rendering import SUPPORTED_REPORT_LOCALES, render_report_html
+from hullq.application.broker_report_subscription import (
+    ReportSubscriptionOutcome,
+    get_report_subscription,
+    set_report_subscription,
+)
 from hullq.application.broker_sale_outcome import (
     CloseAsSoldOutcome,
     SaleOutcomeReadOutcome,
@@ -223,6 +229,7 @@ from hullq.application.search_sensitivity import (
     SensitivityOutcomeKind,
     evaluate_requirement_sensitivity,
 )
+from hullq.domain.broker_report_subscription import MAX_REPORT_LISTING_ROWS
 from hullq.domain.buyer_lead import LeadId
 from hullq.domain.import_intake import MAX_IMPORT_FILE_BYTES
 from hullq.domain.inventory_export import ExportFormat
@@ -233,6 +240,7 @@ from hullq.domain.market_identity import NativeListingId
 from hullq.domain.media_gallery import MAX_IMAGE_UPLOAD_BYTES
 from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 from hullq.observability.logging_config import configure_logging, get_logger
+from hullq.persistence.broker_report_subscription import fetch_period_run_for_organization
 from hullq.persistence.connection import get_database_url, open_connection
 from hullq.persistence.native_listing_view_event import record_public_listing_view
 from hullq.search.beam_request import canonical_beam_str
@@ -431,6 +439,12 @@ _IMPORT_INTAKE_CSRF_HEADER_VALUE = "broker-import-intake-v1"
 #: header can never be replayed against the export preflight/download
 #: routes.
 _INVENTORY_EXPORT_CSRF_HEADER_VALUE = "broker-inventory-export-v1"
+
+#: SLICE-0089: the identical fixed-header + exact-Origin CSRF discipline as
+#: every other authenticated broker-write channel, with its own distinct
+#: header value so a valid header from any other channel can never be
+#: replayed against the periodic report subscription mutation route.
+_REPORT_SUBSCRIPTION_CSRF_HEADER_VALUE = "broker-report-subscription-v1"
 
 #: SLICE-0088 independent review amendment (2026-10-16): a selection body
 #: is only a bounded list of short id strings (`MAX_EXPORT_SELECTION_ITEMS`
@@ -1113,6 +1127,22 @@ def create_app(
             actual is None
             or actual != accepted
             or requested_with != _INVENTORY_EXPORT_CSRF_HEADER_VALUE
+        ):
+            raise HTTPException(status_code=403, detail="csrf validation failed")
+
+    def _require_report_subscription_csrf(request: Request) -> None:
+        # SLICE-0089: identical exact-Origin-match + fixed non-simple header
+        # discipline as every other authenticated broker-write channel,
+        # with its own distinct header value (see
+        # `_REPORT_SUBSCRIPTION_CSRF_HEADER_VALUE`).
+        origin_header = request.headers.get("origin")
+        requested_with = request.headers.get(_OWNER_DIRECT_CSRF_HEADER_NAME)
+        accepted = _normalized_origin(_resolve_web_origin())
+        actual = _normalized_origin(origin_header) if origin_header else None
+        if (
+            actual is None
+            or actual != accepted
+            or requested_with != _REPORT_SUBSCRIPTION_CSRF_HEADER_VALUE
         ):
             raise HTTPException(status_code=403, detail="csrf validation failed")
 
@@ -2322,6 +2352,188 @@ def create_app(
             return JSONResponse({"error": "invalid_window"}, status_code=400)
         assert result.outcome is PerformanceReadOutcome.OK
         return JSONResponse(result.to_public_dict())
+
+    # -----------------------------------------------------------------
+    # SLICE-0089: Broker periodic performance report subscription + artifact
+    # -----------------------------------------------------------------
+
+    def _report_subscription_error_response(
+        outcome: ReportSubscriptionOutcome,
+    ) -> JSONResponse | None:
+        if outcome is ReportSubscriptionOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is ReportSubscriptionOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is ReportSubscriptionOutcome.ROLE_REQUIRED:
+            return JSONResponse({"error": "role_required"}, status_code=403)
+        if outcome is ReportSubscriptionOutcome.INVALID_INPUT:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        if outcome is ReportSubscriptionOutcome.VERSION_CONFLICT:
+            return JSONResponse({"error": "version_conflict"}, status_code=409)
+        return None
+
+    @app.get("/api/broker/organizations/{organization_id}/report-subscription")
+    def get_report_subscription_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_report_subscription(
+                conn, session, MarketplaceOrganizationId(organization_id)
+            )
+        finally:
+            conn.close()
+        error = _report_subscription_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict())
+
+    @app.put("/api/broker/organizations/{organization_id}/report-subscription")
+    async def set_report_subscription_route(organization_id: str, request: Request) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        _require_report_subscription_csrf(request)
+        raw_body = await _read_json_body(request, allow_empty=False)
+        if not isinstance(raw_body, dict) or "expected_revision" not in raw_body:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        try:
+            expected_revision = int(raw_body["expected_revision"])
+        except TypeError, ValueError:
+            return JSONResponse({"error": "invalid_input"}, status_code=400)
+        conn = open_connection(resolved_database_url)
+        try:
+            result = set_report_subscription(
+                conn,
+                session,
+                MarketplaceOrganizationId(organization_id),
+                raw_status=raw_body.get("status"),
+                raw_period_kind=raw_body.get("period_kind"),
+                raw_recipient_email=raw_body.get("recipient_email"),
+                expected_revision=expected_revision,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        error = _report_subscription_error_response(result.outcome)
+        if error is not None:
+            return error
+        return JSONResponse(result.to_public_dict())
+
+    def _resolve_report_locale(request: Request) -> str | None:
+        raw_locale = request.query_params.get("locale")
+        return raw_locale if raw_locale in SUPPORTED_REPORT_LOCALES else None
+
+    def _bounded_report_facts(facts: dict[str, Any]) -> dict[str, Any]:
+        # Independent review amendment, Finding C: the live on-demand
+        # report must honestly disclose the same bounded-listing-rows
+        # truncation the periodic worker-generated artifact already does
+        # -- aggregate totals (views/Leads/SOLD counts) are never
+        # truncated, only the enumerated per-listing rows.
+        listings = facts["listings"]
+        truncated = len(listings) > MAX_REPORT_LISTING_ROWS
+        if truncated:
+            facts = dict(facts)
+            facts["listings"] = listings[:MAX_REPORT_LISTING_ROWS]
+        facts["listings_truncated"] = truncated
+        return facts
+
+    @app.get("/api/broker/organizations/{organization_id}/report/download")
+    def download_organization_report_route(organization_id: str, request: Request) -> Response:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            result = get_organization_performance_snapshot(
+                conn,
+                session,
+                organization_id,
+                raw_window=request.query_params.get("window"),
+                as_of=_current_as_of(),
+            )
+            workspace_result = (
+                get_organization_workspace_result(
+                    conn, session, MarketplaceOrganizationId(organization_id)
+                )
+                if result.outcome is PerformanceReadOutcome.OK
+                else None
+            )
+        finally:
+            conn.close()
+
+        if result.outcome is PerformanceReadOutcome.ORG_NOT_FOUND_OR_DENIED:
+            # Contract §10: unknown Organization and unauthorized Organization
+            # membership must be indistinguishable.
+            raise HTTPException(status_code=404, detail="organization not found")
+        if result.outcome is PerformanceReadOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if result.outcome is PerformanceReadOutcome.INVALID_WINDOW:
+            return JSONResponse({"error": "invalid_window"}, status_code=400)
+        assert result.outcome is PerformanceReadOutcome.OK
+        assert workspace_result is not None
+        assert workspace_result.outcome is OrganizationWorkspaceOutcome.AUTHORIZED
+        assert workspace_result.context is not None
+
+        html = render_report_html(
+            organization_display_name=workspace_result.context.public_display_name,
+            generated_at_iso=_current_as_of().isoformat(),
+            facts=_bounded_report_facts(result.to_public_dict()),
+            locale=_resolve_report_locale(request),
+        )
+        response = Response(content=html, media_type="text/html; charset=utf-8")
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Robots-Tag"] = "noindex"
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="hullq-performance-report-{organization_id}.html"'
+        )
+        return response
+
+    @app.get("/api/broker/organizations/{organization_id}/report/periodic/{period_run_id}")
+    def download_periodic_report_route(
+        organization_id: str, period_run_id: str, request: Request
+    ) -> Response:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        conn = open_connection(resolved_database_url)
+        try:
+            org_id = MarketplaceOrganizationId(organization_id)
+            workspace_result = get_organization_workspace_result(conn, session, org_id)
+            period_run = (
+                fetch_period_run_for_organization(conn, org_id, period_run_id)
+                if workspace_result.outcome is OrganizationWorkspaceOutcome.AUTHORIZED
+                else None
+            )
+        finally:
+            conn.close()
+
+        if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        assert workspace_result.outcome is OrganizationWorkspaceOutcome.AUTHORIZED
+        assert workspace_result.context is not None
+        if period_run is None:
+            # Org-scoped lookup already collapses "never existed" and
+            # "belongs to a different Organization" into one outcome
+            # (no report-ID enumeration oracle).
+            raise HTTPException(status_code=404, detail="report not found")
+
+        html = render_report_html(
+            organization_display_name=workspace_result.context.public_display_name,
+            generated_at_iso=period_run.generated_at.isoformat(),
+            facts=json.loads(period_run.facts_json),
+            locale=_resolve_report_locale(request),
+        )
+        response = Response(content=html, media_type="text/html; charset=utf-8")
+        response.headers["Cache-Control"] = "private, no-store"
+        response.headers["X-Robots-Tag"] = "noindex"
+        response.headers["Content-Disposition"] = (
+            f'attachment; filename="hullq-performance-report-{organization_id}-{period_run_id}.html"'
+        )
+        return response
 
     # -----------------------------------------------------------------
     # SLICE-0071: Broker Lead operations + notification-recipient config
