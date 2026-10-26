@@ -16,26 +16,28 @@ Implement **one explicit, source-qualified and deterministic vessel category con
 
 **ONE-CAPABILITY CHECK:** PASS
 
- one category truth foundation; no Power technical criterion, no unrelated feed/import rewrite, no general marketplace browse.  
+one category truth foundation; no Power technical criterion, no unrelated feed/import rewrite, no general marketplace browse.  
 **VISIBLE-RESULT CHECK:** PASS
 
- a deterministic, inspectable current category resolution with explicit source/evidence and reason, exposed through a safe internal authorized readback/inspector; observable negative cases for unknown/conflict, no manufactured Power matches.  
+a deterministic, inspectable current category resolution with explicit source/evidence and reason, exposed through a safe internal authorized readback/inspector; observable negative cases for unknown/conflict, no manufactured Power matches.  
 **PRODUCT EXECUTION PLAN ALIGNMENT:** PASS
 
- joint Sail+Power target, one shared marketplace kernel, Buyer/Broker quality parity, no public Sail-only/C-light pilot, no Pay-to-win or truth guessing.  
-**REPOSITORY RECONCILIATION CHECK:** PASS, subject to implementer exact-main re-verification listed below.  
+joint Sail+Power target, one shared marketplace kernel, Buyer/Broker quality parity, no public Sail-only/C-light pilot, no Pay-to-win or truth guessing.  
+**REPOSITORY RECONCILIATION CHECK:** PASS
+
+Current exact-main source reconciliation documented in the dedicated evidence section below; implementer must re-verify impacted tables and code symbols at implementation HEAD.  
 **TRIGGER GATES CHECK:** PASS
 
- nine accepted Sail criteria unchanged; category is an **admission/type foundation**, not technical hard Search criterion #10. Reassess POST_0051 gate only if an implementation unexpectedly introduces a public hard search facet.  
+nine accepted Sail criteria unchanged; category is an **admission/type foundation**, not technical hard Search criterion #10. Reassess POST_0051 gate only if an implementation unexpectedly introduces a public hard search facet.  
 **OVERALL MVP CAPABILITY REGISTER CHECK:** PASS
 
- MVP-BUY-001/002 remain PARTIAL across Sail+Power, Buyer persistence/Saved Search and owner-direct trust stay OPEN; #355 higher-severity external broker-upload hardening remains mandatory before *any* external inventory; this purely synthetic internal foundational slice does not trigger its production/data gate.  
+MVP-BUY-001/002 remain PARTIAL across Sail+Power, Buyer persistence/Saved Search and owner-direct trust stay OPEN; #355 higher-severity external broker-upload hardening remains mandatory before *any* external inventory; this purely synthetic internal foundational slice does not trigger its production/data gate.  
 **MECHANICAL INVARIANTS / FAILURE MODES CHECK:** PASS
 
- required adversarial proof and STOP thresholds below.  
+required adversarial proof and STOP thresholds below.  
 **PRODUCTION LAUNCH PACK CHECK:** NOT_APPLICABLE
 
- no production/pilot/data phase transition; Launch Pack remains NOT_STARTED.
+no production/pilot/data phase transition; Launch Pack remains NOT_STARTED.
 
 ## Decision / implementation reconciliation
 
