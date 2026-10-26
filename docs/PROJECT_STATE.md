@@ -1,12 +1,12 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0089 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0090 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0090 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0091 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
 **Updated:** 2026-10-26  
-**Latest owner-accepted / locally FINISHED slice:** SLICE-0089  
-**Current queue:** SLICE-0090 — **OWNER-SELECTED Sail+Power architecture and source-rights DESIGN_RESEARCH**; separate docs-only READY contract `docs/slices/SLICE-0090-sail-power-architecture-source-rights.md` proposed for independent exact-HEAD review/CI; **NOT OPERATIVE** before the READY PR is merged and the Owner executes local `START_SLICE.bat 0090`. SLICE-0089 is Owner-accepted, closure PR #377 merged, and Owner-local `FINISH_SLICE.bat 0089` completed successfully. Sail nine technical criteria unchanged; requirements `REQ-BROKER-028` / `MVP-BROKER-008` fulfilled within deterministic nonproduction periodic reporting only. First external Sail+Power product/pilot requires both specialist domains and runtime/rights/operations #355; Production Launch Pack remains NOT_STARTED. #363 tracks Owner's existing ignored local one-click browser-test launcher as a separate future validation task.
+**Latest Owner-accepted slice:** SLICE-0090 (docs-only DESIGN_RESEARCH; Owner-local FINISH pending); latest locally FINISHED SLICE-0089  
+**Current queue:** SLICE-0091 — NOT SELECTED / NOT READY. SLICE-0090 Owner-accepted research (PR #379, main `0e78f2c64c2d21e0b2fd5d8a97213b49cbdedeb8`) records unified Sail+Power architecture feasibility, a nine-external-family source-rights matrix and 13 synthetic fixtures; it implements NO Power production behavior and grants NO ingestion rights. Separate acceptance closure: `docs/slices/SLICE-0090-acceptance-closure.md`. Owner-local FINISH_SLICE.bat 0090 pending. Nine existing Sail technical criteria unchanged. First external Sail+Power product/pilot still requires both specialist domains, source rights and #355 operational readiness; Launch Pack NOT_STARTED. #363 local one-click browser validation remains separately tracked.
 
 **Pre-0088 external code-review triage (2026-10-16):** Owner-supplied Claude v0.3 dump review was independently checked against current `origin/main`; primary operational concerns are single-worker async-import synchronous parsing/DB, ZIP decompression resource limits, trusted proxy/client-IP, bounded DB/concurrent rate limiting, supervised import retention and lead notification work, broker onboarding and scaled Search. Explicit code-vs-inference classifications and answers to five technical questions: `docs/POST_SLICE_0087_EXTERNAL_CODE_REVIEW_RECONCILIATION_2026-10-16.md`, issue #355. **Pre-external-broker-upload / pre-pilot safety evidence NOT YET PASS**; the `docs/operations/PRODUCTION_LAUNCH_CHECKLIST.md` now points to it. **At this historical pre-implementation point SLICE-0088 was selected for eight formats (the subsequent Owner-accepted writer-feasibility amendment limits output to seven);** its READY contract has been tightened so the new exporter cannot repeat a single-worker blocking event loop, but the separate existing-import hardening is NOT silently smuggled into 0088. No change to already accepted or launch markers.
 
@@ -374,14 +374,14 @@ Large retained research artifacts are acknowledged as repository-hygiene debt, n
 Current queued slice:
 
 ```text
-SLICE-0090 — OWNER-SELECTED / docs READY candidate; NOT STARTABLE before independent docs review, CI/repro and merge
+SLICE-0091 — NOT SELECTED / NOT READY (no successor slice starts automatically)
 ```
 
-**Owner selection after SLICE-0089:** Owner confirmed local FINISH_SLICE.bat 0089 SUCCESS on 2026-10-26 and selected SLICE-0090 read-only Sail+Power architecture and source-rights foundation. The docs-only READY contract must be independently reviewed, exact-HEAD CI/manufacturer PASS, merged and then Owner-local START_SLICE.bat 0090 before research execution. No Power product code, no external broker pilot, no Launch Pack progression; #372 and #355 continue to govern subsequent implementation and safety.
+**Accepted SLICE-0090 research (2026-10-26):** Owner explicitly accepted the reviewed docs-only Sail+Power architecture/source-rights feasibility package, with all review findings A–K closed, exact-head six-job CI, manufacturer reproducibility and Deploy workflow successful. Research PR #379 merged as `0e78f2c64c2d21e0b2fd5d8a97213b49cbdedeb8`. Three new retained research/fixture artifacts are identified in `docs/slices/SLICE-0090-acceptance-closure.md`; Issue #372 updated for traceability and left open. Power product functionality, ingestion, external pilot and Launch Pack progression remain NOT IMPLEMENTED/NOT AUTHORIZED. Owner-local FINISH_SLICE.bat 0090 still pending.
 
 **Completed SLICE-0088:** The Owner accepted the seven-format broker-owned inventory export on 2026-10-23. Implementation PR #368 merged as `4cb5ec3ca03190575df1f8e753668c89d6d597f4` after exact merged-head CI `40018867760`, manufacturer reproducibility `40018869140`, and independent technical review closure of the semaphore/cancellation race. Genuine CSV, TSV, XLSX, XLS, ODS, JSON and NautiX 1.4 XML output support select → per-row completeness/provenance/loss preview → confirmed bounded download; `XLSB` export remains deferred (issue #362). Its inbound parser from 0083 is unchanged. No direct push/feed, third-party platform acceptance or customer rollout is claimed.
 
-**Remaining gates:** Production Readiness `IN_PROGRESS`, Launch Pack `NOT_STARTED`, the pre-external-broker-upload safety STOP tracked in issue #355, external provider/HA/backup/restore, real production periodic report provider/supervision, owner-direct trust/publication, buyer persistence/alerts and appropriate compliance remain separately open. No real external pilot or public Sail-only/Power-only launch is authorized. No implementation slice beyond the Owner-selected 0090 research contract is preselected.
+**Remaining gates:** Production Readiness `IN_PROGRESS`, Launch Pack `NOT_STARTED`, the pre-external-broker-upload safety STOP tracked in issue #355, external provider/HA/backup/restore, real production periodic report provider/supervision, owner-direct trust/publication, buyer persistence/alerts and appropriate compliance remain separately open. No real external pilot or public Sail-only/Power-only launch is authorized. No successor slice beyond accepted 0090 research is Owner-selected.
 
 **Prior accepted state:** SLICE-0087 and the nine technical hard Search dimensions remain unchanged. The Owner subsequently provided an explicit successful local `FINISH_SLICE.bat 0088` log: `main` updated to `feb1f4af03e300b232643a021b73d9a7d9fc427b` and the implementation worktree/local+remote branch removed.
 
