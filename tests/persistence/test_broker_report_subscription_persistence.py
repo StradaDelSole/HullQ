@@ -372,6 +372,81 @@ def test_concurrent_admission_never_admits_the_same_period_twice(report_url: str
     assert count == 1
 
 
+def test_admission_scan_does_not_starve_a_due_organization_beyond_the_batch_bound(
+    report_url: str,
+) -> None:
+    """Amendment, Finding G: `MAX_ADMISSION_SCAN_ORGANIZATIONS` filler
+    Organizations that are ACTIVE but never due, and that all sort
+    alphabetically *before* one genuinely due Organization, must never
+    permanently crowd that due Organization out of the bounded scan. The
+    admission scan orders by most-overdue-first, not by `organization_id`
+    -- under the original defect this due Organization would never be
+    examined by any tick, no matter how many ran."""
+    from hullq.domain.broker_report_subscription import MAX_ADMISSION_SCAN_ORGANIZATIONS
+
+    conn = psycopg.connect(report_url)
+    try:
+        filler_count = MAX_ADMISSION_SCAN_ORGANIZATIONS + 5
+        # Anchored far in the future -- never due -- and named to sort
+        # alphabetically before the one due Organization below.
+        far_future_anchor = date(2030, 1, 1)
+        for i in range(filler_count):
+            filler_org_id = MarketplaceOrganizationId(f"ORG-FILLER-{i:04d}")
+            seed_marketplace_organization(
+                conn,
+                MarketplaceOrganization(
+                    id=filler_org_id,
+                    professional_category=ProfessionalCategory.BROKER,
+                    publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+                ),
+            )
+            conn.commit()
+            result = set_subscription(
+                conn,
+                filler_org_id,
+                status=SubscriptionStatus.ACTIVE,
+                period_kind=ReportPeriodKind.MONTHLY,
+                recipient_email="broker@example.com",
+                updated_by_account_id=AccountId("ACC-FILLER"),
+                expected_revision=0,
+                bootstrap_anchor_date=far_future_anchor,
+                bootstrap_initial_period_kind=ReportPeriodKind.MONTHLY,
+            )
+            assert result.updated
+            conn.commit()
+
+        due_organization_id = _seed_org(conn, org_id="ORG-ZZZ-DUE")
+        _activate_subscription(
+            conn,
+            due_organization_id,
+            recipient_email="broker@example.com",
+            anchor_date=date(2026, 1, 1),
+        )
+    finally:
+        conn.close()
+
+    as_of = datetime(2026, 2, 5, tzinfo=UTC)
+    admit_conn = psycopg.connect(report_url)
+    try:
+        admitted_id = _admit_next_due_period(admit_conn, as_of=as_of)
+    finally:
+        admit_conn.close()
+    assert admitted_id is not None
+
+    verify_conn = psycopg.connect(report_url)
+    try:
+        with verify_conn.cursor() as cur:
+            cur.execute(
+                "SELECT organization_id FROM organization_report_period_run "
+                "WHERE period_run_id = %s",
+                [admitted_id],
+            )
+            (admitted_org_id,) = cur.fetchone()
+    finally:
+        verify_conn.close()
+    assert admitted_org_id == due_organization_id.value
+
+
 def test_concurrent_delivery_claims_never_claim_the_same_period_run(report_url: str) -> None:
     as_of = datetime(2026, 2, 5, tzinfo=UTC)
     conn = psycopg.connect(report_url)
@@ -861,81 +936,141 @@ def test_admission_honestly_discloses_listing_truncation_in_stored_snapshot(
 # ---------------------------------------------------------------------------
 
 
-def test_delivery_suppressed_when_configuring_account_membership_is_revoked(
-    report_conn: Any,
+def _assert_durably_persisted_on_a_fresh_connection(
+    report_url: str,
+    *,
+    period_run_id: str,
+    expected_period_run_status: str,
+    expected_attempt_outcome: str,
 ) -> None:
-    organization_id = _seed_org(report_conn, org_id="ORG-REVOKED")
-    membership_id = _seed_owner_membership(report_conn, organization_id, account_id="ACC-LEAVING")
-    _activate_subscription(
-        report_conn,
-        organization_id,
-        recipient_email="broker@example.com",
-        anchor_date=date(2026, 1, 1),
-        updated_by_account_id="ACC-LEAVING",
-        seed_owner=False,
-    )
-    as_of = datetime(2026, 2, 5, tzinfo=UTC)
-    admitted_id = _admit_next_due_period(report_conn, as_of=as_of)
-    assert admitted_id is not None
+    """Amendment, Finding F: a write that merely looks correct on the same
+    connection that made it proves nothing -- that connection would still
+    see its own uncommitted work even if the real top-level COMMIT never
+    happened (a write silently degraded to a nested SAVEPOINT). Opening a
+    genuinely new connection only after the worker connection has closed
+    is what actually distinguishes "committed" from "uncommitted and
+    about to be rolled back/lost"."""
+    verify_conn = psycopg.connect(report_url)
+    try:
+        with verify_conn.cursor() as cur:
+            cur.execute(
+                "SELECT status FROM organization_report_period_run WHERE period_run_id = %s",
+                [period_run_id],
+            )
+            (status,) = cur.fetchone()
+            cur.execute(
+                "SELECT outcome FROM organization_report_delivery_attempts "
+                "WHERE period_run_id = %s ORDER BY attempted_at DESC LIMIT 1",
+                [period_run_id],
+            )
+            (outcome,) = cur.fetchone()
+    finally:
+        verify_conn.close()
+    assert status == expected_period_run_status
+    assert outcome == expected_attempt_outcome
 
-    # The configuring account leaves the Organization strictly after
-    # generation, strictly before dispatch -- the subscription's own
-    # revision never changes, only the account's membership.
-    update_membership_state(report_conn, membership_id, MembershipState.INACTIVE)
-    report_conn.commit()
 
-    adapter = DeterministicLocalReportDeliveryAdapter()
-    result = run_report_dispatch_worker_once(
-        report_conn, adapter=adapter, worker_id="w1", as_of=as_of
-    )
-    assert result.delivery is DeliveryOutcome.RECIPIENT_UNAUTHORIZED
-    assert len(adapter.sent) == 0
-
-    with report_conn.cursor() as cur:
-        cur.execute(
-            "SELECT outcome FROM organization_report_delivery_attempts WHERE period_run_id = %s",
-            [admitted_id],
+def test_delivery_suppressed_when_configuring_account_membership_is_revoked(
+    report_url: str,
+) -> None:
+    setup_conn = psycopg.connect(report_url)
+    try:
+        organization_id = _seed_org(setup_conn, org_id="ORG-REVOKED")
+        membership_id = _seed_owner_membership(
+            setup_conn, organization_id, account_id="ACC-LEAVING"
         )
-        (outcome,) = cur.fetchone()
-    assert outcome == "RECIPIENT_UNAUTHORIZED"
+        _activate_subscription(
+            setup_conn,
+            organization_id,
+            recipient_email="broker@example.com",
+            anchor_date=date(2026, 1, 1),
+            updated_by_account_id="ACC-LEAVING",
+            seed_owner=False,
+        )
+        as_of = datetime(2026, 2, 5, tzinfo=UTC)
+        admitted_id = _admit_next_due_period(setup_conn, as_of=as_of)
+        assert admitted_id is not None
+
+        # The configuring account leaves the Organization strictly after
+        # generation, strictly before dispatch -- the subscription's own
+        # revision never changes, only the account's membership.
+        update_membership_state(setup_conn, membership_id, MembershipState.INACTIVE)
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
+
+    worker_conn = psycopg.connect(report_url)
+    try:
+        adapter = DeterministicLocalReportDeliveryAdapter()
+        result = run_report_dispatch_worker_once(
+            worker_conn, adapter=adapter, worker_id="w1", as_of=as_of
+        )
+        assert result.delivery is DeliveryOutcome.RECIPIENT_UNAUTHORIZED
+        assert len(adapter.sent) == 0
+    finally:
+        worker_conn.close()  # Finding F: the worker's own connection closes with no final commit call.
+
+    _assert_durably_persisted_on_a_fresh_connection(
+        report_url,
+        period_run_id=admitted_id,
+        expected_period_run_status="SUPPRESSED",
+        expected_attempt_outcome="RECIPIENT_UNAUTHORIZED",
+    )
 
 
 def test_delivery_suppressed_when_configuring_account_loses_owner_admin_role(
-    report_conn: Any,
+    report_url: str,
 ) -> None:
-    organization_id = _seed_org(report_conn, org_id="ORG-DEMOTED")
-    membership_id = _seed_owner_membership(report_conn, organization_id, account_id="ACC-DEMOTED")
-    _activate_subscription(
-        report_conn,
-        organization_id,
-        recipient_email="broker@example.com",
-        anchor_date=date(2026, 1, 1),
-        updated_by_account_id="ACC-DEMOTED",
-        seed_owner=False,
-    )
-    as_of = datetime(2026, 2, 5, tzinfo=UTC)
-    admitted_id = _admit_next_due_period(report_conn, as_of=as_of)
-    assert admitted_id is not None
+    setup_conn = psycopg.connect(report_url)
+    try:
+        organization_id = _seed_org(setup_conn, org_id="ORG-DEMOTED")
+        membership_id = _seed_owner_membership(
+            setup_conn, organization_id, account_id="ACC-DEMOTED"
+        )
+        _activate_subscription(
+            setup_conn,
+            organization_id,
+            recipient_email="broker@example.com",
+            anchor_date=date(2026, 1, 1),
+            updated_by_account_id="ACC-DEMOTED",
+            seed_owner=False,
+        )
+        as_of = datetime(2026, 2, 5, tzinfo=UTC)
+        admitted_id = _admit_next_due_period(setup_conn, as_of=as_of)
+        assert admitted_id is not None
 
-    # Demote to a non-OWNER/ADMIN role (membership stays ACTIVE).
-    seed_organization_membership(
-        report_conn,
-        OrganizationMembership(
-            id=membership_id,
-            account_id=AccountId("ACC-DEMOTED"),
-            organization_id=organization_id,
-            roles=frozenset({MembershipRole.PUBLISHER}),
-            state=MembershipState.ACTIVE,
-        ),
-    )
-    report_conn.commit()
+        # Demote to a non-OWNER/ADMIN role (membership stays ACTIVE).
+        seed_organization_membership(
+            setup_conn,
+            OrganizationMembership(
+                id=membership_id,
+                account_id=AccountId("ACC-DEMOTED"),
+                organization_id=organization_id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            ),
+        )
+        setup_conn.commit()
+    finally:
+        setup_conn.close()
 
-    adapter = DeterministicLocalReportDeliveryAdapter()
-    result = run_report_dispatch_worker_once(
-        report_conn, adapter=adapter, worker_id="w1", as_of=as_of
+    worker_conn = psycopg.connect(report_url)
+    try:
+        adapter = DeterministicLocalReportDeliveryAdapter()
+        result = run_report_dispatch_worker_once(
+            worker_conn, adapter=adapter, worker_id="w1", as_of=as_of
+        )
+        assert result.delivery is DeliveryOutcome.RECIPIENT_UNAUTHORIZED
+        assert len(adapter.sent) == 0
+    finally:
+        worker_conn.close()  # Finding F: the worker's own connection closes with no final commit call.
+
+    _assert_durably_persisted_on_a_fresh_connection(
+        report_url,
+        period_run_id=admitted_id,
+        expected_period_run_status="SUPPRESSED",
+        expected_attempt_outcome="RECIPIENT_UNAUTHORIZED",
     )
-    assert result.delivery is DeliveryOutcome.RECIPIENT_UNAUTHORIZED
-    assert len(adapter.sent) == 0
 
 
 def test_recipient_authorization_denied_for_a_nonexistent_organization(report_conn: Any) -> None:

@@ -45,6 +45,21 @@ Finding D -- dispatch re-verifies that the account which configured the
 member of the Organization (and that the Organization itself still
 exists) before sending -- offboarding/revocation during the window
 between generation and dispatch suppresses delivery.
+
+Amendment (independent review round 2):
+
+Finding F -- `_recipient_authorization_ok`'s own reads must be explicitly
+committed before `record_delivery_attempt` for the `RECIPIENT_
+UNAUTHORIZED` outcome, exactly like every other read-then-write step in
+this module; missing that one `conn.commit()` would have let that
+specific write silently degrade to a nested SAVEPOINT that never reaches
+other connections.
+
+Finding G -- `_SELECT_ACTIVE_SUBSCRIPTIONS` orders by `next_period_start
+ASC` (most-overdue first), not `organization_id`. The bounded `LIMIT`
+batch must never be the same fixed alphabetical set on every tick, or a
+due Organization sorting outside that fixed batch could starve
+permanently no matter how many ticks ran.
 """
 
 from __future__ import annotations
@@ -196,18 +211,32 @@ class ReportWorkerTickResult:
     was_reclaimed: bool = False
 
 
+#: Amendment (independent review round 2, Finding G): ordering by
+#: `next_period_start ASC` -- the most-overdue Organization first -- is
+#: what makes the bounded `LIMIT` starvation-free. Ordering by
+#: `organization_id` instead (the original defect) always re-selected the
+#: same alphabetically-first batch every tick, so a due Organization
+#: outside that fixed batch could never be reached no matter how many
+#: ticks ran. Because admitting a period always advances that
+#: Organization's own cursor forward, the most-overdue Organization is
+#: exactly the one this scan must examine first: once admitted it no
+#: longer sorts to the front, which is what lets the next-most-overdue
+#: Organization surface on a later tick -- a bounded batch can never
+#: permanently starve one specific Organization.
 _SELECT_ACTIVE_SUBSCRIPTIONS = """
 SELECT organization_id, period_kind, next_period_start, revision, recipient_email
 FROM organization_report_subscription
 WHERE status = 'ACTIVE' AND recipient_email IS NOT NULL AND next_period_start IS NOT NULL
-ORDER BY organization_id ASC
+ORDER BY next_period_start ASC, organization_id ASC
 LIMIT %s
 """
 
 
 def _admit_next_due_period(conn: Any, *, as_of: datetime) -> str | None:
-    """Scan a bounded batch of ACTIVE subscriptions (deterministic order)
-    and admit the first one with a newly-closed, not-yet-admitted period.
+    """Scan a bounded batch of ACTIVE subscriptions, most-overdue first
+    (Finding G: a deterministic, starvation-free order -- never the same
+    fixed alphabetical batch every tick), and admit the first one with a
+    newly-closed, not-yet-admitted period.
 
     Each candidate Organization's admission (Finding B/C) runs inside one
     explicit `REPEATABLE READ` transaction: it locks that Organization's
@@ -389,9 +418,11 @@ def run_report_dispatch_worker_once(
             was_reclaimed=claim.was_reclaimed,
         )
 
-    if not _recipient_authorization_ok(
+    authorization_ok = _recipient_authorization_ok(
         conn, item.organization_id, current_subscription.updated_by_account_id
-    ):
+    )
+    conn.commit()  # end _recipient_authorization_ok's own reads before record_delivery_attempt's own transaction.
+    if not authorization_ok:
         # Finding D: the configuring account's authorization (or the
         # Organization itself) has lapsed since generation -- mechanically
         # distinct from a stale-revision suppression, for a clear audit
