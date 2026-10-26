@@ -2,7 +2,8 @@
 
 **ID:** SLICE-0090  
 **Type:** DESIGN_RESEARCH  
-**Status:** READY  
+**Status:** REVIEW  
+**Status set by this handoff:** `REVIEW`  
 **Readiness authority:** This documentation-only READY contract is **NOT OPERATIVE** until independent exact-HEAD readiness review, successful CI/manufacturer and merge into canonical main; subsequently the Owner alone runs the existing START_SLICE.bat 0090.  
 **Risk:** HIGH_RISK — technical-search truth, import/export category semantics, source licensing/database rights, refits, safety and mixed-supply authorization.  
 **Owner selection:** Explicit post-SLICE-0089 reassessment approval on 2026-10-26; SLICE-0089 Owner-local FINISH confirmed DONE.  
