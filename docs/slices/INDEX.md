@@ -16,8 +16,8 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest Owner-accepted implementation: SLICE-0089 (Owner-local FINISH SUCCESS)
-Current queue:                  SLICE-0090 — OWNER-SELECTED / docs READY candidate, not operative
+Latest Owner-accepted slice:       SLICE-0090 (docs-only research; local FINISH pending)
+Current queue:                  SLICE-0091 — NOT SELECTED / NOT READY
 Current capability:             Read-only Sail+Power architecture and lawful source-rights feasibility
 Current operational restriction: No production email/provider; no external broker upload/pilot (#355)
 Technical native Search count:  9 hard Sail criteria; joint Sail+Power external release #366/#372 still outstanding
@@ -26,7 +26,7 @@ Production Launch Pack:         NOT_STARTED
 
 - SLICE-0088 remains Owner-accepted and local FINISH was confirmed.
 - SLICE-0089 is **Owner-accepted and implementation-merged**: exact accepted implementation HEAD `f57b2433db9d3a46ea49d7a5c2eec527c1ab6884`, PR #376 squash `f6e45d13d517455fab7c07b2891f2708a559c680`, exact-HEAD CI/manufacturer successful, separate formal acceptance closure `docs/slices/SLICE-0089-acceptance-closure.md`. The factual branded HTML print/download, broker opt-in weekly/monthly persisted schedule, bounded idempotent worker and local deterministic delivery adapter close `REQ-BROKER-028` / `MVP-BROKER-008` in accepted nonproduction scope. Review findings A–G resolved; actual real email provider and supervised production delivery are NOT activated. Owner-local `FINISH_SLICE.bat 0089` confirmed SUCCESS after formal docs closure merge.
-- SLICE-0090 Owner-selected as bounded **DESIGN_RESEARCH** with separate docs-only READY contract `docs/slices/SLICE-0090-sail-power-architecture-source-rights.md`. Before Owner-local START, its readiness PR still requires independent exact-HEAD review, green CI/manufacturer and merge. Sail+Power parity, #355 operational STOP and Production Launch Pack remain unchanged. No later slice starts automatically.
+- SLICE-0090 is **Owner-accepted docs-only DESIGN_RESEARCH**, exact reviewed HEAD `847c56cde1c48ea285da87ac70c72a6cfdfde5b8`, PR #379 squash merged as `0e78f2c64c2d21e0b2fd5d8a97213b49cbdedeb8`, six-job CI/manufacturer PASS and independent Findings A–K closed. Retained architecture, nine-external-source rights matrix and 13 synthetic hard cases provide **research only**; no Power product implementation, source ingestion or public pilot is authorized. Separate `docs/slices/SLICE-0090-acceptance-closure.md` records formal Owner acceptance; Owner-local FINISH still pending. #372 stays open.
 
 ## Historical execution ranges
 
@@ -35,7 +35,7 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0001–0038 | accepted foundational research/architecture/data/product work except where an individual slice record states otherwise |
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0089 | accepted work (0089 Owner-local FINISH SUCCESS); see acceptance closures and `PROJECT_STATE.md` |
-| SLICE-0090 | OWNER-SELECTED DESIGN_RESEARCH; READY contract not operative until reviewed/merged, Owner START pending |
+| SLICE-0090 | Owner-accepted DESIGN_RESEARCH (not implementation); local FINISH pending |\n| SLICE-0091 | NOT SELECTED / NOT READY; no automatic execution |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
