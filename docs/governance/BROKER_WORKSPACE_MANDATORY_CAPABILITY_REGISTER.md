@@ -17,7 +17,7 @@
 <!-- REQ_BROKER_025_STATUS: PENDING -->
 <!-- REQ_BROKER_026_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_027_STATUS: IMPLEMENTED -->
-<!-- REQ_BROKER_028_STATUS: PENDING -->
+<!-- REQ_BROKER_028_STATUS: IMPLEMENTED -->
 <!-- REQ_BROKER_029_STATUS: PENDING -->
 <!-- REQ_BROKER_030_STATUS: IMPLEMENTED -->
 
@@ -138,7 +138,7 @@ This is an architecture-preservation requirement, not authorization to build a g
 
 ## Periodic engagement reporting
 
-REQ-BROKER-028 is implemented in SLICE-0089 for bounded factual reporting and deterministic local dispatch; real external email delivery remains gated before any external pilot. Once the underlying production exposure/view/Search-impression telemetry is accepted and reliable, the owning readiness reassessment must treat broker engagement reporting as `DUE` rather than silently leaving it as a vague later idea.
+REQ-BROKER-028 is implemented in SLICE-0089 for bounded factual reporting and deterministic local dispatch; real external email delivery remains gated before any external pilot. Actual real provider delivery, production operational evidence and any later Search-impression measurement remain separately gated; neither is falsely claimed implemented by SLICE-0089.
 
 It MUST be implemented before paid broker activation or broad public production launch. The eventual broker-facing report should make useful activity visible even when no lead was generated, while distinguishing observed facts from derived interpretation.
 
