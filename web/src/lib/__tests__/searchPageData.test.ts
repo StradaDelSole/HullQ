@@ -160,6 +160,74 @@ test("buildSearchCanonicalPath: mixed puts draft_max before keel_configuration",
   );
 });
 
+// SLICE-0092: the entirely separate, additive design-unresolved
+// publisher-claim-only result surface threads through `loadSearchPageData`
+// unchanged -- read verbatim from the real API body, never re-derived or
+// defaulted away when actually present.
+test("loadSearchPageData: a 200 result carries publisher_claim_matches through verbatim", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { draft_max: "1.6" },
+          confirmed_matches: [],
+          confirmed_match_count: 0,
+          insufficient_data_count: 0,
+          publisher_claim_matches: [
+            {
+              native_listing_id: "NL-CLAIM-1",
+              publishing_organization_id: "ORG-1",
+              freshness_status: "CONFIRMED",
+              last_confirmed_at: null,
+              source_basis: "PUBLISHER_CLAIM",
+              criterion_evidence: [],
+              discovery_token: "token-1",
+            },
+          ],
+          publisher_claim_match_count: 1,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadSearchPageData(baseUrl, "en", "draft_max=1.6");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.equal(data.publisherClaimMatchCount, 1);
+        assert.equal(data.publisherClaimMatches.length, 1);
+        assert.equal(data.publisherClaimMatches[0]?.native_listing_id, "NL-CLAIM-1");
+        assert.equal(data.publisherClaimMatches[0]?.source_basis, "PUBLISHER_CLAIM");
+      }
+    },
+  );
+});
+
+test("loadSearchPageData: a 200 result without publisher_claim_matches defaults to empty", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { draft_max: "1.6" },
+          confirmed_matches: [],
+          confirmed_match_count: 0,
+          insufficient_data_count: 0,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadSearchPageData(baseUrl, "en", "draft_max=1.6");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.equal(data.publisherClaimMatchCount, 0);
+        assert.deepEqual(data.publisherClaimMatches, []);
+      }
+    },
+  );
+});
+
 // SLICE-0085: loa_min/loa_max/rudder_configuration extend the same sparse
 // activeRequirement shape and canonical key order
 // (hullq.search.criteria_registry.CANONICAL_PARAM_KEY_ORDER: draft_max,

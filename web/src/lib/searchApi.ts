@@ -191,12 +191,36 @@ export interface NativeInventoryConfirmedMatch {
 
 export type SearchConfirmedMatch = DraftOnlyConfirmedMatch | NativeInventoryConfirmedMatch;
 
+/**
+ * SLICE-0092: one design-UNRESOLVED candidate's claim-only match
+ * (`hullq.application.native_inventory_query.PublisherClaimCandidateEvaluation`,
+ * serialized by `src/hullq/api/app.py::_serialize_claim_only_match`).
+ * `source_basis` is always the literal `"PUBLISHER_CLAIM"` -- this is the
+ * publishing Organization's own current claim-revision statement, never
+ * independently design-verified. There is deliberately no
+ * `design_evaluation`/`design_configuration_evidence` field here (unlike
+ * `NativeInventoryConfirmedMatch`): there is no BoatDesign to report, never
+ * a fabricated one.
+ */
+export interface PublisherClaimMatch {
+  native_listing_id: string;
+  publishing_organization_id: string;
+  freshness_status: "CONFIRMED" | "DUE_FOR_CONFIRMATION";
+  last_confirmed_at: string | null;
+  source_basis: "PUBLISHER_CLAIM";
+  criterion_evidence: SearchCriterionEvidence[];
+  discovery_token: string;
+}
+
 export interface SearchResultBody {
   locale: string;
   active_requirement: SearchActiveRequirement | null;
   confirmed_matches?: SearchConfirmedMatch[];
   confirmed_match_count?: number;
   insufficient_data_count?: number;
+  /** SLICE-0092: entirely separate, additive result surface -- see `PublisherClaimMatch`. */
+  publisher_claim_matches?: PublisherClaimMatch[];
+  publisher_claim_match_count?: number;
 }
 
 export interface SearchInvalidBody {

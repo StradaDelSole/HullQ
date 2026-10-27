@@ -39,6 +39,7 @@ __all__ = [
     "DesignQueryEvaluation",
     "evaluate_configuration",
     "evaluate_design_configuration_set",
+    "evaluate_projection",
     "run_configuration_query",
 ]
 
@@ -49,6 +50,26 @@ def _evaluate_leaf(
     if isinstance(criterion, NumericLeafCriterion):
         return evaluate_numeric_leaf(criterion, projection.get_numeric(criterion.field))
     return evaluate_categorical_leaf(criterion, projection.get_categorical(criterion.field))
+
+
+def evaluate_projection(
+    query: MixedAndQuery, projection: ConfigurationProjection
+) -> tuple[TruthState, tuple[CriterionEvaluation, ...]]:
+    """Evaluate every leaf of *query* against one bare `ConfigurationProjection`.
+
+    SLICE-0092: the pure leaf-evaluation + `and_reduce` body `evaluate_configuration`
+    (below) wraps with a `ConfigurationIdentity`-bound `configuration_id`.
+    Factored out so a caller with no BoatDesign/NamedVariant configuration at
+    all -- a design-unresolved PhysicalBoat's publisher-claim evidence -- can
+    reuse the identical MUST/AND truth kernel without ever constructing a
+    fake `ConfigurationIdentity` or inventing a `boat_design_id` (contract §C
+    exact implementation boundary). `evaluate_configuration`'s own public
+    shape and every existing design-linked caller/test are unchanged by this
+    factoring.
+    """
+    evaluations = tuple(_evaluate_leaf(criterion, projection) for criterion in query.criteria)
+    aggregate = and_reduce(tuple(e.truth for e in evaluations))
+    return aggregate, evaluations
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,10 +90,7 @@ def evaluate_configuration(
     aggregate truth (`and_reduce` is order-independent) — slice Required
     Behavior §B.
     """
-    evaluations = tuple(
-        _evaluate_leaf(criterion, configuration.projection) for criterion in query.criteria
-    )
-    aggregate = and_reduce(tuple(e.truth for e in evaluations))
+    aggregate, evaluations = evaluate_projection(query, configuration.projection)
     return ConfigurationEvaluation(
         configuration_id=configuration.identity.configuration_id,
         truth=aggregate,

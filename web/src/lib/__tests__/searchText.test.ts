@@ -35,6 +35,13 @@ test("every supported locale has complete non-empty text", () => {
     assert.ok(t.freshnessConfirmedLabel.length > 0, `${locale}.freshnessConfirmedLabel`);
     assert.ok(t.freshnessDueLabel.length > 0, `${locale}.freshnessDueLabel`);
     assert.ok(t.freshnessDueNote.length > 0, `${locale}.freshnessDueNote`);
+    // SLICE-0092: design-unresolved publisher-claim-only result text.
+    assert.ok(
+      t.publisherClaimHeading(2).length > 0,
+      `${locale}.publisherClaimHeading`,
+    );
+    assert.ok(t.publisherClaimDisclaimer.length > 0, `${locale}.publisherClaimDisclaimer`);
+    assert.ok(t.noPublisherClaimMatches.length > 0, `${locale}.noPublisherClaimMatches`);
     assert.notEqual(
       t.freshnessConfirmedLabel,
       t.freshnessDueLabel,
@@ -54,6 +61,10 @@ test("requirementSummary/resolvedDraftText/insufficientDataText interpolate thei
     assert.ok(t.requirementSummary("1.6").includes("1.6"), `${locale}.requirementSummary`);
     assert.ok(t.resolvedDraftText("1.40").includes("1.40"), `${locale}.resolvedDraftText`);
     assert.ok(t.insufficientDataText(3).includes("3"), `${locale}.insufficientDataText`);
+    assert.ok(
+      t.publisherClaimHeading(5).includes("5"),
+      `${locale}.publisherClaimHeading must interpolate its count`,
+    );
   }
 });
 

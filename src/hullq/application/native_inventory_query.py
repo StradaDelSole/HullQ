@@ -102,12 +102,24 @@ from hullq.application.vessel_category_resolution import resolve_physical_boat_v
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.native_listing_freshness import FreshnessStatus
-from hullq.domain.physical_boat_claims import AssertionKind
+from hullq.domain.physical_boat_claims import AssertionKind, VesselCategory
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
-from hullq.domain.vessel_category import VesselCategoryExclusionEvidence
+from hullq.domain.vessel_category import (
+    ConcreteVesselCategoryEvidence,
+    VesselCategoryExclusionEvidence,
+    VesselCategoryResolution,
+    VesselCategoryResolutionResult,
+    resolve_vessel_category,
+)
 from hullq.persistence.identity_readback import fetch_boat_design
-from hullq.persistence.inventory_search import list_active_design_linked_listings
-from hullq.persistence.physical_boat_claims import list_current_physical_boat_claim_observations
+from hullq.persistence.inventory_search import (
+    list_active_design_linked_listings,
+    list_active_design_unresolved_listings,
+)
+from hullq.persistence.physical_boat_claims import (
+    CurrentPhysicalBoatClaimObservation,
+    list_current_physical_boat_claim_observations,
+)
 from hullq.search.boat_design_field_bridge import BoatDesignConfigurationQueryResult
 from hullq.search.configuration import (
     ConfigurationIdentity,
@@ -120,6 +132,7 @@ from hullq.search.configuration_engine import (
     ConfigurationSearchOutcome,
     DesignQueryEvaluation,
     evaluate_configuration,
+    evaluate_projection,
     run_configuration_query,
 )
 from hullq.search.criteria import (
@@ -148,10 +161,13 @@ __all__ = [
     "ConfigurationEvidence",
     "NativeInventoryCandidateEvaluation",
     "NativeInventorySearchOutcome",
+    "PublisherClaimCandidateEvaluation",
     "SearchCriterionEvidence",
     "build_configuration_evidence",
     "build_mixed_requirement_query",
+    "classify_claim_only_candidate",
     "classify_concrete_candidate",
+    "evaluate_claim_only_candidates",
     "evaluate_native_inventory_requirements",
     "run_mixed_boat_design_configuration_query",
 ]
@@ -248,6 +264,46 @@ class NativeInventoryCandidateEvaluation:
 
 
 @dataclass(frozen=True, slots=True)
+class PublisherClaimCandidateEvaluation:
+    """One design-unresolved candidate's claim-only classification -- SLICE-0092.
+
+    Distinct from `NativeInventoryCandidateEvaluation`: there is no
+    `DesignQueryEvaluation`/`ConfigurationEvidence` at all (there is no
+    BoatDesign to evaluate -- contract §C/§D: never wrapped in a fake
+    `ConfigurationIdentity` or an invented `boat_design_id`). Every match
+    here is `source_basis = PUBLISHER_CLAIM` by construction: the publishing
+    Organization's own current claim-revision statement, never independently
+    design-verified (contract §D). Built exclusively by
+    `classify_claim_only_candidate`/`evaluate_claim_only_candidates` below,
+    reusing the identical per-field qualification and MUST/AND truth kernel
+    `classify_concrete_candidate` uses for the design-linked path.
+
+    `vessel_category_exclusion` is populated only when the publisher-owned
+    SAIL admission precondition (contract §A: "the publishing Organization
+    itself ... has an explicit current VALUE_ASSERTION(SAIL) category
+    claim") failed because the resolved category is explicitly
+    POWER/MOTORSAILER/CONFLICT (`result_class` is then `CONFIRMED_NON_MATCH`).
+    A missing/UNKNOWN category, or a positive SAIL resolution contributed
+    only by a *different* claiming Organization, is `None` here instead --
+    `result_class` is `INSUFFICIENT_DATA` in that case, never
+    `CONFIRMED_NON_MATCH`, since `VesselCategoryExclusionEvidence` itself only
+    accepts an explicit non-Sail/conflicted resolution (see its own
+    docstring) and "not yet established as the publisher's own SAIL claim"
+    is a materially different, weaker fact than "explicitly excluded".
+    `criterion_evidence` is empty whenever category admission itself did not
+    succeed -- the concrete per-field claims are never even consulted.
+    """
+
+    native_listing_id: NativeListingId
+    result_class: ResultClass
+    criterion_evidence: tuple[SearchCriterionEvidence, ...]
+    vessel_category_exclusion: VesselCategoryExclusionEvidence | None
+    publishing_organization_id: MarketplaceOrganizationId
+    freshness_status: FreshnessStatus
+    last_confirmed_at: datetime | None
+
+
+@dataclass(frozen=True, slots=True)
 class NativeInventorySearchOutcome:
     """Separated result surfaces for one mixed requirement evaluation.
 
@@ -257,6 +313,14 @@ class NativeInventorySearchOutcome:
     bare counts (Required Behavior §G). `query` is the exact evaluated
     `MixedAndQuery`, carrying every active criterion's own requested
     value/comparison.
+
+    SLICE-0092: `claim_only_matches`/`claim_only_non_matches`/
+    `claim_only_insufficient_data` are the entirely separate, additive
+    design-unresolved publisher-claim result surfaces (contract §D: "claim-
+    only and design-linked results are discriminable"). They are never
+    merged into `confirmed_matches` and never affect `confirmed_match_count`/
+    `confirmed_non_match_count`/`insufficient_data_count` -- existing
+    design-linked counts/sets are byte-for-byte unchanged by this slice.
     """
 
     draft_max: Decimal | None
@@ -274,6 +338,9 @@ class NativeInventorySearchOutcome:
     confirmed_matches: tuple[NativeInventoryCandidateEvaluation, ...]
     confirmed_non_matches: tuple[NativeInventoryCandidateEvaluation, ...]
     insufficient_data: tuple[NativeInventoryCandidateEvaluation, ...]
+    claim_only_matches: tuple[PublisherClaimCandidateEvaluation, ...] = ()
+    claim_only_non_matches: tuple[PublisherClaimCandidateEvaluation, ...] = ()
+    claim_only_insufficient_data: tuple[PublisherClaimCandidateEvaluation, ...] = ()
 
     @property
     def confirmed_match_count(self) -> int:
@@ -286,6 +353,10 @@ class NativeInventorySearchOutcome:
     @property
     def insufficient_data_count(self) -> int:
         return len(self.insufficient_data)
+
+    @property
+    def claim_only_match_count(self) -> int:
+        return len(self.claim_only_matches)
 
 
 def _qualify_claim_field(
@@ -370,54 +441,28 @@ def build_configuration_evidence(
     )
 
 
-def classify_concrete_candidate(
-    conn: Any,
+def _qualify_claims_against_definitions(
+    observations: Sequence[CurrentPhysicalBoatClaimObservation],
     *,
-    native_listing_id: NativeListingId,
     publishing_organization_id: MarketplaceOrganizationId,
-    physical_boat_id: PhysicalBoatId,
-    boat_design_id: str,
-    query: MixedAndQuery,
     active_definitions: Sequence[CriterionDefinition],
-) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
-    """Classify one design-eligible, currently-fresh candidate's concrete
-    PhysicalBoat claims.
+) -> tuple[ConfigurationProjection, dict[str, Decimal | str | None]]:
+    """Qualify every active criterion's concrete claim field from *observations*
+    (already a single-query, single-PhysicalBoat observation set) into one
+    `ConfigurationProjection` plus the safely observed/resolved value per
+    projection field.
 
-    Reads every active field's current cross-Organization observation set
-    from one call to `list_current_physical_boat_claim_observations` (one
-    SQL statement, therefore one consistent PostgreSQL MVCC snapshot across
-    every active criterion -- mirrors the SLICE-0051 Finding 5 rationale),
-    then reuses the exact same `evaluate_configuration` MUST-AND kernel
-    already used for design-level eligibility to combine the active
-    criteria's concrete truth: any confirmed FALSE prevents a confirmed
-    joint match; unresolved evidence never becomes TRUE (Required
-    Behavior §B).
-
-    Review amendment (Finding C): *active_definitions* replaces four
-    previously hand-duplicated per-criterion boolean flags/blocks. Every
-    `hullq.search.criteria_registry.CriterionDefinition.read_claim` has the
-    identical `(observation) -> (assertion_kind, value) | None` shape, so
-    the same-PhysicalBoat cross-Organization qualification
-    (`_qualify_claim_field`) now runs in one shared loop over whichever
-    definitions are active, rather than one copy-pasted block per
-    criterion -- this is the registry's "concrete publisher accessor"
-    being genuinely consumed, not merely declared.
-
-    Returns typed `SearchCriterionEvidence` (requested criterion + typed
-    evaluation + safely observed concrete value), not bare
-    `CriterionEvaluation`, so the observed value is preserved through the
-    application boundary rather than existing only inside
-    `CriterionEvaluation.explanation` text (Finding 1).
-
-    Takes the resolved identity fields directly (rather than an
-    `ActiveDesignLinkedListing`) so both the public bulk native-inventory
-    funnel (`evaluate_native_inventory_requirements`, below) and SLICE-0084's
-    authorized single-target hypothetical DRAFT preview
-    (`hullq.application.broker_search_fit`) call the identical concrete
-    classification kernel -- never a second, independently maintained
-    concrete-claim truth path.
+    Factored out of `classify_concrete_candidate` (SLICE-0092) so the new
+    design-unresolved claim-only path (`classify_claim_only_candidate`,
+    below) can reuse the *identical* per-field same-PhysicalBoat
+    cross-Organization qualification (Review amendment Finding C's "concrete
+    publisher accessor" loop) without duplicating it -- the only difference
+    between the two callers is what each does with the resulting
+    `ConfigurationProjection` afterwards (design-linked: wrap in a real
+    `ConfigurationIdentity`/`ResolvedConfiguration`; claim-only: evaluate the
+    bare projection directly via `evaluate_projection`, contract §C exact
+    implementation boundary).
     """
-    observations = list_current_physical_boat_claim_observations(conn, physical_boat_id)
     publisher_observation = next(
         (obs for obs in observations if obs.claiming_organization_id == publishing_organization_id),
         None,
@@ -459,6 +504,63 @@ def classify_concrete_candidate(
     projection = ConfigurationProjection(
         numeric_values=numeric_values, categorical_values=categorical_values
     )
+    return projection, observed_by_field
+
+
+def classify_concrete_candidate(
+    conn: Any,
+    *,
+    native_listing_id: NativeListingId,
+    publishing_organization_id: MarketplaceOrganizationId,
+    physical_boat_id: PhysicalBoatId,
+    boat_design_id: str,
+    query: MixedAndQuery,
+    active_definitions: Sequence[CriterionDefinition],
+) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
+    """Classify one design-eligible, currently-fresh candidate's concrete
+    PhysicalBoat claims.
+
+    Reads every active field's current cross-Organization observation set
+    from one call to `list_current_physical_boat_claim_observations` (one
+    SQL statement, therefore one consistent PostgreSQL MVCC snapshot across
+    every active criterion -- mirrors the SLICE-0051 Finding 5 rationale),
+    then reuses the exact same `evaluate_configuration` MUST-AND kernel
+    already used for design-level eligibility to combine the active
+    criteria's concrete truth: any confirmed FALSE prevents a confirmed
+    joint match; unresolved evidence never becomes TRUE (Required
+    Behavior §B).
+
+    Review amendment (Finding C): *active_definitions* replaces four
+    previously hand-duplicated per-criterion boolean flags/blocks. Every
+    `hullq.search.criteria_registry.CriterionDefinition.read_claim` has the
+    identical `(observation) -> (assertion_kind, value) | None` shape, so
+    the same-PhysicalBoat cross-Organization qualification
+    (`_qualify_claim_field`, shared via `_qualify_claims_against_definitions`
+    since SLICE-0092) now runs in one shared loop over whichever
+    definitions are active, rather than one copy-pasted block per
+    criterion -- this is the registry's "concrete publisher accessor"
+    being genuinely consumed, not merely declared.
+
+    Returns typed `SearchCriterionEvidence` (requested criterion + typed
+    evaluation + safely observed concrete value), not bare
+    `CriterionEvaluation`, so the observed value is preserved through the
+    application boundary rather than existing only inside
+    `CriterionEvaluation.explanation` text (Finding 1).
+
+    Takes the resolved identity fields directly (rather than an
+    `ActiveDesignLinkedListing`) so both the public bulk native-inventory
+    funnel (`evaluate_native_inventory_requirements`, below) and SLICE-0084's
+    authorized single-target hypothetical DRAFT preview
+    (`hullq.application.broker_search_fit`) call the identical concrete
+    classification kernel -- never a second, independently maintained
+    concrete-claim truth path.
+    """
+    observations = list_current_physical_boat_claim_observations(conn, physical_boat_id)
+    projection, observed_by_field = _qualify_claims_against_definitions(
+        observations,
+        publishing_organization_id=publishing_organization_id,
+        active_definitions=active_definitions,
+    )
     pseudo_configuration = ResolvedConfiguration(
         identity=ConfigurationIdentity(
             configuration_id=native_listing_id.value,
@@ -489,6 +591,244 @@ def classify_concrete_candidate(
         )
     )
     return result_class, evidence
+
+
+def classify_claim_only_candidate(
+    observations: Sequence[CurrentPhysicalBoatClaimObservation],
+    *,
+    publishing_organization_id: MarketplaceOrganizationId,
+    query: MixedAndQuery,
+    active_definitions: Sequence[CriterionDefinition],
+) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
+    """Classify one already category-admitted, design-UNRESOLVED candidate's
+    publisher-claim evidence -- SLICE-0092.
+
+    Mirrors `classify_concrete_candidate` exactly, down to reusing the
+    identical `_qualify_claims_against_definitions` per-field qualification
+    -- the only difference is what happens afterwards: there is no
+    BoatDesign, so this never constructs a `ConfigurationIdentity`/
+    `ResolvedConfiguration` (which would require an invented
+    `boat_design_id`). Instead it evaluates the bare `ConfigurationProjection`
+    directly via `hullq.search.configuration_engine.evaluate_projection` --
+    the identical leaf-evaluation + MUST/AND-reduce kernel
+    `evaluate_configuration` itself calls, factored out for exactly this
+    reuse (contract §C exact implementation boundary). No second,
+    independently maintained comparator is introduced.
+
+    Takes the already-fetched *observations* directly (contract §E: "Both
+    category and constrained technical fields must refer to the same
+    publisher's coherent current claim revision") -- the caller
+    (`evaluate_claim_only_candidates`) reads them from the SAME single
+    `list_current_physical_boat_claim_observations` call it also uses for
+    the category-admission precondition, so both decisions are drawn from
+    one coherent PostgreSQL statement per PhysicalBoat, never two separate
+    reads that could straddle a concurrent revision write.
+
+    Callers are responsible for the category-admission precondition
+    (contract §A: publisher-owned, nonconflicted, explicit SAIL) *before*
+    calling this -- see `_resolve_claim_only_category_admission` and
+    `evaluate_claim_only_candidates` below. This function performs no
+    category check itself; it only evaluates the requested technical
+    criteria.
+    """
+    projection, observed_by_field = _qualify_claims_against_definitions(
+        observations,
+        publishing_organization_id=publishing_organization_id,
+        active_definitions=active_definitions,
+    )
+    truth, criterion_evaluations = evaluate_projection(query, projection)
+    if truth is TruthState.TRUE:
+        result_class = ResultClass.CONFIRMED_MATCH
+    elif truth is TruthState.FALSE:
+        result_class = ResultClass.CONFIRMED_NON_MATCH
+    else:
+        result_class = ResultClass.INSUFFICIENT_DATA
+
+    evidence = tuple(
+        SearchCriterionEvidence(
+            criterion=criterion,
+            evaluation=criterion_evaluation,
+            observed_value=observed_by_field.get(criterion.field),
+        )
+        for criterion, criterion_evaluation in zip(
+            query.criteria, criterion_evaluations, strict=True
+        )
+    )
+    return result_class, evidence
+
+
+def _resolve_claim_only_category_from_observations(
+    observations: Sequence[CurrentPhysicalBoatClaimObservation],
+) -> VesselCategoryResolutionResult:
+    """Resolve the current `VesselCategory` directly from an already-fetched
+    *observations* set (SLICE-0092 contract §E coherent-snapshot requirement)
+    rather than issuing a second, independent SQL read
+    (`hullq.application.vessel_category_resolution.
+    resolve_physical_boat_vessel_category`) the way the design-linked path
+    does. `design_evidence` is always `None`: the design plane never
+    contributes for a design-unresolved PhysicalBoat (mechanically identical
+    treatment to calling the resolver with `boat_design_ref=None`). Reuses
+    the exact same pure `hullq.domain.vessel_category.resolve_vessel_category`
+    combination step -- no second category-resolution rule.
+    """
+    concrete_evidence = tuple(
+        ConcreteVesselCategoryEvidence(
+            claiming_organization_id=obs.claiming_organization_id,
+            revision_id=obs.revision_id,
+            recorded_by_account_id=obs.recorded_by_account_id,
+            recorded_at=obs.recorded_at,
+            claim=obs.vessel_category,
+        )
+        for obs in observations
+    )
+    return resolve_vessel_category(design_evidence=None, concrete_evidence=concrete_evidence)
+
+
+def _resolve_claim_only_category_admission(
+    category_resolution: VesselCategoryResolutionResult,
+    publishing_organization_id: MarketplaceOrganizationId,
+) -> tuple[bool, VesselCategoryExclusionEvidence | None]:
+    """SLICE-0092 contract §A: a claim-only candidate is admitted to the new
+    Sail path iff the overall resolution is `SAIL` **and** the publishing
+    Organization itself (never merely another current claimant) carries an
+    explicit current `VALUE_ASSERTION(SAIL)` claim in `category_resolution.
+    concrete_evidence` -- "Another Organization's category assertion cannot
+    lend the publisher its Sail eligibility." The design plane is
+    irrelevant here by construction: callers always resolve with
+    `design_evidence=None` for a design-unresolved PhysicalBoat.
+
+    Returns `(admitted, exclusion_evidence)`. `exclusion_evidence` is
+    populated only when the resolution is explicitly POWER/MOTORSAILER/
+    CONFLICT (`category_resolution.is_explicitly_non_sail_or_conflicted`) --
+    the bounded, enum-only `VesselCategoryExclusionEvidence` SLICE-0091
+    already defined for exactly this purpose, reused unchanged. A missing/
+    UNKNOWN category, or a SAIL resolution contributed only by a different
+    Organization, is `(False, None)`: not an explicit exclusion, merely not
+    (yet) a publisher-owned admission -- the caller classifies that as
+    `INSUFFICIENT_DATA`, never `CONFIRMED_NON_MATCH`.
+    """
+    exclusion = (
+        VesselCategoryExclusionEvidence(
+            resolution=category_resolution.resolution, reason=category_resolution.reason
+        )
+        if category_resolution.is_explicitly_non_sail_or_conflicted
+        else None
+    )
+    if category_resolution.resolution is not VesselCategoryResolution.SAIL:
+        return False, exclusion
+    publisher_entry = next(
+        (
+            entry
+            for entry in category_resolution.concrete_evidence
+            if entry.claiming_organization_id == publishing_organization_id
+        ),
+        None,
+    )
+    publisher_owns_sail = (
+        publisher_entry is not None
+        and publisher_entry.claim is not None
+        and publisher_entry.claim.assertion_kind is AssertionKind.VALUE_ASSERTION
+        and publisher_entry.claim.value is VesselCategory.SAIL
+    )
+    return publisher_owns_sail, exclusion
+
+
+def evaluate_claim_only_candidates(
+    conn: Any,
+    *,
+    query: MixedAndQuery,
+    active_definitions: Sequence[CriterionDefinition],
+    as_of: datetime,
+) -> tuple[
+    tuple[PublisherClaimCandidateEvaluation, ...],
+    tuple[PublisherClaimCandidateEvaluation, ...],
+    tuple[PublisherClaimCandidateEvaluation, ...],
+]:
+    """Evaluate every ACTIVE, design-UNRESOLVED candidate's publisher-claim
+    evidence against *query* -- SLICE-0092's new claim-only Sail path.
+    Returns `(matches, non_matches, insufficient_data)`, each sorted by
+    `NativeListingId` exactly like the design-linked funnel.
+
+    Shared by both accepted Sail entrypoints (pure `draft_max` via
+    `hullq.application.inventory_search.evaluate_draft_max_requirement`, and
+    the mixed nine-criterion funnel via
+    `evaluate_native_inventory_requirements` below) -- contract §F "wire this
+    optional additive path through (i) pure draft_max ... (ii) mixed
+    ... Sail entrypoints", one evaluation, never two independently
+    maintained claim-only funnels.
+
+    Per candidate: D29 current-public eligibility is re-resolved at the
+    explicit *as_of* boundary exactly like the design-linked funnel
+    (ineligible candidates are excluded outright, never counted); then one
+    single call to `list_current_physical_boat_claim_observations` supplies
+    BOTH the category-admission precondition (contract §A) and the
+    technical per-criterion evidence (contract §E: "one coherent PostgreSQL
+    statement for each PhysicalBoat") -- `_resolve_claim_only_category_admission`
+    decides whether the publisher-owned-SAIL precondition is satisfied
+    before `classify_claim_only_candidate` ever consults the concrete
+    per-criterion claims, but both decisions are drawn from the identical
+    observation set, never two separate reads that could straddle a
+    concurrent revision write.
+    """
+    all_candidates = list_active_design_unresolved_listings(conn)
+    if not all_candidates:
+        return (), (), ()
+
+    matches: list[PublisherClaimCandidateEvaluation] = []
+    non_matches: list[PublisherClaimCandidateEvaluation] = []
+    insufficient_data: list[PublisherClaimCandidateEvaluation] = []
+
+    for candidate in all_candidates:
+        eligibility = resolve_current_public_eligibility(
+            conn, candidate.native_listing_id, as_of=as_of
+        )
+        if eligibility is None or eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE:
+            continue
+        freshness = resolve_current_freshness(conn, candidate.native_listing_id, as_of=as_of)
+
+        observations = list_current_physical_boat_claim_observations(
+            conn, candidate.physical_boat_id
+        )
+        category_resolution = _resolve_claim_only_category_from_observations(observations)
+        admitted, exclusion = _resolve_claim_only_category_admission(
+            category_resolution, candidate.publishing_organization_id
+        )
+
+        criterion_evidence: tuple[SearchCriterionEvidence, ...]
+        if exclusion is not None:
+            result_class = ResultClass.CONFIRMED_NON_MATCH
+            criterion_evidence = ()
+        elif not admitted:
+            result_class = ResultClass.INSUFFICIENT_DATA
+            criterion_evidence = ()
+        else:
+            result_class, criterion_evidence = classify_claim_only_candidate(
+                observations,
+                publishing_organization_id=candidate.publishing_organization_id,
+                query=query,
+                active_definitions=active_definitions,
+            )
+
+        evaluation = PublisherClaimCandidateEvaluation(
+            native_listing_id=candidate.native_listing_id,
+            result_class=result_class,
+            criterion_evidence=criterion_evidence,
+            vessel_category_exclusion=exclusion,
+            publishing_organization_id=candidate.publishing_organization_id,
+            freshness_status=freshness.status,
+            last_confirmed_at=freshness.last_confirmed_at,
+        )
+        if result_class is ResultClass.CONFIRMED_MATCH:
+            matches.append(evaluation)
+        elif result_class is ResultClass.CONFIRMED_NON_MATCH:
+            non_matches.append(evaluation)
+        else:
+            insufficient_data.append(evaluation)
+
+    matches.sort(key=lambda m: m.native_listing_id.value)
+    non_matches.sort(key=lambda m: m.native_listing_id.value)
+    insufficient_data.sort(key=lambda m: m.native_listing_id.value)
+    return tuple(matches), tuple(non_matches), tuple(insufficient_data)
 
 
 def build_mixed_requirement_query(
@@ -869,6 +1209,17 @@ def evaluate_native_inventory_requirements(
         hull_material=hull_material,
     )
 
+    # SLICE-0092: the new design-unresolved claim-only Sail path is
+    # evaluated unconditionally, independent of whether any design-linked
+    # candidate exists at all -- it is an entirely separate candidate
+    # enumeration (`list_active_design_unresolved_listings`), not a subset
+    # or fallback of the design-linked one below.
+    claim_only_matches, claim_only_non_matches, claim_only_insufficient_data = (
+        evaluate_claim_only_candidates(
+            conn, query=query, active_definitions=active_definitions, as_of=as_of
+        )
+    )
+
     def _empty() -> NativeInventorySearchOutcome:
         return NativeInventorySearchOutcome(
             draft_max=draft_max,
@@ -886,6 +1237,9 @@ def evaluate_native_inventory_requirements(
             confirmed_matches=(),
             confirmed_non_matches=(),
             insufficient_data=(),
+            claim_only_matches=claim_only_matches,
+            claim_only_non_matches=claim_only_non_matches,
+            claim_only_insufficient_data=claim_only_insufficient_data,
         )
 
     all_candidates = list_active_design_linked_listings(conn)
@@ -1031,4 +1385,7 @@ def evaluate_native_inventory_requirements(
         confirmed_matches=tuple(confirmed_matches),
         confirmed_non_matches=tuple(confirmed_non_matches),
         insufficient_data=tuple(insufficient_data),
+        claim_only_matches=claim_only_matches,
+        claim_only_non_matches=claim_only_non_matches,
+        claim_only_insufficient_data=claim_only_insufficient_data,
     )
