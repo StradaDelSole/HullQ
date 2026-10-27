@@ -102,7 +102,7 @@ One current-drive predicate necessarily spans persisted claim editing, category-
 
 ## Explicitly out of scope
 
-Separate Power engine/fuel/horsepower/count/model and displacement/hull behavior criteria, conditional operating-point values/range/speed/consumption, broad refit validation, drive mixtures as multi-select semantics, future schema v0.7 redesign, full Power Broker Search-fit, additional Sail criteria, full category-agnostic browse, source feed scraping, real brokers/owner-direct trust, production deployment, joint release/pilot, Paid Search relevance, full NautiX import/export mapping, XSBL export (#362) and operations source-rights clearance.
+Separate Power engine/fuel/horsepower/count/model and displacement/hull behavior criteria, conditional operating-point values/range/speed/consumption, broad refit validation, drive mixtures as multi-select semantics, future schema v0.7 redesign, full Power Broker Search-fit, additional Sail criteria, full category-agnostic browse, source feed scraping, real brokers/owner-direct trust, production deployment, joint release/pilot, Paid Search relevance, full NautiX import/export mapping, XLSB export (#362) and operations source-rights clearance.
 
 ## Deliverables / expected touchpoints
 
