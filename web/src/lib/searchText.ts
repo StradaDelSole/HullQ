@@ -167,6 +167,23 @@ export interface SearchText {
   /** MUST NOT word a DUE match as if it were simply "confirmed" (contract §H). */
   freshnessDueNote: string;
 
+  // SLICE-0092: design-UNRESOLVED publisher-claim-only matches, rendered as
+  // an entirely separate results section (contract §D: public DTO/SSR must
+  // convey "publisher-stated, not independently design verified" -- never
+  // implying DESIGN_CONFIRMED/verified provenance).
+  publisherClaimHeading: (count: number) => string;
+  publisherClaimDisclaimer: string;
+  noPublisherClaimMatches: string;
+  /**
+   * Amendment review Finding A: shown INSTEAD of `noConfirmedMatches`/
+   * `noConfirmedMatchesGeneric` whenever there are zero design-confirmed
+   * matches but one or more publisher-claim-only matches are shown below
+   * -- the plain "no confirmed matches" wording would otherwise read as a
+   * totally empty result even though matches are visible on the same
+   * page.
+   */
+  noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount: number) => string;
+
   // SLICE-0057: buyer-requirement-sensitivity text. Factual and
   // decision-neutral throughout (contract §12/§19) -- never "recommended",
   // "better", "worse", "optimal", "should" or "relax this".
@@ -191,6 +208,17 @@ export interface SearchText {
   sensitivityAlternativeConfirmedLabel: (count: number) => string;
   sensitivityNewlyConfirmedLabel: (count: number) => string;
   sensitivityNoLongerConfirmedLabel: (count: number) => string;
+  /**
+   * Amendment review Finding A: the entirely separate, truth-source-labeled
+   * design-unresolved publisher-claim-only delta -- never merged into the
+   * design-confirmed counts above. Rendered only when at least one of the
+   * four underlying counts is non-zero (never an empty, confusing extra
+   * section).
+   */
+  sensitivityCurrentPublisherClaimLabel: (count: number) => string;
+  sensitivityAlternativePublisherClaimLabel: (count: number) => string;
+  sensitivityNewlyPublisherClaimLabel: (count: number) => string;
+  sensitivityNoLongerPublisherClaimLabel: (count: number) => string;
   sensitivityCurrentInsufficientLabel: (count: number) => string;
   sensitivityAlternativeInsufficientLabel: (count: number) => string;
   sensitivityViewAlternativeSearch: string;
@@ -332,6 +360,14 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmation due",
     freshnessDueNote:
       "The broker has not reconfirmed this listing recently; it will be hidden soon unless reconfirmed.",
+    publisherClaimHeading: (count) =>
+      `Additional matches based on the broker's own statement (${count})`,
+    publisherClaimDisclaimer:
+      "These listings are not linked to a known design. They are shown because the broker's own current statement meets this requirement -- not because HullQ has independently verified the design.",
+    noPublisherClaimMatches:
+      "No additional broker-stated listing currently meets this requirement.",
+    noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
+      `No design-confirmed matches. ${publisherClaimCount} additional match(es) based on the broker's own statement are shown below.`,
     sensitivityFormNote:
       "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
     sensitivityUnavailableWithNewCriteria:
@@ -343,12 +379,21 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityPageTitle: "Requirement sensitivity",
     sensitivityCurrentHeading: "Current requirement",
     sensitivityAlternativeHeading: "Alternative requirement",
-    sensitivityCurrentConfirmedLabel: (count) => `Currently confirmed matches: ${count}`,
+    sensitivityCurrentConfirmedLabel: (count) => `Currently design-confirmed matches: ${count}`,
     sensitivityAlternativeConfirmedLabel: (count) =>
-      `Confirmed matches with the alternative: ${count}`,
-    sensitivityNewlyConfirmedLabel: (count) => `${count} newly confirmed with the alternative`,
+      `Design-confirmed matches with the alternative: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) =>
+      `${count} newly design-confirmed with the alternative`,
     sensitivityNoLongerConfirmedLabel: (count) =>
-      `${count} no longer confirmed with the alternative`,
+      `${count} no longer design-confirmed with the alternative`,
+    sensitivityCurrentPublisherClaimLabel: (count) =>
+      `Currently broker-stated (not design-verified) matches: ${count}`,
+    sensitivityAlternativePublisherClaimLabel: (count) =>
+      `Broker-stated (not design-verified) matches with the alternative: ${count}`,
+    sensitivityNewlyPublisherClaimLabel: (count) =>
+      `${count} newly broker-stated with the alternative`,
+    sensitivityNoLongerPublisherClaimLabel: (count) =>
+      `${count} no longer broker-stated with the alternative`,
     sensitivityCurrentInsufficientLabel: (count) =>
       `${count} additional listing(s) have insufficient evidence under the current requirement`,
     sensitivityAlternativeInsufficientLabel: (count) =>
@@ -492,6 +537,13 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Bestätigung ausstehend",
     freshnessDueNote:
       "Der Makler hat dieses Angebot kürzlich nicht erneut bestätigt; es wird bald ausgeblendet, sofern es nicht erneut bestätigt wird.",
+    publisherClaimHeading: (count) => `Weitere Treffer laut Anbieterangabe (${count})`,
+    publisherClaimDisclaimer:
+      "Diese Angebote sind keinem bekannten Konstruktionsdatensatz zugeordnet. Sie werden angezeigt, weil die aktuelle Angabe des Anbieters diese Anforderung erfüllt -- nicht, weil HullQ die Konstruktion unabhängig geprüft hat.",
+    noPublisherClaimMatches:
+      "Derzeit erfüllt kein zusätzliches, laut Anbieterangabe geführtes Angebot diese Anforderung.",
+    noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
+      `Keine konstruktionsbestätigten Treffer. ${publisherClaimCount} weitere(r) Treffer laut Anbieterangabe werden unten angezeigt.`,
     sensitivityFormNote:
       "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
     sensitivityUnavailableWithNewCriteria:
@@ -503,12 +555,22 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityPageTitle: "Anforderungssensitivität",
     sensitivityCurrentHeading: "Aktuelle Anforderung",
     sensitivityAlternativeHeading: "Alternative Anforderung",
-    sensitivityCurrentConfirmedLabel: (count) => `Aktuell bestätigte Treffer: ${count}`,
+    sensitivityCurrentConfirmedLabel: (count) =>
+      `Aktuell konstruktionsbestätigte Treffer: ${count}`,
     sensitivityAlternativeConfirmedLabel: (count) =>
-      `Bestätigte Treffer mit der Alternative: ${count}`,
-    sensitivityNewlyConfirmedLabel: (count) => `${count} neu bestätigt mit der Alternative`,
+      `Konstruktionsbestätigte Treffer mit der Alternative: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) =>
+      `${count} neu konstruktionsbestätigt mit der Alternative`,
     sensitivityNoLongerConfirmedLabel: (count) =>
-      `${count} nicht mehr bestätigt mit der Alternative`,
+      `${count} nicht mehr konstruktionsbestätigt mit der Alternative`,
+    sensitivityCurrentPublisherClaimLabel: (count) =>
+      `Aktuell laut Anbieterangabe (nicht konstruktionsgeprüft) Treffer: ${count}`,
+    sensitivityAlternativePublisherClaimLabel: (count) =>
+      `Treffer laut Anbieterangabe (nicht konstruktionsgeprüft) mit der Alternative: ${count}`,
+    sensitivityNewlyPublisherClaimLabel: (count) =>
+      `${count} neu laut Anbieterangabe mit der Alternative`,
+    sensitivityNoLongerPublisherClaimLabel: (count) =>
+      `${count} nicht mehr laut Anbieterangabe mit der Alternative`,
     sensitivityCurrentInsufficientLabel: (count) =>
       `${count} weitere(s) Angebot(e) haben unter der aktuellen Anforderung unzureichende Nachweise`,
     sensitivityAlternativeInsufficientLabel: (count) =>
@@ -653,6 +715,14 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmation attendue",
     freshnessDueNote:
       "Le courtier n'a pas reconfirmé cette annonce récemment ; elle sera bientôt masquée si elle n'est pas reconfirmée.",
+    publisherClaimHeading: (count) =>
+      `Résultats supplémentaires selon la déclaration du courtier (${count})`,
+    publisherClaimDisclaimer:
+      "Ces annonces ne sont associées à aucun modèle de conception connu. Elles sont affichées parce que la déclaration actuelle du courtier répond à cette exigence -- et non parce que HullQ a vérifié la conception de façon indépendante.",
+    noPublisherClaimMatches:
+      "Aucune annonce supplémentaire déclarée par le courtier ne répond actuellement à cette exigence.",
+    noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
+      `Aucun résultat confirmé par la conception. ${publisherClaimCount} résultat(s) supplémentaire(s) selon la déclaration du courtier sont affichés ci-dessous.`,
     sensitivityFormNote:
       "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
     sensitivityUnavailableWithNewCriteria:
@@ -664,12 +734,22 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityPageTitle: "Sensibilité de l'exigence",
     sensitivityCurrentHeading: "Exigence actuelle",
     sensitivityAlternativeHeading: "Exigence alternative",
-    sensitivityCurrentConfirmedLabel: (count) => `Résultats actuellement confirmés : ${count}`,
+    sensitivityCurrentConfirmedLabel: (count) =>
+      `Résultats actuellement confirmés par la conception : ${count}`,
     sensitivityAlternativeConfirmedLabel: (count) =>
-      `Résultats confirmés avec l'alternative : ${count}`,
-    sensitivityNewlyConfirmedLabel: (count) => `${count} nouvellement confirmé(s) avec l'alternative`,
+      `Résultats confirmés par la conception avec l'alternative : ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) =>
+      `${count} nouvellement confirmé(s) par la conception avec l'alternative`,
     sensitivityNoLongerConfirmedLabel: (count) =>
-      `${count} n'est/ne sont plus confirmé(s) avec l'alternative`,
+      `${count} n'est/ne sont plus confirmé(s) par la conception avec l'alternative`,
+    sensitivityCurrentPublisherClaimLabel: (count) =>
+      `Résultats actuellement selon la déclaration du courtier (non vérifiés par la conception) : ${count}`,
+    sensitivityAlternativePublisherClaimLabel: (count) =>
+      `Résultats selon la déclaration du courtier (non vérifiés par la conception) avec l'alternative : ${count}`,
+    sensitivityNewlyPublisherClaimLabel: (count) =>
+      `${count} nouvellement déclaré(s) par le courtier avec l'alternative`,
+    sensitivityNoLongerPublisherClaimLabel: (count) =>
+      `${count} n'est/ne sont plus déclaré(s) par le courtier avec l'alternative`,
     sensitivityCurrentInsufficientLabel: (count) =>
       `${count} annonce(s) supplémentaire(s) ont des preuves insuffisantes selon l'exigence actuelle`,
     sensitivityAlternativeInsufficientLabel: (count) =>
@@ -813,6 +893,14 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmação pendente",
     freshnessDueNote:
       "O corretor não reconfirmou este anúncio recentemente; será ocultado em breve caso não seja reconfirmado.",
+    publisherClaimHeading: (count) =>
+      `Resultados adicionais com base na declaração do corretor (${count})`,
+    publisherClaimDisclaimer:
+      "Estes anúncios não estão associados a um projeto conhecido. São apresentados porque a declaração atual do corretor cumpre este requisito -- não porque a HullQ verificou o projeto de forma independente.",
+    noPublisherClaimMatches:
+      "Atualmente, nenhum anúncio adicional declarado pelo corretor cumpre este requisito.",
+    noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
+      `Nenhuma correspondência confirmada pelo projeto. ${publisherClaimCount} correspondência(s) adicional(is) com base na declaração do corretor são mostradas abaixo.`,
     sensitivityFormNote:
       "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
     sensitivityUnavailableWithNewCriteria:
@@ -824,12 +912,22 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityPageTitle: "Sensibilidade do requisito",
     sensitivityCurrentHeading: "Requisito atual",
     sensitivityAlternativeHeading: "Requisito alternativo",
-    sensitivityCurrentConfirmedLabel: (count) => `Correspondências atualmente confirmadas: ${count}`,
+    sensitivityCurrentConfirmedLabel: (count) =>
+      `Correspondências atualmente confirmadas pelo projeto: ${count}`,
     sensitivityAlternativeConfirmedLabel: (count) =>
-      `Correspondências confirmadas com a alternativa: ${count}`,
-    sensitivityNewlyConfirmedLabel: (count) => `${count} recém-confirmada(s) com a alternativa`,
+      `Correspondências confirmadas pelo projeto com a alternativa: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) =>
+      `${count} recém-confirmada(s) pelo projeto com a alternativa`,
     sensitivityNoLongerConfirmedLabel: (count) =>
-      `${count} deixou/deixaram de estar confirmada(s) com a alternativa`,
+      `${count} deixou/deixaram de estar confirmada(s) pelo projeto com a alternativa`,
+    sensitivityCurrentPublisherClaimLabel: (count) =>
+      `Correspondências atuais segundo a declaração do corretor (não verificadas pelo projeto): ${count}`,
+    sensitivityAlternativePublisherClaimLabel: (count) =>
+      `Correspondências segundo a declaração do corretor (não verificadas pelo projeto) com a alternativa: ${count}`,
+    sensitivityNewlyPublisherClaimLabel: (count) =>
+      `${count} recém-declarada(s) pelo corretor com a alternativa`,
+    sensitivityNoLongerPublisherClaimLabel: (count) =>
+      `${count} deixou/deixaram de estar declarada(s) pelo corretor com a alternativa`,
     sensitivityCurrentInsufficientLabel: (count) =>
       `${count} anúncio(s) adicional(is) têm evidência insuficiente ao abrigo do requisito atual`,
     sensitivityAlternativeInsufficientLabel: (count) =>
@@ -973,6 +1071,14 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     freshnessDueLabel: "Reconfirmación pendiente",
     freshnessDueNote:
       "El bróker no ha reconfirmado este anuncio recientemente; se ocultará pronto si no se reconfirma.",
+    publisherClaimHeading: (count) =>
+      `Resultados adicionales según la declaración del corredor (${count})`,
+    publisherClaimDisclaimer:
+      "Estos anuncios no están vinculados a un diseño conocido. Se muestran porque la declaración actual del corredor cumple este requisito -- no porque HullQ haya verificado el diseño de forma independiente.",
+    noPublisherClaimMatches:
+      "Actualmente ningún anuncio adicional declarado por el corredor cumple este requisito.",
+    noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
+      `Ninguna coincidencia confirmada por el diseño. Se muestran ${publisherClaimCount} coincidencia(s) adicional(es) según la declaración del corredor más abajo.`,
     sensitivityFormNote:
       "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
     sensitivityUnavailableWithNewCriteria:
@@ -984,11 +1090,22 @@ export const searchText: Record<SupportedLocale, SearchText> = {
     sensitivityPageTitle: "Sensibilidad del requisito",
     sensitivityCurrentHeading: "Requisito actual",
     sensitivityAlternativeHeading: "Requisito alternativo",
-    sensitivityCurrentConfirmedLabel: (count) => `Coincidencias actualmente confirmadas: ${count}`,
+    sensitivityCurrentConfirmedLabel: (count) =>
+      `Coincidencias actualmente confirmadas por el diseño: ${count}`,
     sensitivityAlternativeConfirmedLabel: (count) =>
-      `Coincidencias confirmadas con la alternativa: ${count}`,
-    sensitivityNewlyConfirmedLabel: (count) => `${count} recién confirmada(s) con la alternativa`,
-    sensitivityNoLongerConfirmedLabel: (count) => `${count} ya no confirmada(s) con la alternativa`,
+      `Coincidencias confirmadas por el diseño con la alternativa: ${count}`,
+    sensitivityNewlyConfirmedLabel: (count) =>
+      `${count} recién confirmada(s) por el diseño con la alternativa`,
+    sensitivityNoLongerConfirmedLabel: (count) =>
+      `${count} ya no confirmada(s) por el diseño con la alternativa`,
+    sensitivityCurrentPublisherClaimLabel: (count) =>
+      `Coincidencias actuales según la declaración del corredor (no verificadas por el diseño): ${count}`,
+    sensitivityAlternativePublisherClaimLabel: (count) =>
+      `Coincidencias según la declaración del corredor (no verificadas por el diseño) con la alternativa: ${count}`,
+    sensitivityNewlyPublisherClaimLabel: (count) =>
+      `${count} recién declarada(s) por el corredor con la alternativa`,
+    sensitivityNoLongerPublisherClaimLabel: (count) =>
+      `${count} ya no declarada(s) por el corredor con la alternativa`,
     sensitivityCurrentInsufficientLabel: (count) =>
       `${count} anuncio(s) adicional(es) tienen evidencia insuficiente según el requisito actual`,
     sensitivityAlternativeInsufficientLabel: (count) =>

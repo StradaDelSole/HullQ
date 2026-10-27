@@ -8,7 +8,12 @@
 // frontmatter runs. Presentation itself stays in the shared, purely
 // presentational `SearchPageBody.astro` (props in, no fetch, no response
 // mutation), so the actual markup is still written exactly once.
-import { fetchSearch, type SearchActiveRequirement, type SearchConfirmedMatch } from "./searchApi.ts";
+import {
+  fetchSearch,
+  type PublisherClaimMatch,
+  type SearchActiveRequirement,
+  type SearchConfirmedMatch,
+} from "./searchApi.ts";
 import type { SupportedLocale } from "./searchText.ts";
 
 export type SearchPageData =
@@ -21,6 +26,9 @@ export type SearchPageData =
       confirmedMatches: SearchConfirmedMatch[];
       confirmedMatchCount: number;
       insufficientDataCount: number;
+      /** SLICE-0092: entirely separate, additive design-unresolved claim-only result surface. */
+      publisherClaimMatches: PublisherClaimMatch[];
+      publisherClaimMatchCount: number;
     };
 
 export async function loadSearchPageData(
@@ -42,6 +50,8 @@ export async function loadSearchPageData(
       confirmedMatches: result.confirmed_matches ?? [],
       confirmedMatchCount: result.confirmed_match_count ?? 0,
       insufficientDataCount: result.insufficient_data_count ?? 0,
+      publisherClaimMatches: result.publisher_claim_matches ?? [],
+      publisherClaimMatchCount: result.publisher_claim_match_count ?? 0,
     };
   }
 

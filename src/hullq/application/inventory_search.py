@@ -57,6 +57,11 @@ from decimal import Decimal
 from typing import Any
 
 from hullq.application.current_public_eligibility import resolve_current_public_eligibility
+from hullq.application.native_inventory_query import (
+    PublisherClaimCandidateEvaluation,
+    build_mixed_requirement_query,
+    evaluate_claim_only_candidates,
+)
 from hullq.application.native_listing_freshness import resolve_current_freshness
 from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
@@ -95,16 +100,30 @@ class DraftMaxSearchOutcome:
     `confirmed_non_match_count` is counted for testability only (slice item H:
     "its deterministic classification must be tested") and carries no listing
     identity.
+
+    SLICE-0092: `claim_only_matches`/`claim_only_non_matches`/
+    `claim_only_insufficient_data` are the entirely separate, additive
+    design-unresolved publisher-claim result surfaces for this same pure
+    `draft_max` requirement (contract §F: "wire this optional additive path
+    through (i) pure draft_max"). Never merged into `confirmed_matches` and
+    never affect any of the three existing design-linked counts.
     """
 
     draft_max: Decimal
     confirmed_matches: tuple[DraftMaxConfirmedMatch, ...]
     confirmed_non_match_count: int
     insufficient_data_count: int
+    claim_only_matches: tuple[PublisherClaimCandidateEvaluation, ...] = ()
+    claim_only_non_matches: tuple[PublisherClaimCandidateEvaluation, ...] = ()
+    claim_only_insufficient_data: tuple[PublisherClaimCandidateEvaluation, ...] = ()
 
     @property
     def confirmed_match_count(self) -> int:
         return len(self.confirmed_matches)
+
+    @property
+    def claim_only_match_count(self) -> int:
+        return len(self.claim_only_matches)
 
 
 def _classify_candidate(
@@ -198,6 +217,23 @@ def evaluate_draft_max_requirement(
     if not isinstance(draft_max, Decimal) or not draft_max.is_finite() or draft_max <= 0:
         raise ValueError(f"draft_max must be a positive finite Decimal; got {draft_max!r}")
 
+    # SLICE-0092 contract §F: the new design-unresolved claim-only Sail path
+    # is evaluated unconditionally for this same pure draft_max requirement,
+    # independent of whether any design-linked candidate exists at all --
+    # reusing the identical claim-only evaluator the mixed nine-criterion
+    # funnel uses (`evaluate_native_inventory_requirements`), never a second
+    # independently maintained claim-only funnel. `build_mixed_requirement_query`
+    # with only `draft_max` active produces the identical single-leaf query/
+    # definition the shared MUST/AND kernel expects.
+    claim_only_query, claim_only_definitions = build_mixed_requirement_query(
+        draft_max=draft_max, keel_configuration=None
+    )
+    claim_only_matches, claim_only_non_matches, claim_only_insufficient_data = (
+        evaluate_claim_only_candidates(
+            conn, query=claim_only_query, active_definitions=claim_only_definitions, as_of=as_of
+        )
+    )
+
     all_candidates = list_active_design_linked_listings(conn)
     if not all_candidates:
         return DraftMaxSearchOutcome(
@@ -205,6 +241,9 @@ def evaluate_draft_max_requirement(
             confirmed_matches=(),
             confirmed_non_match_count=0,
             insufficient_data_count=0,
+            claim_only_matches=claim_only_matches,
+            claim_only_non_matches=claim_only_non_matches,
+            claim_only_insufficient_data=claim_only_insufficient_data,
         )
 
     current_candidates = []
@@ -223,6 +262,9 @@ def evaluate_draft_max_requirement(
             confirmed_matches=(),
             confirmed_non_match_count=0,
             insufficient_data_count=0,
+            claim_only_matches=claim_only_matches,
+            claim_only_non_matches=claim_only_non_matches,
+            claim_only_insufficient_data=claim_only_insufficient_data,
         )
 
     distinct_design_ids = sorted({c.boat_design_ref.value for c, _ in current_candidates})
@@ -283,4 +325,7 @@ def evaluate_draft_max_requirement(
         confirmed_matches=tuple(confirmed_matches),
         confirmed_non_match_count=confirmed_non_match_count,
         insufficient_data_count=insufficient_data_count,
+        claim_only_matches=claim_only_matches,
+        claim_only_non_matches=claim_only_non_matches,
+        claim_only_insufficient_data=claim_only_insufficient_data,
     )

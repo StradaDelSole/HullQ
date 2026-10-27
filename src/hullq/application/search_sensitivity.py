@@ -101,7 +101,22 @@ class SensitivityOutcomeKind(StrEnum):
 class SensitivityResult:
     """The complete factual comparison (contract §10). Every semantic value
     the contract requires is represented explicitly and typed -- no advice,
-    recommendation, score or inferred intent."""
+    recommendation, score or inferred intent.
+
+    SLICE-0092 amendment review Finding A: `current_claim_only_match_count`/
+    `alternative_claim_only_match_count`/`newly_claim_only_match_count`/
+    `no_longer_claim_only_match_count` are the entirely separate,
+    truth-source-labeled design-unresolved publisher-claim-only delta for
+    the identical current/alternative requirement pair -- never merged into
+    the `*_confirmed_match_count`/`*_confirmed_match_count` design-linked
+    fields above, which remain byte-for-byte unchanged in value for any
+    scenario with zero claim-only matches (non-regression for the original
+    SLICE-0057 design-only sensitivity contract). A caller/renderer that
+    ignores these new fields sees exactly the pre-0092 behavior; one that
+    reads them gets the complete, non-misleading picture -- never a
+    direct-API/POST total that silently omits a result family a human would
+    see.
+    """
 
     locale: str
     current_draft_max: Decimal | None
@@ -116,6 +131,10 @@ class SensitivityResult:
     current_insufficient_data_count: int
     alternative_insufficient_data_count: int
     alternative_search_path: str
+    current_claim_only_match_count: int = 0
+    alternative_claim_only_match_count: int = 0
+    newly_claim_only_match_count: int = 0
+    no_longer_claim_only_match_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +162,16 @@ def _confirmed_ids(
     outcome: DraftMaxSearchOutcome | NativeInventorySearchOutcome,
 ) -> frozenset[str]:
     return frozenset(match.native_listing_id.value for match in outcome.confirmed_matches)
+
+
+def _claim_only_ids(
+    outcome: DraftMaxSearchOutcome | NativeInventorySearchOutcome,
+) -> frozenset[str]:
+    """SLICE-0092 amendment review Finding A: the separate,
+    truth-source-labeled design-unresolved publisher-claim-only match set
+    for the same outcome -- never combined with `_confirmed_ids` above into
+    one count."""
+    return frozenset(match.native_listing_id.value for match in outcome.claim_only_matches)
 
 
 def _evaluate_coherent_pair(
@@ -278,6 +307,8 @@ def evaluate_requirement_sensitivity(
 
     current_ids = _confirmed_ids(current_outcome)
     alternative_ids = _confirmed_ids(alternative_outcome)
+    current_claim_only_ids = _claim_only_ids(current_outcome)
+    alternative_claim_only_ids = _claim_only_ids(alternative_outcome)
 
     result = SensitivityResult(
         locale=locale,
@@ -297,5 +328,9 @@ def evaluate_requirement_sensitivity(
             draft_max=alternative_draft_max,
             keel_configuration=alternative_keel_configuration,
         ),
+        current_claim_only_match_count=len(current_claim_only_ids),
+        alternative_claim_only_match_count=len(alternative_claim_only_ids),
+        newly_claim_only_match_count=len(alternative_claim_only_ids - current_claim_only_ids),
+        no_longer_claim_only_match_count=len(current_claim_only_ids - alternative_claim_only_ids),
     )
     return SensitivityOutcome(kind=SensitivityOutcomeKind.OK, result=result)

@@ -661,6 +661,41 @@ def _serialize_configuration_evidence(evidence: Any) -> dict[str, Any]:
     }
 
 
+def _serialize_claim_only_match(match: Any, *, secret: bytes) -> dict[str, Any]:
+    """SLICE-0092: one `hullq.application.native_inventory_query.
+    PublisherClaimCandidateEvaluation` -- the new design-unresolved
+    claim-only Sail result shape. Always carries `source_basis:
+    "PUBLISHER_CLAIM"` (contract §D: "the new design-unresolved evidence
+    shape must retain typed source_basis=PUBLISHER_CLAIM") and never a
+    `design_evaluation`/`design_configuration_evidence` key at all -- there
+    is no BoatDesign to report, never a fabricated one.
+
+    Amendment review Finding C: `source_basis` is read from the match's own
+    typed `PublisherClaimSourceBasis` field (`match.source_basis.value`)
+    rather than an independently written literal that could silently drift
+    from the internal type. `match.source_evidence` -- the internal-only
+    current claim-revision id/actor/timestamp/category-claim provenance --
+    is deliberately never read here: the public surface discloses only the
+    safe source-type discriminator, never a private account id, revision
+    id or another Organization's raw observation (contract §D).
+    """
+    return {
+        "native_listing_id": match.native_listing_id.value,
+        "publishing_organization_id": match.publishing_organization_id.value,
+        "freshness_status": match.freshness_status.value,
+        "last_confirmed_at": (
+            match.last_confirmed_at.isoformat() if match.last_confirmed_at is not None else None
+        ),
+        "source_basis": match.source_basis.value,
+        "criterion_evidence": [
+            _serialize_criterion_evidence(item) for item in match.criterion_evidence
+        ],
+        "discovery_token": mint_discovery_surface_token(
+            DiscoverySurface.TECHNICAL_SEARCH, match.native_listing_id.value, secret=secret
+        ),
+    }
+
+
 def _build_active_requirement(
     *,
     draft_max: Any,
@@ -1496,6 +1531,14 @@ def create_app(
                     ],
                     "confirmed_match_count": search_outcome.confirmed_match_count,
                     "insufficient_data_count": search_outcome.insufficient_data_count,
+                    # SLICE-0092: entirely separate, additive result surface --
+                    # never merged into confirmed_matches/confirmed_match_count
+                    # above, and never carrying a DesignQueryEvaluation.
+                    "publisher_claim_matches": [
+                        _serialize_claim_only_match(match, secret=resolved_secret)
+                        for match in search_outcome.claim_only_matches
+                    ],
+                    "publisher_claim_match_count": search_outcome.claim_only_match_count,
                 }
             )
 
@@ -1537,6 +1580,14 @@ def create_app(
                 ],
                 "confirmed_match_count": search_outcome.confirmed_match_count,
                 "insufficient_data_count": search_outcome.insufficient_data_count,
+                # SLICE-0092: entirely separate, additive result surface --
+                # never merged into confirmed_matches/confirmed_match_count
+                # above, and never carrying a DesignQueryEvaluation.
+                "publisher_claim_matches": [
+                    _serialize_claim_only_match(match, secret=resolved_secret)
+                    for match in search_outcome.claim_only_matches
+                ],
+                "publisher_claim_match_count": search_outcome.claim_only_match_count,
             }
         )
 
@@ -1600,6 +1651,16 @@ def create_app(
                 "current_insufficient_data_count": result.current_insufficient_data_count,
                 "alternative_insufficient_data_count": result.alternative_insufficient_data_count,
                 "alternative_search_path": result.alternative_search_path,
+                # SLICE-0092 amendment review Finding A: the entirely
+                # separate, truth-source-labeled design-unresolved
+                # publisher-claim-only delta -- never merged into the
+                # design-linked *_confirmed_match_count fields above, so a
+                # direct API/POST caller never sees a total that silently
+                # drops this result family.
+                "current_claim_only_match_count": result.current_claim_only_match_count,
+                "alternative_claim_only_match_count": result.alternative_claim_only_match_count,
+                "newly_claim_only_match_count": result.newly_claim_only_match_count,
+                "no_longer_claim_only_match_count": result.no_longer_claim_only_match_count,
             }
         )
 

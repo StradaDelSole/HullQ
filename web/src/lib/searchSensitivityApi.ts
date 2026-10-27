@@ -31,6 +31,17 @@ export interface SensitivityResultBody {
   current_insufficient_data_count: number;
   alternative_insufficient_data_count: number;
   alternative_search_path: string;
+  /**
+   * SLICE-0092 amendment review Finding A: the entirely separate,
+   * truth-source-labeled design-unresolved publisher-claim-only delta for
+   * the identical current/alternative requirement pair -- never merged
+   * into the design-linked `*_confirmed_match_count` fields above. A
+   * renderer that ignores these sees exactly the pre-0092 behavior.
+   */
+  current_claim_only_match_count: number;
+  alternative_claim_only_match_count: number;
+  newly_claim_only_match_count: number;
+  no_longer_claim_only_match_count: number;
 }
 
 export interface SensitivityInvalidBody {

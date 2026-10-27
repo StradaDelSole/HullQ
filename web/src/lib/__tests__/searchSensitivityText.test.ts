@@ -74,6 +74,31 @@ test("sensitivity count functions interpolate their arguments", () => {
       t.sensitivityAlternativeInsufficientLabel(5).includes("5"),
       `${locale}.sensitivityAlternativeInsufficientLabel`,
     );
+    // Amendment review Finding A: the separate publisher-claim-only delta.
+    assert.ok(
+      t.sensitivityCurrentPublisherClaimLabel(3).includes("3"),
+      `${locale}.sensitivityCurrentPublisherClaimLabel`,
+    );
+    assert.ok(
+      t.sensitivityAlternativePublisherClaimLabel(6).includes("6"),
+      `${locale}.sensitivityAlternativePublisherClaimLabel`,
+    );
+    assert.ok(
+      t.sensitivityNewlyPublisherClaimLabel(2).includes("2"),
+      `${locale}.sensitivityNewlyPublisherClaimLabel`,
+    );
+    assert.ok(
+      t.sensitivityNoLongerPublisherClaimLabel(1).includes("1"),
+      `${locale}.sensitivityNoLongerPublisherClaimLabel`,
+    );
+    // The claim-only labels must stay visibly distinct from the
+    // design-confirmed labels -- never identical wording that would make
+    // the two truth-source-separated sections indistinguishable.
+    assert.notEqual(
+      t.sensitivityCurrentConfirmedLabel(1),
+      t.sensitivityCurrentPublisherClaimLabel(1),
+      `${locale}: design-confirmed and publisher-claim current labels must differ`,
+    );
   }
 });
 
@@ -98,6 +123,10 @@ test("English sensitivity copy avoids recommendation/score/winner language", () 
     t.sensitivityAlternativeConfirmedLabel(1),
     t.sensitivityNewlyConfirmedLabel(1),
     t.sensitivityNoLongerConfirmedLabel(1),
+    t.sensitivityCurrentPublisherClaimLabel(1),
+    t.sensitivityAlternativePublisherClaimLabel(1),
+    t.sensitivityNewlyPublisherClaimLabel(1),
+    t.sensitivityNoLongerPublisherClaimLabel(1),
     t.sensitivityCurrentInsufficientLabel(1),
     t.sensitivityAlternativeInsufficientLabel(1),
     t.sensitivityViewAlternativeSearch,
