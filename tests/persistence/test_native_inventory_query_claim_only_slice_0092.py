@@ -58,12 +58,24 @@ from hullq.domain.media_gallery import MediaSourceKind
 from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
 from hullq.domain.physical_boat_claims import (
     AssertionKind,
+    BeamClaim,
     BuildYearClaim,
+    CockpitPosition,
+    CockpitPositionClaim,
+    DeckSaloon,
+    DeckSaloonClaim,
     DraftClaim,
+    HullConfiguration,
+    HullConfigurationClaim,
+    HullMaterial,
+    HullMaterialClaim,
     KeelConfiguration,
     KeelConfigurationClaim,
+    LoaLengthClaim,
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
+    RudderConfiguration,
+    RudderConfigurationClaim,
     VesselCategory,
     VesselCategoryClaim,
 )
@@ -98,6 +110,7 @@ from hullq.persistence.physical_boat import create_physical_boat
 from hullq.persistence.physical_boat_claims import (
     fetch_current_physical_boat_claim,
     write_physical_boat_claim_revision,
+    write_physical_boat_claim_revision_row,
 )
 from hullq.search.keel_design_bridge import lookup_keel_canonical_value
 
@@ -257,6 +270,13 @@ def _make_design_unresolved_active_listing(
     draft: Decimal | None = None,
     keel_configuration: KeelConfiguration | None = None,
     vessel_category: VesselCategoryClaim | None = None,
+    loa_length: Decimal | None = None,
+    rudder_configuration: RudderConfiguration | None = None,
+    hull_configuration: HullConfiguration | None = None,
+    cockpit_position: CockpitPosition | None = None,
+    deck_saloon: DeckSaloon | None = None,
+    beam: Decimal | None = None,
+    hull_material: HullMaterial | None = None,
 ) -> tuple[AccountId, MarketplaceOrganization, OrganizationMembership]:
     """SLICE-0092: a published, ACTIVE, D29-eligible NativeListing whose
     PhysicalBoat carries NO `boat_design_ref` at all -- the exact new
@@ -319,6 +339,37 @@ def _make_design_unresolved_active_listing(
                 else None
             ),
             vessel_category=vessel_category,
+            loa_length=(
+                LoaLengthClaim(assertion_kind=VA, value=loa_length)
+                if loa_length is not None
+                else None
+            ),
+            rudder_configuration=(
+                RudderConfigurationClaim(assertion_kind=VA, value=rudder_configuration)
+                if rudder_configuration is not None
+                else None
+            ),
+            hull_configuration=(
+                HullConfigurationClaim(assertion_kind=VA, value=hull_configuration)
+                if hull_configuration is not None
+                else None
+            ),
+            cockpit_position=(
+                CockpitPositionClaim(assertion_kind=VA, value=cockpit_position)
+                if cockpit_position is not None
+                else None
+            ),
+            deck_saloon=(
+                DeckSaloonClaim(assertion_kind=VA, value=deck_saloon)
+                if deck_saloon is not None
+                else None
+            ),
+            beam=BeamClaim(assertion_kind=VA, value=beam) if beam is not None else None,
+            hull_material=(
+                HullMaterialClaim(assertion_kind=VA, value=hull_material)
+                if hull_material is not None
+                else None
+            ),
         ),
     )
     _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
@@ -344,6 +395,13 @@ def _revise_claim(
     draft: Decimal | None = None,
     keel_configuration: KeelConfiguration | None = None,
     vessel_category: VesselCategoryClaim | None = None,
+    loa_length: Decimal | None = None,
+    rudder_configuration: RudderConfiguration | None = None,
+    hull_configuration: HullConfiguration | None = None,
+    cockpit_position: CockpitPosition | None = None,
+    deck_saloon: DeckSaloon | None = None,
+    beam: Decimal | None = None,
+    hull_material: HullMaterial | None = None,
 ) -> None:
     expected_current_revision_id = _current_claim_revision_id(conn, listing_id=listing_id, org=org)
     conn.commit()
@@ -366,6 +424,37 @@ def _revise_claim(
                 else None
             ),
             vessel_category=vessel_category,
+            loa_length=(
+                LoaLengthClaim(assertion_kind=VA, value=loa_length)
+                if loa_length is not None
+                else None
+            ),
+            rudder_configuration=(
+                RudderConfigurationClaim(assertion_kind=VA, value=rudder_configuration)
+                if rudder_configuration is not None
+                else None
+            ),
+            hull_configuration=(
+                HullConfigurationClaim(assertion_kind=VA, value=hull_configuration)
+                if hull_configuration is not None
+                else None
+            ),
+            cockpit_position=(
+                CockpitPositionClaim(assertion_kind=VA, value=cockpit_position)
+                if cockpit_position is not None
+                else None
+            ),
+            deck_saloon=(
+                DeckSaloonClaim(assertion_kind=VA, value=deck_saloon)
+                if deck_saloon is not None
+                else None
+            ),
+            beam=BeamClaim(assertion_kind=VA, value=beam) if beam is not None else None,
+            hull_material=(
+                HullMaterialClaim(assertion_kind=VA, value=hull_material)
+                if hull_material is not None
+                else None
+            ),
         ),
     )
     assert result.status.value in ("created", "revised"), result
@@ -811,3 +900,414 @@ def test_design_linked_confirmed_match_unaffected_by_claim_only_candidate(
     assert {m.native_listing_id.value for m in outcome.claim_only_matches} == {
         "NL-92-REG-CLAIMONLY"
     }
+
+
+# ---------------------------------------------------------------------------
+# Amendment (independent review PR #387, Finding B): genuine multi-leaf
+# MUST/AND proof on ONE current publisher revision -- TRUE/FALSE/UNKNOWN
+# combinations across two active criteria (draft_max + keel_configuration),
+# not merely one criterion at a time.
+# ---------------------------------------------------------------------------
+
+
+def test_claim_only_multi_leaf_and_true_true_confirms(claim_conn: Any) -> None:
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-AND-TT",
+        physical_boat_id="PB-92-AND-TT",
+        market_episode_id="ME-92-AND-TT",
+        draft=Decimal("1.40"),
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    outcome = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=Decimal("1.60"), keel_configuration="FIN", as_of=_as_of()
+    )
+    assert "NL-92-AND-TT" in {m.native_listing_id.value for m in outcome.claim_only_matches}
+
+
+def test_claim_only_multi_leaf_and_true_false_is_non_match(claim_conn: Any) -> None:
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-AND-TF",
+        physical_boat_id="PB-92-AND-TF",
+        market_episode_id="ME-92-AND-TF",
+        draft=Decimal("1.40"),  # draft_max<=1.60 -> TRUE
+        keel_configuration=KeelConfiguration.TWIN_KEEL,  # != FIN -> FALSE
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    outcome = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=Decimal("1.60"), keel_configuration="FIN", as_of=_as_of()
+    )
+    assert "NL-92-AND-TF" in {m.native_listing_id.value for m in outcome.claim_only_non_matches}
+    assert "NL-92-AND-TF" not in {m.native_listing_id.value for m in outcome.claim_only_matches}
+
+
+def test_claim_only_multi_leaf_and_false_wins_over_unknown(claim_conn: Any) -> None:
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-AND-FU",
+        physical_boat_id="PB-92-AND-FU",
+        market_episode_id="ME-92-AND-FU",
+        draft=Decimal("2.00"),  # draft_max<=1.60 -> FALSE
+        # keel_configuration omitted entirely -> UNKNOWN
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    outcome = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=Decimal("1.60"), keel_configuration="FIN", as_of=_as_of()
+    )
+    # A confirmed FALSE on one leaf must win over an UNKNOWN on the other --
+    # never silently upgraded to INSUFFICIENT_DATA.
+    assert "NL-92-AND-FU" in {m.native_listing_id.value for m in outcome.claim_only_non_matches}
+
+
+def test_claim_only_multi_leaf_and_true_unknown_is_insufficient(claim_conn: Any) -> None:
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-AND-TU",
+        physical_boat_id="PB-92-AND-TU",
+        market_episode_id="ME-92-AND-TU",
+        draft=Decimal("1.40"),  # draft_max<=1.60 -> TRUE
+        # keel_configuration omitted entirely -> UNKNOWN
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    outcome = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=Decimal("1.60"), keel_configuration="FIN", as_of=_as_of()
+    )
+    # No confirmed FALSE anywhere, one UNKNOWN -> INSUFFICIENT_DATA, never a
+    # guessed TRUE and never silently promoted to CONFIRMED_NON_MATCH.
+    assert "NL-92-AND-TU" in {
+        m.native_listing_id.value for m in outcome.claim_only_insufficient_data
+    }
+    assert "NL-92-AND-TU" not in {m.native_listing_id.value for m in outcome.claim_only_matches}
+    assert "NL-92-AND-TU" not in {m.native_listing_id.value for m in outcome.claim_only_non_matches}
+
+
+# ---------------------------------------------------------------------------
+# Amendment (Finding B): parametrized executable per-field threshold proof
+# for all nine accepted Sail dimensions, each exercised in isolation
+# (correct value -> CONFIRMED_MATCH, wrong value -> CONFIRMED_NON_MATCH,
+# omitted field -> INSUFFICIENT_DATA) through the identical shared
+# evaluator -- one reusable fixture/assertion shape, not nine independently
+# written scorers.
+# ---------------------------------------------------------------------------
+
+_NINE_FIELD_CASES = [
+    pytest.param(
+        {"draft": Decimal("1.40")},
+        {"draft_max": Decimal("1.60")},
+        {"draft_max": Decimal("1.00")},
+        id="draft_max",
+    ),
+    pytest.param(
+        {"keel_configuration": KeelConfiguration.FIN},
+        {"keel_configuration": "FIN"},
+        {"keel_configuration": "TWIN_KEEL"},
+        id="keel_configuration",
+    ),
+    pytest.param(
+        {"loa_length": Decimal("12.00")},
+        {"loa_max": Decimal("15.00")},
+        {"loa_max": Decimal("10.00")},
+        id="loa",
+    ),
+    pytest.param(
+        {"rudder_configuration": RudderConfiguration.SPADE},
+        {"rudder_configuration": "SPADE"},
+        {"rudder_configuration": "TWIN"},
+        id="rudder_configuration",
+    ),
+    pytest.param(
+        {"hull_configuration": HullConfiguration.MONOHULL},
+        {"hull_configuration": "MONOHULL"},
+        {"hull_configuration": "CATAMARAN"},
+        id="hull_configuration",
+    ),
+    pytest.param(
+        {"cockpit_position": CockpitPosition.AFT},
+        {"cockpit_position": "AFT"},
+        {"cockpit_position": "FORWARD"},
+        id="cockpit_position",
+    ),
+    pytest.param(
+        {"deck_saloon": DeckSaloon.DECK_SALOON},
+        {"deck_saloon": "DECK_SALOON"},
+        {"deck_saloon": "PILOTHOUSE"},
+        id="deck_saloon",
+    ),
+    pytest.param(
+        {"beam": Decimal("4.00")},
+        {"beam_max": Decimal("4.50")},
+        {"beam_max": Decimal("3.00")},
+        id="beam",
+    ),
+    pytest.param(
+        {"hull_material": HullMaterial.GRP_FIBERGLASS},
+        {"hull_material": "GRP_FIBERGLASS"},
+        {"hull_material": "STEEL"},
+        id="hull_material",
+    ),
+]
+
+_EMPTY_REQUIREMENT_KWARGS: dict[str, Any] = {
+    "draft_max": None,
+    "keel_configuration": None,
+    "loa_min": None,
+    "loa_max": None,
+    "rudder_configuration": None,
+    "hull_configuration": None,
+    "cockpit_position": None,
+    "deck_saloon": None,
+    "beam_min": None,
+    "beam_max": None,
+    "hull_material": None,
+}
+
+
+@pytest.mark.parametrize("listing_kwargs,correct_query,wrong_query", _NINE_FIELD_CASES)
+def test_all_nine_sail_fields_claim_only_threshold_proof(
+    claim_conn: Any,
+    listing_kwargs: dict[str, Any],
+    correct_query: dict[str, Any],
+    wrong_query: dict[str, Any],
+) -> None:
+    field_id = next(iter(listing_kwargs))
+    suffix = field_id.upper().replace("_", "")[:10]
+    listing_id = f"NL-92-F9-{suffix}"
+    physical_boat_id = f"PB-92-F9-{suffix}"
+    market_episode_id = f"ME-92-F9-{suffix}"
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id=listing_id,
+        physical_boat_id=physical_boat_id,
+        market_episode_id=market_episode_id,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+        **listing_kwargs,
+    )
+
+    correct_params = dict(_EMPTY_REQUIREMENT_KWARGS)
+    correct_params.update(correct_query)
+    outcome_correct = evaluate_native_inventory_requirements(
+        claim_conn, as_of=_as_of(), **correct_params
+    )
+    assert listing_id in {m.native_listing_id.value for m in outcome_correct.claim_only_matches}
+
+    wrong_params = dict(_EMPTY_REQUIREMENT_KWARGS)
+    wrong_params.update(wrong_query)
+    outcome_wrong = evaluate_native_inventory_requirements(
+        claim_conn, as_of=_as_of(), **wrong_params
+    )
+    assert listing_id in {m.native_listing_id.value for m in outcome_wrong.claim_only_non_matches}
+    assert listing_id not in {m.native_listing_id.value for m in outcome_wrong.claim_only_matches}
+
+    # A read leaves the connection non-IDLE; the next write needs IDLE.
+    claim_conn.commit()
+
+    # Omission proof: a separate, otherwise-identical SAIL-admitted listing
+    # that never asserted this exact field at all is INSUFFICIENT_DATA when
+    # queried on it, never a guessed match/non-match.
+    omitted_listing_id = f"{listing_id}-OM"
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id=omitted_listing_id,
+        physical_boat_id=f"{physical_boat_id}-OM",
+        market_episode_id=f"{market_episode_id}-OM",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    outcome_omitted = evaluate_native_inventory_requirements(
+        claim_conn, as_of=_as_of(), **correct_params
+    )
+    assert omitted_listing_id in {
+        m.native_listing_id.value for m in outcome_omitted.claim_only_insufficient_data
+    }
+
+
+# ---------------------------------------------------------------------------
+# Amendment (Finding B): D29 current-public-eligibility suppression for the
+# new claim-only path -- a real persisted ORGANIZATION_NOT_ELIGIBLE
+# suppression (not a fabricated fact) excludes the candidate from every
+# claim-only result surface outright, exactly like the design-linked funnel.
+# ---------------------------------------------------------------------------
+
+
+def test_claim_only_d29_suppressed_organization_excludes_entirely(claim_conn: Any) -> None:
+    _account, org, _membership = _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-D29",
+        physical_boat_id="PB-92-D29",
+        market_episode_id="ME-92-D29",
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    outcome_before = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    assert "NL-92-D29" in {m.native_listing_id.value for m in outcome_before.claim_only_matches}
+
+    # Real, persisted suppression: the publishing Organization's own
+    # eligibility flips to non-ELIGIBLE after publish (idempotent upsert,
+    # `hullq.persistence.broker_identity.seed_marketplace_organization`) --
+    # D29's `ORGANIZATION_NOT_ELIGIBLE` reason, not a hand-simulated fact.
+    suppressed_org = MarketplaceOrganization(
+        id=org.id,
+        professional_category=org.professional_category,
+        publishing_eligibility=OrganizationPublishingEligibility.UNVERIFIED,
+    )
+    seed_marketplace_organization(claim_conn, suppressed_org)
+    claim_conn.commit()
+
+    outcome_after = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    all_ids_after = (
+        {m.native_listing_id.value for m in outcome_after.claim_only_matches}
+        | {m.native_listing_id.value for m in outcome_after.claim_only_non_matches}
+        | {m.native_listing_id.value for m in outcome_after.claim_only_insufficient_data}
+    )
+    assert "NL-92-D29" not in all_ids_after
+
+
+# ---------------------------------------------------------------------------
+# Amendment (Finding B): two real PostgreSQL connections -- a writer
+# changing BOTH category and a technical field together in one new
+# revision, held open (uncommitted) while a separate reader connection
+# evaluates Search -- proving category and selected fields can never be
+# combined from two different revisions (contract §E coherent snapshot).
+# ---------------------------------------------------------------------------
+
+
+def test_claim_only_two_connection_concurrent_revision_never_sees_hybrid_state(
+    claim_url: str, claim_conn: Any
+) -> None:
+    account, org, _membership = _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-CONC",
+        physical_boat_id="PB-92-CONC",
+        market_episode_id="ME-92-CONC",
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    current_revision_id = _current_claim_revision_id(claim_conn, listing_id="NL-92-CONC", org=org)
+    claim_conn.commit()
+    assert current_revision_id is not None
+
+    outcome_before = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    assert "NL-92-CONC" in {m.native_listing_id.value for m in outcome_before.claim_only_matches}
+
+    writer_conn = psycopg.connect(claim_url)
+    try:
+        with writer_conn.transaction(), writer_conn.cursor() as cur:
+            write_physical_boat_claim_revision_row(
+                cur,
+                account_id=account,
+                candidate_organization=org,
+                native_listing_id=NativeListingId("NL-92-CONC"),
+                revision_id=PhysicalBoatClaimRevisionId("PBCREV-92-CONC-2"),
+                expected_current_revision_id=current_revision_id,
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Unbranded",
+                    model_designation_claim="Unmatched Model",
+                    build_year=BuildYearClaim(assertion_kind=VA, value=2015),
+                    keel_configuration=KeelConfigurationClaim(
+                        assertion_kind=VA, value=KeelConfiguration.TWIN_KEEL
+                    ),
+                    vessel_category=VesselCategoryClaim(
+                        assertion_kind=VA, value=VesselCategory.POWER
+                    ),
+                ),
+            )
+
+            # Reader: a SEPARATE real connection, while the writer's
+            # transaction above is still open/uncommitted. Under PostgreSQL's
+            # default READ COMMITTED isolation it must see only the OLD,
+            # fully committed revision (FIN/SAIL) -- never a torn mix of the
+            # new keel with the old category or vice versa.
+            reader_conn = psycopg.connect(claim_url)
+            try:
+                outcome_during = evaluate_native_inventory_requirements(
+                    reader_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+                )
+                assert "NL-92-CONC" in {
+                    m.native_listing_id.value for m in outcome_during.claim_only_matches
+                }
+            finally:
+                reader_conn.close()
+        # `with writer_conn.transaction():` commits here on clean exit.
+    finally:
+        writer_conn.close()
+
+    # After commit, the fully new revision (POWER + TWIN_KEEL) is visible
+    # atomically -- never a torn combination.
+    outcome_after = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    assert "NL-92-CONC" not in {m.native_listing_id.value for m in outcome_after.claim_only_matches}
+    non_match = next(
+        m for m in outcome_after.claim_only_non_matches if m.native_listing_id.value == "NL-92-CONC"
+    )
+    assert non_match.vessel_category_exclusion is not None
+    assert non_match.vessel_category_exclusion.resolution is VesselCategoryResolution.POWER
+
+
+# ---------------------------------------------------------------------------
+# Amendment (independent review PR #387, Finding C): typed internal
+# provenance retained on PublisherClaimCandidateEvaluation, and strict
+# public-surface non-leakage.
+# ---------------------------------------------------------------------------
+
+
+def test_source_evidence_retains_publisher_revision_provenance(claim_conn: Any) -> None:
+    account, org, _membership = _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-PROV",
+        physical_boat_id="PB-92-PROV",
+        market_episode_id="ME-92-PROV",
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    expected_revision_id = _current_claim_revision_id(claim_conn, listing_id="NL-92-PROV", org=org)
+    claim_conn.commit()
+
+    outcome = evaluate_native_inventory_requirements(
+        claim_conn, draft_max=None, keel_configuration="FIN", as_of=_as_of()
+    )
+    match = next(m for m in outcome.claim_only_matches if m.native_listing_id.value == "NL-92-PROV")
+    assert match.source_basis.value == "PUBLISHER_CLAIM"
+    assert match.source_evidence is not None
+    assert match.source_evidence.revision_id == expected_revision_id
+    assert match.source_evidence.recorded_by_account_id == account
+    assert match.source_evidence.category_claim is not None
+    assert match.source_evidence.category_claim.value is VesselCategory.SAIL
+
+
+def test_public_api_never_leaks_internal_source_evidence(
+    claim_conn: Any, client: TestClient
+) -> None:
+    _make_design_unresolved_active_listing(
+        claim_conn,
+        listing_id="NL-92-NOLEAK",
+        physical_boat_id="PB-92-NOLEAK",
+        market_episode_id="ME-92-NOLEAK",
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+    )
+    response = client.get("/api/search/en", params={"keel_configuration": "FIN"})
+    assert response.status_code == 200
+    body = response.json()
+    match = next(
+        m for m in body["publisher_claim_matches"] if m["native_listing_id"] == "NL-92-NOLEAK"
+    )
+    assert set(match.keys()) == {
+        "native_listing_id",
+        "publishing_organization_id",
+        "freshness_status",
+        "last_confirmed_at",
+        "source_basis",
+        "criterion_evidence",
+        "discovery_token",
+    }
+    assert "source_evidence" not in match
+    assert "recorded_by_account_id" not in match
+    assert "revision_id" not in match

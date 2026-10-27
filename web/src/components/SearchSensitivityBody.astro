@@ -115,6 +115,38 @@ function keelLabel(value: string): string {
             </p>
           </section>
 
+          {
+            // Amendment review Finding A: the entirely separate,
+            // truth-source-labeled design-unresolved publisher-claim-only
+            // delta -- never merged into the design-confirmed numbers
+            // above. Rendered only when this comparison actually involves
+            // at least one such match, so an ordinary all-design-linked
+            // comparison renders exactly as before (non-regression).
+            (data.result.current_claim_only_match_count > 0 ||
+              data.result.alternative_claim_only_match_count > 0) && (
+              <section aria-label="publisher claim sensitivity">
+                <p aria-label="current publisher claim">
+                  {t.sensitivityCurrentPublisherClaimLabel(
+                    data.result.current_claim_only_match_count,
+                  )}
+                </p>
+                <p aria-label="alternative publisher claim">
+                  {t.sensitivityAlternativePublisherClaimLabel(
+                    data.result.alternative_claim_only_match_count,
+                  )}
+                </p>
+                <p aria-label="newly publisher claim">
+                  {t.sensitivityNewlyPublisherClaimLabel(data.result.newly_claim_only_match_count)}
+                </p>
+                <p aria-label="no longer publisher claim">
+                  {t.sensitivityNoLongerPublisherClaimLabel(
+                    data.result.no_longer_claim_only_match_count,
+                  )}
+                </p>
+              </section>
+            )
+          }
+
           <p>
             <a href={data.result.alternative_search_path}>{t.sensitivityViewAlternativeSearch}</a>
           </p>

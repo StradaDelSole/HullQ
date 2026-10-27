@@ -108,3 +108,99 @@ explicit, non-misleading disclaimer string
 | Regression boundary (design-linked unaffected) | `::test_design_linked_confirmed_match_unaffected_by_claim_only_candidate` |
 | Shared kernel non-regression (`evaluate_projection` extraction) | `tests/unit/test_search_configuration_engine_evaluate_projection_slice_0092.py` |
 | Existing SLICE-0091 category/claims regression (unchanged) | `tests/persistence/test_native_inventory_query_vessel_category_slice_0091.py`, `tests/persistence/test_search_read_vessel_category_slice_0091.py`, `tests/persistence/test_vessel_category_coherent_read_slice_0091.py` (rerun, unmodified, all passing) |
+| Amendment (Finding B): genuine multi-leaf MUST/AND (TRUE/FALSE/UNKNOWN) on one current revision | `::test_claim_only_multi_leaf_and_true_true_confirms`, `::test_claim_only_multi_leaf_and_true_false_is_non_match`, `::test_claim_only_multi_leaf_and_false_wins_over_unknown`, `::test_claim_only_multi_leaf_and_true_unknown_is_insufficient` |
+| Amendment (Finding B): all nine Sail fields, parametrized (correct/wrong/omitted) | `::test_all_nine_sail_fields_claim_only_threshold_proof[draft_max\|keel_configuration\|loa\|rudder_configuration\|hull_configuration\|cockpit_position\|deck_saloon\|beam\|hull_material]` |
+| Amendment (Finding B): D29 suppression for the claim-only path | `::test_claim_only_d29_suppressed_organization_excludes_entirely` |
+| Amendment (Finding B): two real PG connections, concurrent revision, no torn hybrid | `::test_claim_only_two_connection_concurrent_revision_never_sees_hybrid_state` |
+| Amendment (Finding C): internal provenance retained + public non-leakage | `::test_source_evidence_retains_publisher_revision_provenance`, `::test_public_api_never_leaks_internal_source_evidence` |
+| Amendment (Finding D): batched read + measured bounded population performance | `tests/persistence/test_native_inventory_query_claim_only_performance_slice_0092.py::test_claim_only_candidate_population_performance` |
+
+## 6. Amendment (independent review PR #387) — internal provenance (Finding C)
+
+`hullq.application.native_inventory_query.PublisherClaimCandidateEvaluation`
+now additionally carries:
+
+- `source_basis: PublisherClaimSourceBasis` — a one-member typed enum
+  (`PUBLISHER_CLAIM`) the public serializer (`hullq.api.app.
+  _serialize_claim_only_match`) reads directly (`match.source_basis.value`)
+  instead of writing an independent literal that could silently drift from
+  the internal type.
+- `source_evidence: PublisherClaimSourceEvidence | None` — the publishing
+  Organization's own current claim-revision `revision_id`/
+  `recorded_by_account_id`/`recorded_at`/`category_claim`, drawn from the
+  identical single-query observation set (§E) every criterion evaluation
+  and the category admission decision both use. `None` only when the
+  publisher has no current claim-observation row at all.
+
+Internal-only: the public API/SSR never serializes `source_evidence`'s
+revision id or account id — only the fixed `source_basis` literal, exactly
+as before. See `tests/persistence/test_native_inventory_query_claim_only_slice_0092.py::test_source_evidence_retains_publisher_revision_provenance`
+and `::test_public_api_never_leaks_internal_source_evidence`.
+
+## 7. Amendment (independent review PR #387) — candidate performance (Finding D)
+
+`hullq.persistence.physical_boat_claims.list_current_physical_boat_claim_observations_for_many`
+batches the claim-observation read this slice's own claim-only funnel owns
+across every currently-eligible candidate into exactly **one** SQL
+statement, regardless of population size (proven deterministically by a
+call-count spy, not a timing heuristic --
+`tests/persistence/test_native_inventory_query_claim_only_performance_slice_0092.py::test_claim_only_candidate_population_performance`).
+
+Measured, real evidence against a representative 40-candidate synthetic
+population (16 publisher-owned-SAIL matching, 8 publisher-owned-SAIL
+non-matching, 8 explicit POWER, 4 no-category, 4 SAIL-claimed-by-a-
+different-Organization-only): **523 total SQL statements, 0.243s elapsed,
+~13.1 statements/candidate**, all 40 candidates correctly classified (none
+silently dropped by the batching change). The per-candidate D29 eligibility/
+freshness cost (~12-13 statements/candidate) is pre-existing shared
+architecture (`hullq.application.current_public_eligibility`,
+`hullq.application.native_listing_freshness`), reused unchanged by both the
+design-linked and claim-only funnels; batching it would require rewriting
+those shared resolvers for every other caller, out of this slice's scope.
+This slice's own additive claim-observation read is exactly 1 statement for
+the whole population rather than 1 per candidate -- the part of the new
+path this slice fully owns is bounded to O(1), not O(N).
+
+## 8. Amendment (independent review PR #387) — buyer sensitivity truth (Finding A)
+
+Two real bugs were fixed, both stemming from the claim-only path running
+unconditionally for every Search (including every pure `draft_max`/
+`keel_configuration` request SLICE-0057 sensitivity already serves):
+
+1. **Sensitivity silently ignored claim-only matches.** `hullq.application.
+   search_sensitivity.SensitivityResult` now additionally carries
+   `current_claim_only_match_count`/`alternative_claim_only_match_count`/
+   `newly_claim_only_match_count`/`no_longer_claim_only_match_count` — the
+   entirely separate, truth-source-labeled design-unresolved delta for the
+   identical current/alternative requirement pair, computed from the same
+   coherent `REPEATABLE READ` evaluation the design-linked delta already
+   uses. Never merged into the pre-existing `*_confirmed_match_count`
+   fields, which stay byte-for-byte unchanged in value whenever zero
+   claim-only matches are involved (non-regression for the original
+   SLICE-0057 contract; the pre-existing `seeded`-fixture tests in
+   `tests/persistence/test_search_sensitivity_api.py` continue to pass
+   unmodified). The public `POST /api/search/{locale}/sensitivity` route
+   and `SearchSensitivityBody.astro` both surface the new fields with
+   dedicated, visibly distinct locale strings
+   (`sensitivityCurrentPublisherClaimLabel` etc., all five locales) — so a
+   direct API/POST caller is never told a misleading total that silently
+   drops this result family (contract §F's explicit requirement either for
+   full parity or a disclosed limitation; this slice chose full parity).
+2. **"No confirmed matches" read as a totally empty result.**
+   `SearchPageBody.astro`'s zero-design-matches branch now renders the new
+   `noDesignConfirmedMatchesButPublisherClaimsExist` string (all five
+   locales) instead of the plain `noConfirmedMatches`/
+   `noConfirmedMatchesGeneric` text whenever one or more publisher-claim
+   matches are shown in the separate section below — never two mutually
+   contradictory no-results claims on the same page.
+
+Evidence:
+
+| Case | Proof |
+|---|---|
+| Claim-only delta appears/disappears alongside the pre-existing design-linked swap | `tests/persistence/test_search_sensitivity_api.py::test_sensitivity_separate_claim_only_delta_appears_with_criterion_change` |
+| Exact reviewer-named scenario: 0 design matches + 1 publisher-claim match, never collapsed | `::test_sensitivity_zero_design_matches_still_reports_claim_only_count_accurately` |
+| All five locales carry the new fields | `::test_sensitivity_claim_only_fields_present_in_every_supported_locale[en\|de\|fr\|pt\|es]` |
+| Real PG + FastAPI + built Astro SSR: the exact zero-design-matches-with-claim-only-match page renders the unambiguous disclosure | `scripts/inspect_slice_0092_claim_only_search.py` step 6 (`NL-0092-INSP-CLAIM-TWIN`) |
+| Locale text exists/interpolates/stays visibly distinct from the design-confirmed labels | `web/src/lib/__tests__/searchSensitivityText.test.ts`, `web/src/lib/__tests__/searchText.test.ts` |
+| Decision-neutral tone preserved for the new copy | `searchSensitivityText.test.ts`'s existing banned-word check, extended to the new strings |

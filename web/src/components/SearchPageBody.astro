@@ -554,7 +554,18 @@ const publisherClaimMatchCount: number = data.kind === "ok" ? data.publisherClai
                 {t.confirmedHeading} ({data.confirmedMatchCount})
               </h2>
               {data.confirmedMatchCount === 0 ? (
-                <p>{isKeelActive ? t.noConfirmedMatchesGeneric : t.noConfirmedMatches}</p>
+                // Amendment review Finding A: a bare "no confirmed matches"
+                // message would read as a totally empty result even when
+                // publisher-claim-only matches are shown in the separate
+                // section below -- never two mutually contradictory
+                // no-results claims on the same page.
+                <p>
+                  {publisherClaimMatchCount > 0
+                    ? t.noDesignConfirmedMatchesButPublisherClaimsExist(publisherClaimMatchCount)
+                    : isKeelActive
+                      ? t.noConfirmedMatchesGeneric
+                      : t.noConfirmedMatches}
+                </p>
               ) : isKeelActive ? (
                 <ul>
                   {nativeInventoryMatches.map((match) => (

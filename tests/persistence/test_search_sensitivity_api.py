@@ -85,6 +85,8 @@ from hullq.domain.physical_boat_claims import (
     KeelConfigurationClaim,
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
+    VesselCategory,
+    VesselCategoryClaim,
 )
 from hullq.domain.provenance import SubjectKind
 from hullq.domain.publishing_eligibility import (
@@ -863,3 +865,204 @@ def test_sensitivity_writes_no_persistence_state(
     assert response.status_code == 200
     after = _row_counts()
     assert before == after
+
+
+# ---------------------------------------------------------------------------
+# Amendment (independent review PR #387, Finding A): the separate,
+# truth-source-labeled design-unresolved publisher-claim-only sensitivity
+# delta -- never merged into (and never silently dropped from) the
+# design-linked `*_confirmed_match_count` fields above.
+# ---------------------------------------------------------------------------
+
+
+def _make_claim_only_listing(
+    conn: Any,
+    *,
+    listing_id: str,
+    keel_configuration: KeelConfiguration,
+    vessel_category: VesselCategoryClaim | None,
+) -> None:
+    """A design-UNRESOLVED (`boat_design_ref IS NULL`) ACTIVE listing --
+    mirrors `tests/persistence/test_native_inventory_query_claim_only_slice_0092.py
+    ::_make_design_unresolved_active_listing`, duplicated per established
+    repo convention rather than cross-imported between test modules."""
+    account = AccountId(f"ACC-{listing_id}")
+    org = _org(f"ORG-{listing_id}")
+    membership = _membership(org, account, f"OM-{listing_id}")
+    physical_boat_id = f"PB-{listing_id}"
+    market_episode_id = f"ME-{listing_id}"
+
+    create_physical_boat(
+        conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id), boat_design_ref=None)
+    )
+    create_market_episode(
+        conn,
+        market_episode=MarketEpisode(
+            id=MarketEpisodeId(market_episode_id), physical_boat_id=PhysicalBoatId(physical_boat_id)
+        ),
+    )
+    create_native_listing(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=NativeListing(
+            id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(market_episode_id)
+        ),
+    )
+    write_native_listing_offer_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=NativeListingOfferRevisionId(f"REV-{listing_id}"),
+        expected_current_revision_id=None,
+        offer=NativeListingOfferSnapshot(
+            asking_price_mode=AskingPriceMode.AMOUNT,
+            location_country="FR",
+            broker_description="Design-unresolved listing for sensitivity amendment proof.",
+            asking_price_amount=Decimal("99000.00"),
+            currency="EUR",
+        ),
+    )
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Unbranded",
+            model_designation_claim="Unmatched Model",
+            build_year=BuildYearClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2015),
+            keel_configuration=KeelConfigurationClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value=keel_configuration
+            ),
+            vessel_category=vessel_category,
+        ),
+    )
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
+    publish_result = publish_native_listing(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+    )
+    assert publish_result.status.value == "transitioned", publish_result
+
+
+def test_sensitivity_separate_claim_only_delta_appears_with_criterion_change(
+    client: TestClient, seeded: dict[str, Any], api_conn: Any
+) -> None:
+    """Changing `keel_configuration` from a value the claim-only listing does
+    NOT satisfy to one it DOES satisfy makes it newly appear in the separate
+    claim-only delta -- while the pre-existing design-linked FIN/TWIN_KEEL
+    same-total-swap delta (from the `seeded` fixture) is completely
+    unaffected, proving the two families are tracked independently."""
+    _make_claim_only_listing(
+        api_conn,
+        listing_id="NL-0092-SENS-CLAIM",
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=VesselCategory.SAIL
+        ),
+    )
+    response = _post_sensitivity(
+        client,
+        current={"keel_configuration": "TWIN_KEEL"},
+        criterion="keel_configuration",
+        value="FIN",
+    )
+    assert response.status_code == 200
+    body = response.json()
+    # Design-linked family: the pre-existing accepted same-total swap.
+    assert body["current_confirmed_match_count"] == 1  # _TWIN_LISTING_ID
+    assert body["alternative_confirmed_match_count"] == 1  # _FIN_LISTING_ID
+    assert body["newly_confirmed_match_count"] == 1
+    assert body["no_longer_confirmed_match_count"] == 1
+    # Claim-only family: entirely separate, never merged into the above.
+    assert body["current_claim_only_match_count"] == 0
+    assert body["alternative_claim_only_match_count"] == 1
+    assert body["newly_claim_only_match_count"] == 1
+    assert body["no_longer_claim_only_match_count"] == 0
+
+
+def test_sensitivity_zero_design_matches_still_reports_claim_only_count_accurately(
+    api_url: str,
+) -> None:
+    """The exact scenario the review named: Search shows 0 design matches +
+    1 publisher-claim match. The sensitivity response must never collapse
+    this to a total that looks like zero matches everywhere -- the
+    claim-only count is reported accurately and separately, on a fresh
+    schema with zero design-linked inventory at all."""
+    from hullq.api.app import create_app
+
+    conn = psycopg.connect(api_url)
+    try:
+        _make_claim_only_listing(
+            conn,
+            listing_id="NL-0092-SENS-ZERO",
+            keel_configuration=KeelConfiguration.FIN,
+            vessel_category=VesselCategoryClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value=VesselCategory.SAIL
+            ),
+        )
+    finally:
+        conn.close()
+
+    app = create_app(database_url=api_url, preview_signing_secret=_SECRET)
+    local_client = TestClient(app)
+    response = _post_sensitivity(
+        local_client,
+        current={"keel_configuration": "FIN"},
+        criterion="keel_configuration",
+        value="TWIN_KEEL",
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["current_confirmed_match_count"] == 0
+    assert body["alternative_confirmed_match_count"] == 0
+    # Never silently dropped: the claim-only match is reported on its own.
+    assert body["current_claim_only_match_count"] == 1
+    assert body["alternative_claim_only_match_count"] == 0
+    assert body["newly_claim_only_match_count"] == 0
+    assert body["no_longer_claim_only_match_count"] == 1
+
+
+@pytest.mark.parametrize("locale", ["en", "de", "fr", "pt", "es"])
+def test_sensitivity_claim_only_fields_present_in_every_supported_locale(
+    client: TestClient, seeded: dict[str, Any], api_conn: Any, locale: str
+) -> None:
+    """The new claim-only delta fields are present and well-formed in the
+    JSON response regardless of locale -- locale only ever affects FastAPI's
+    own localized 400 recovery text (contract §11), never which result
+    fields a 200 response carries."""
+    _make_claim_only_listing(
+        api_conn,
+        listing_id=f"NL-0092-SENS-LOC-{locale.upper()}",
+        keel_configuration=KeelConfiguration.FIN,
+        vessel_category=VesselCategoryClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=VesselCategory.SAIL
+        ),
+    )
+    response = _post_sensitivity(
+        client,
+        locale=locale,
+        current={"keel_configuration": "TWIN_KEEL"},
+        criterion="keel_configuration",
+        value="FIN",
+    )
+    assert response.status_code == 200
+    body = response.json()
+    for field in (
+        "current_claim_only_match_count",
+        "alternative_claim_only_match_count",
+        "newly_claim_only_match_count",
+        "no_longer_claim_only_match_count",
+    ):
+        assert isinstance(body[field], int), f"{locale}: {field} missing/non-integer"
+    assert body["alternative_claim_only_match_count"] == 1

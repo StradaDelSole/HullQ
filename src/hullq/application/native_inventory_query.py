@@ -94,6 +94,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import Any
 
 from hullq.application.current_public_eligibility import resolve_current_public_eligibility
@@ -102,8 +103,13 @@ from hullq.application.vessel_category_resolution import resolve_physical_boat_v
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.native_listing_freshness import FreshnessStatus
-from hullq.domain.physical_boat_claims import AssertionKind, VesselCategory
-from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    PhysicalBoatClaimRevisionId,
+    VesselCategory,
+    VesselCategoryClaim,
+)
+from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
 from hullq.domain.vessel_category import (
     ConcreteVesselCategoryEvidence,
     VesselCategoryExclusionEvidence,
@@ -113,12 +119,14 @@ from hullq.domain.vessel_category import (
 )
 from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.persistence.inventory_search import (
+    ActiveDesignUnresolvedListing,
     list_active_design_linked_listings,
     list_active_design_unresolved_listings,
 )
 from hullq.persistence.physical_boat_claims import (
     CurrentPhysicalBoatClaimObservation,
     list_current_physical_boat_claim_observations,
+    list_current_physical_boat_claim_observations_for_many,
 )
 from hullq.search.boat_design_field_bridge import BoatDesignConfigurationQueryResult
 from hullq.search.configuration import (
@@ -162,6 +170,8 @@ __all__ = [
     "NativeInventoryCandidateEvaluation",
     "NativeInventorySearchOutcome",
     "PublisherClaimCandidateEvaluation",
+    "PublisherClaimSourceBasis",
+    "PublisherClaimSourceEvidence",
     "SearchCriterionEvidence",
     "build_configuration_evidence",
     "build_mixed_requirement_query",
@@ -263,6 +273,52 @@ class NativeInventoryCandidateEvaluation:
     last_confirmed_at: datetime | None
 
 
+class PublisherClaimSourceBasis(StrEnum):
+    """The one accepted source-basis discriminator for a claim-only match --
+    amendment review Finding C. A single, fixed member deliberately (no open
+    vocabulary): a claim-only match's evidence is *always*
+    `PUBLISHER_CLAIM`, never independently design-verified. The public
+    serializer (`hullq.api.app._serialize_claim_only_match`) reads this
+    typed field rather than writing an independent literal string that
+    could silently drift from the internal type."""
+
+    PUBLISHER_CLAIM = "PUBLISHER_CLAIM"
+
+
+@dataclass(frozen=True, slots=True)
+class PublisherClaimSourceEvidence:
+    """Internal-only, auditable provenance for the current publisher
+    observation backing one claim-only candidate -- amendment review
+    Finding C: "retain the exact publisher's current claim revision, actor,
+    timestamp, positive category evidence ... in the internal result".
+
+    `revision_id`/`recorded_by_account_id`/`recorded_at` identify the exact
+    current `PhysicalBoatClaimRevision` this candidate's category admission
+    **and** every one of its technical-criterion evaluations were drawn
+    from -- not merely the category field's own provenance, the whole
+    single-query observation's (SLICE-0092 contract §E coherent-snapshot
+    requirement: category and fields always come from this same revision).
+    `category_claim` is the publishing Organization's own current
+    `VesselCategoryClaim` (`None` only when that Organization's current
+    observation omits the field entirely -- mechanically distinct from an
+    explicit `UNKNOWN` claim, exactly like every other optional PhysicalBoat
+    claim field in this codebase).
+
+    Intended for authorized internal/audit consumption only. The public
+    API/SSR surface discloses only the fixed `PublisherClaimSourceBasis`
+    literal (via `PublisherClaimCandidateEvaluation.source_basis`) --
+    `hullq.api.app._serialize_claim_only_match` never reads this type's
+    `revision_id`/`recorded_by_account_id` (contract §D: "public DTO/SSR may
+    disclose only safe publisher/source-type ... never ... private raw
+    provenance").
+    """
+
+    revision_id: PhysicalBoatClaimRevisionId
+    recorded_by_account_id: AccountId
+    recorded_at: datetime
+    category_claim: VesselCategoryClaim | None
+
+
 @dataclass(frozen=True, slots=True)
 class PublisherClaimCandidateEvaluation:
     """One design-unresolved candidate's claim-only classification -- SLICE-0092.
@@ -292,6 +348,13 @@ class PublisherClaimCandidateEvaluation:
     is a materially different, weaker fact than "explicitly excluded".
     `criterion_evidence` is empty whenever category admission itself did not
     succeed -- the concrete per-field claims are never even consulted.
+
+    `source_basis` is always `PublisherClaimSourceBasis.PUBLISHER_CLAIM`
+    (amendment review Finding C: a typed field the public serializer binds
+    to, rather than an independently-written literal). `source_evidence` is
+    the retained internal-only provenance (`None` only when the publishing
+    Organization has no current claim-observation row at all for this
+    PhysicalBoat -- distinct from every other field-level "omitted" case).
     """
 
     native_listing_id: NativeListingId
@@ -301,6 +364,8 @@ class PublisherClaimCandidateEvaluation:
     publishing_organization_id: MarketplaceOrganizationId
     freshness_status: FreshnessStatus
     last_confirmed_at: datetime | None
+    source_basis: PublisherClaimSourceBasis
+    source_evidence: PublisherClaimSourceEvidence | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -759,25 +824,29 @@ def evaluate_claim_only_candidates(
 
     Per candidate: D29 current-public eligibility is re-resolved at the
     explicit *as_of* boundary exactly like the design-linked funnel
-    (ineligible candidates are excluded outright, never counted); then one
-    single call to `list_current_physical_boat_claim_observations` supplies
-    BOTH the category-admission precondition (contract §A) and the
-    technical per-criterion evidence (contract §E: "one coherent PostgreSQL
-    statement for each PhysicalBoat") -- `_resolve_claim_only_category_admission`
-    decides whether the publisher-owned-SAIL precondition is satisfied
-    before `classify_claim_only_candidate` ever consults the concrete
-    per-criterion claims, but both decisions are drawn from the identical
-    observation set, never two separate reads that could straddle a
-    concurrent revision write.
+    (ineligible candidates are excluded outright, never counted -- this
+    remains a per-candidate read, matching the existing accepted
+    design-linked funnel's own identical shape; batching it would require
+    rewriting the shared `resolve_current_public_eligibility`/
+    `resolve_current_freshness` resolvers every other read-model caller
+    also depends on, which is out of this slice's scope). Amendment review
+    Finding D: the per-PhysicalBoat claim-observation read -- the one part
+    of this new path this slice fully owns -- is batched across every
+    currently-eligible candidate into exactly one SQL statement
+    (`list_current_physical_boat_claim_observations_for_many`) instead of
+    one statement per candidate, cutting this funnel's own additive SQL
+    round trips for that read from O(N) to O(1). The category-admission
+    precondition (contract §A) and the technical per-criterion evidence
+    (contract §E: "one coherent PostgreSQL statement for each PhysicalBoat")
+    still come from the identical per-PhysicalBoat observation list --
+    batching changes only how many statements fetch that list, never which
+    rows back which decision.
     """
     all_candidates = list_active_design_unresolved_listings(conn)
     if not all_candidates:
         return (), (), ()
 
-    matches: list[PublisherClaimCandidateEvaluation] = []
-    non_matches: list[PublisherClaimCandidateEvaluation] = []
-    insufficient_data: list[PublisherClaimCandidateEvaluation] = []
-
+    eligible_candidates: list[tuple[ActiveDesignUnresolvedListing, Any]] = []
     for candidate in all_candidates:
         eligibility = resolve_current_public_eligibility(
             conn, candidate.native_listing_id, as_of=as_of
@@ -785,13 +854,47 @@ def evaluate_claim_only_candidates(
         if eligibility is None or eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE:
             continue
         freshness = resolve_current_freshness(conn, candidate.native_listing_id, as_of=as_of)
+        eligible_candidates.append((candidate, freshness))
+    if not eligible_candidates:
+        return (), (), ()
 
-        observations = list_current_physical_boat_claim_observations(
-            conn, candidate.physical_boat_id
-        )
+    observations_by_boat = list_current_physical_boat_claim_observations_for_many(
+        conn, [candidate.physical_boat_id for candidate, _ in eligible_candidates]
+    )
+
+    matches: list[PublisherClaimCandidateEvaluation] = []
+    non_matches: list[PublisherClaimCandidateEvaluation] = []
+    insufficient_data: list[PublisherClaimCandidateEvaluation] = []
+
+    for candidate, freshness in eligible_candidates:
+        observations = observations_by_boat[candidate.physical_boat_id]
         category_resolution = _resolve_claim_only_category_from_observations(observations)
         admitted, exclusion = _resolve_claim_only_category_admission(
             category_resolution, candidate.publishing_organization_id
+        )
+
+        # Amendment review Finding C: retain the publisher's own current
+        # observation's revision/actor/time and positive category claim as
+        # typed internal provenance, regardless of match/non-match/
+        # insufficient classification -- `None` only when the publisher has
+        # no current claim-observation row at all for this PhysicalBoat.
+        publisher_observation = next(
+            (
+                obs
+                for obs in observations
+                if obs.claiming_organization_id == candidate.publishing_organization_id
+            ),
+            None,
+        )
+        source_evidence = (
+            PublisherClaimSourceEvidence(
+                revision_id=publisher_observation.revision_id,
+                recorded_by_account_id=publisher_observation.recorded_by_account_id,
+                recorded_at=publisher_observation.recorded_at,
+                category_claim=publisher_observation.vessel_category,
+            )
+            if publisher_observation is not None
+            else None
         )
 
         criterion_evidence: tuple[SearchCriterionEvidence, ...]
@@ -817,6 +920,8 @@ def evaluate_claim_only_candidates(
             publishing_organization_id=candidate.publishing_organization_id,
             freshness_status=freshness.status,
             last_confirmed_at=freshness.last_confirmed_at,
+            source_basis=PublisherClaimSourceBasis.PUBLISHER_CLAIM,
+            source_evidence=source_evidence,
         )
         if result_class is ResultClass.CONFIRMED_MATCH:
             matches.append(evaluation)

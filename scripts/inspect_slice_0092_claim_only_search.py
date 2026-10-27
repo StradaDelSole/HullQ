@@ -15,8 +15,8 @@ built Astro/Node SSR) — no monkeypatching, no fixture-only bypass:
     -> FastAPI (/api/search/{locale}) publisher_claim_matches surface
     -> Astro SSR (/{locale}/search) "publisher claim matches" section
 
-Seeds exactly three ACTIVE listings and proves, through the real committed
-code paths:
+Seeds four ACTIVE listings and proves, through the real committed code
+paths:
 
     1. NL-0092-INSP-LINKED: a design-LINKED listing (keel_type=fin resolved
        on a real BoatDesign) matching `keel_configuration=FIN`. Historical
@@ -35,6 +35,13 @@ code paths:
        `keel_configuration=FIN` — proves the negative: never a falsely
        confirmed Sail match merely because the concrete technical fields
        would otherwise qualify.
+    4. NL-0092-INSP-CLAIM-TWIN: a design-UNRESOLVED, publisher-owned-SAIL
+       listing with `keel_configuration=TWIN_KEEL` — amendment review
+       Finding A's exact named scenario ("0 design matches + 1 publisher
+       claim match"): under a `keel_configuration=TWIN_KEEL` query this is
+       the ONLY confirmed match of any kind, proving the public API/SSR
+       never render a misleading "no confirmed matches" message while a
+       publisher-claim match is shown.
 
 Requires ``HULLQ_TEST_DATABASE_URL`` (a local PostgreSQL 18 instance) and a
 pre-built Astro web package (``cd web && npm ci && npm run build`` first).
@@ -254,6 +261,7 @@ def _seed(conn: Any) -> None:
         market_episode_id: str,
         org_id: str,
         vessel_category: VesselCategoryClaim | None,
+        keel_configuration: KeelConfiguration = KeelConfiguration.FIN,
     ) -> None:
         account = AccountId(f"ACC-{listing_id}")
         org = _org(org_id)
@@ -307,7 +315,7 @@ def _seed(conn: Any) -> None:
                 model_designation_claim="Unmatched Model",
                 build_year=BuildYearClaim(assertion_kind=VA, value=2015),
                 keel_configuration=KeelConfigurationClaim(
-                    assertion_kind=VA, value=KeelConfiguration.FIN
+                    assertion_kind=VA, value=keel_configuration
                 ),
                 vessel_category=vessel_category,
             ),
@@ -433,6 +441,20 @@ def _seed(conn: Any) -> None:
         "ME-0092-INSP-POWER",
         "ORG-0092-INSP-POWER",
         VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+    )
+
+    # --- design-unresolved, publisher-owned SAIL, TWIN_KEEL: amendment
+    # review Finding A proof ("0 design matches + 1 publisher-claim match")
+    # -- under a keel_configuration=TWIN_KEEL query, NL-0092-INSP-LINKED
+    # (keel=FIN) is not a design-confirmed match, while this listing is the
+    # ONLY confirmed match of any kind -- entirely claim-only.
+    _publish_design_unresolved(
+        "NL-0092-INSP-CLAIM-TWIN",
+        "PB-0092-INSP-CLAIM-TWIN",
+        "ME-0092-INSP-CLAIM-TWIN",
+        "ORG-0092-INSP-CLAIM-TWIN",
+        VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+        keel_configuration=KeelConfiguration.TWIN_KEEL,
     )
 
 
@@ -627,6 +649,38 @@ def main() -> int:
             "5. GET /en/search?keel_configuration=FIN (built Astro SSR): design-linked "
             "match + new publisher-claim section (with disclaimer) both render; "
             f"excluded POWER listing never appears -> {'OK' if step5_ok else 'FAIL'}\n"
+        )
+
+        # 6. Amendment (independent review PR #387, Finding A): the exact
+        # scenario the review named -- 0 design-confirmed matches + 1
+        # publisher-claim-only match -- must never render a bare "no
+        # confirmed matches" message that reads as a totally empty result
+        # when a publisher-claim match is shown right below it.
+        api_status6, _, api_body6 = _http_get(
+            f"{api_base}/api/search/en?keel_configuration=TWIN_KEEL"
+        )
+        api_json6 = _json.loads(api_body6.decode("utf-8"))
+        confirmed_ids6 = {m["native_listing_id"] for m in api_json6.get("confirmed_matches", [])}
+        claim_ids6 = {m["native_listing_id"] for m in api_json6.get("publisher_claim_matches", [])}
+        page_status6, _, page_body6 = _http_get(
+            f"{web_base}/en/search?keel_configuration=TWIN_KEEL"
+        )
+        page_text6 = page_body6.decode("utf-8")
+        step6_ok = (
+            api_status6 == 200
+            and confirmed_ids6 == set()
+            and claim_ids6 == {"NL-0092-INSP-CLAIM-TWIN"}
+            and page_status6 == 200
+            and "No design-confirmed matches" in page_text6
+            and "1 additional match(es) based on the broker" in page_text6
+            and "NL-0092-INSP-CLAIM-TWIN" in page_text6
+        )
+        ok &= step6_ok
+        print(
+            "6. GET keel_configuration=TWIN_KEEL (0 design + 1 claim-only): API "
+            f"confirmed_matches={sorted(confirmed_ids6)}, publisher_claim_matches="
+            f"{sorted(claim_ids6)}; SSR shows the unambiguous zero-design-matches-"
+            f"with-publisher-claims disclosure -> {'OK' if step6_ok else 'FAIL'}\n"
         )
 
         print(

@@ -49,6 +49,7 @@ DRAFT, ACTIVE or later non-public.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -102,6 +103,7 @@ __all__ = [
     "fetch_physical_boat_claim_revision",
     "list_current_draft_observations_for_physical_boat",
     "list_current_physical_boat_claim_observations",
+    "list_current_physical_boat_claim_observations_for_many",
     "list_physical_boat_claim_revisions",
     "write_physical_boat_claim_revision",
     "write_physical_boat_claim_revision_row",
@@ -363,6 +365,30 @@ FROM physical_boat_claim_heads h
 JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
 WHERE h.physical_boat_id = %s
 ORDER BY h.claiming_organization_id
+"""
+
+#: SLICE-0092 amendment Finding D: the batched sibling of the query above --
+#: identical column shape, with `h.physical_boat_id` prefixed so the caller
+#: can group rows back by PhysicalBoatId, and `WHERE ... = ANY(%s)` in place
+#: of a single `= %s`. One statement for however many PhysicalBoatIds the
+#: caller supplies, instead of one statement per id.
+_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS_FOR_MANY = """
+SELECT h.physical_boat_id,
+       h.claiming_organization_id, r.claim_revision_id, r.recorded_by_account_id, r.recorded_at,
+       r.draft_assertion_kind, r.draft_value,
+       r.keel_configuration_assertion_kind, r.keel_configuration_value,
+       r.loa_length_assertion_kind, r.loa_length_value,
+       r.rudder_configuration_assertion_kind, r.rudder_configuration_value,
+       r.hull_configuration_assertion_kind, r.hull_configuration_value,
+       r.cockpit_position_assertion_kind, r.cockpit_position_value,
+       r.deck_saloon_assertion_kind, r.deck_saloon_value,
+       r.beam_assertion_kind, r.beam_value,
+       r.hull_material_assertion_kind, r.hull_material_value,
+       r.vessel_category_assertion_kind, r.vessel_category_value
+FROM physical_boat_claim_heads h
+JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
+WHERE h.physical_boat_id = ANY(%s)
+ORDER BY h.physical_boat_id, h.claiming_organization_id
 """
 
 
@@ -1114,32 +1140,22 @@ class CurrentPhysicalBoatClaimObservation:
     vessel_category: VesselCategoryClaim | None
 
 
-def list_current_physical_boat_claim_observations(
-    conn: Any, physical_boat_id: PhysicalBoatId
-) -> list[CurrentPhysicalBoatClaimObservation]:
-    """Every claiming Organization's current `draft` + `keel_configuration` +
-    `loa_length` + `rudder_configuration` observation for one
-    PhysicalBoatId, from a single query (SLICE-0055, extended SLICE-0085).
+def _decode_claim_observation_row(
+    row: tuple[Any, ...],
+) -> CurrentPhysicalBoatClaimObservation:
+    """Decode one `_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS`-shaped
+    row (claiming_organization_id, revision_id, recorded_by_account_id,
+    recorded_at, then the nine field assertion_kind/value column pairs) into
+    one `CurrentPhysicalBoatClaimObservation`.
 
-    Reads only the explicit current head per claiming Organization -- never
-    `MAX(recorded_at)` or row order -- across every Organization that has
-    ever claimed this PhysicalBoatId, not only the publishing Organization.
-    A PhysicalBoat with no current claim at all from any Organization
-    returns an empty list. Superseded revisions are history, never observed
-    here. Used by the SLICE-0055 mixed native-inventory funnel (extended
-    SLICE-0085 for `loa`/`rudder_configuration`); the SLICE-0051 draft-only
-    funnel keeps using `list_current_draft_observations_for_physical_boat`
-    unchanged.
+    Factored out (SLICE-0092 amendment Finding D) so the single-PhysicalBoat
+    reader (`list_current_physical_boat_claim_observations`) and the
+    batched multi-PhysicalBoat reader
+    (`list_current_physical_boat_claim_observations_for_many`, below) share
+    the identical row-decode logic -- never two independently maintained
+    copies that could silently drift.
     """
-    if not isinstance(physical_boat_id, PhysicalBoatId):
-        raise TypeError(
-            f"physical_boat_id must be a PhysicalBoatId, got {type(physical_boat_id).__name__}"
-        )
-    with conn.cursor() as cur:
-        cur.execute(_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS, [physical_boat_id.value])
-        rows = cur.fetchall()
-    observations = []
-    for (
+    (
         claiming_organization_id,
         revision_id,
         recorded_by_account_id,
@@ -1164,94 +1180,155 @@ def list_current_physical_boat_claim_observations(
         hull_material_value,
         vessel_category_kind,
         vessel_category_value,
-    ) in rows:
-        draft: DraftClaim | None = None
-        if draft_kind is not None:
-            draft = DraftClaim(
-                assertion_kind=AssertionKind(draft_kind),
-                value=Decimal(draft_value) if draft_value is not None else None,
-            )
-        keel_configuration: KeelConfigurationClaim | None = None
-        if keel_kind is not None:
-            keel_configuration = KeelConfigurationClaim(
-                assertion_kind=AssertionKind(keel_kind),
-                value=KeelConfiguration(keel_value) if keel_value is not None else None,
-            )
-        loa_length: LoaLengthClaim | None = None
-        if loa_length_kind is not None:
-            loa_length = LoaLengthClaim(
-                assertion_kind=AssertionKind(loa_length_kind),
-                value=Decimal(loa_length_value) if loa_length_value is not None else None,
-            )
-        rudder_configuration: RudderConfigurationClaim | None = None
-        if rudder_kind is not None:
-            rudder_configuration = RudderConfigurationClaim(
-                assertion_kind=AssertionKind(rudder_kind),
-                value=RudderConfiguration(rudder_value) if rudder_value is not None else None,
-            )
-        hull_configuration: HullConfigurationClaim | None = None
-        if hull_configuration_kind is not None:
-            hull_configuration = HullConfigurationClaim(
-                assertion_kind=AssertionKind(hull_configuration_kind),
-                value=HullConfiguration(hull_configuration_value)
-                if hull_configuration_value is not None
-                else None,
-            )
-        cockpit_position: CockpitPositionClaim | None = None
-        if cockpit_position_kind is not None:
-            cockpit_position = CockpitPositionClaim(
-                assertion_kind=AssertionKind(cockpit_position_kind),
-                value=CockpitPosition(cockpit_position_value)
-                if cockpit_position_value is not None
-                else None,
-            )
-        deck_saloon: DeckSaloonClaim | None = None
-        if deck_saloon_kind is not None:
-            deck_saloon = DeckSaloonClaim(
-                assertion_kind=AssertionKind(deck_saloon_kind),
-                value=DeckSaloon(deck_saloon_value) if deck_saloon_value is not None else None,
-            )
-        beam: BeamClaim | None = None
-        if beam_kind is not None:
-            beam = BeamClaim(
-                assertion_kind=AssertionKind(beam_kind),
-                value=Decimal(beam_value) if beam_value is not None else None,
-            )
-        hull_material: HullMaterialClaim | None = None
-        if hull_material_kind is not None:
-            hull_material = HullMaterialClaim(
-                assertion_kind=AssertionKind(hull_material_kind),
-                value=HullMaterial(hull_material_value)
-                if hull_material_value is not None
-                else None,
-            )
-        vessel_category: VesselCategoryClaim | None = None
-        if vessel_category_kind is not None:
-            vessel_category = VesselCategoryClaim(
-                assertion_kind=AssertionKind(vessel_category_kind),
-                value=VesselCategory(vessel_category_value)
-                if vessel_category_value is not None
-                else None,
-            )
-        observations.append(
-            CurrentPhysicalBoatClaimObservation(
-                claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
-                revision_id=PhysicalBoatClaimRevisionId(revision_id),
-                recorded_by_account_id=AccountId(recorded_by_account_id),
-                recorded_at=recorded_at,
-                draft=draft,
-                keel_configuration=keel_configuration,
-                loa_length=loa_length,
-                rudder_configuration=rudder_configuration,
-                hull_configuration=hull_configuration,
-                cockpit_position=cockpit_position,
-                deck_saloon=deck_saloon,
-                beam=beam,
-                hull_material=hull_material,
-                vessel_category=vessel_category,
-            )
+    ) = row
+    draft: DraftClaim | None = None
+    if draft_kind is not None:
+        draft = DraftClaim(
+            assertion_kind=AssertionKind(draft_kind),
+            value=Decimal(draft_value) if draft_value is not None else None,
         )
-    return observations
+    keel_configuration: KeelConfigurationClaim | None = None
+    if keel_kind is not None:
+        keel_configuration = KeelConfigurationClaim(
+            assertion_kind=AssertionKind(keel_kind),
+            value=KeelConfiguration(keel_value) if keel_value is not None else None,
+        )
+    loa_length: LoaLengthClaim | None = None
+    if loa_length_kind is not None:
+        loa_length = LoaLengthClaim(
+            assertion_kind=AssertionKind(loa_length_kind),
+            value=Decimal(loa_length_value) if loa_length_value is not None else None,
+        )
+    rudder_configuration: RudderConfigurationClaim | None = None
+    if rudder_kind is not None:
+        rudder_configuration = RudderConfigurationClaim(
+            assertion_kind=AssertionKind(rudder_kind),
+            value=RudderConfiguration(rudder_value) if rudder_value is not None else None,
+        )
+    hull_configuration: HullConfigurationClaim | None = None
+    if hull_configuration_kind is not None:
+        hull_configuration = HullConfigurationClaim(
+            assertion_kind=AssertionKind(hull_configuration_kind),
+            value=HullConfiguration(hull_configuration_value)
+            if hull_configuration_value is not None
+            else None,
+        )
+    cockpit_position: CockpitPositionClaim | None = None
+    if cockpit_position_kind is not None:
+        cockpit_position = CockpitPositionClaim(
+            assertion_kind=AssertionKind(cockpit_position_kind),
+            value=CockpitPosition(cockpit_position_value)
+            if cockpit_position_value is not None
+            else None,
+        )
+    deck_saloon: DeckSaloonClaim | None = None
+    if deck_saloon_kind is not None:
+        deck_saloon = DeckSaloonClaim(
+            assertion_kind=AssertionKind(deck_saloon_kind),
+            value=DeckSaloon(deck_saloon_value) if deck_saloon_value is not None else None,
+        )
+    beam: BeamClaim | None = None
+    if beam_kind is not None:
+        beam = BeamClaim(
+            assertion_kind=AssertionKind(beam_kind),
+            value=Decimal(beam_value) if beam_value is not None else None,
+        )
+    hull_material: HullMaterialClaim | None = None
+    if hull_material_kind is not None:
+        hull_material = HullMaterialClaim(
+            assertion_kind=AssertionKind(hull_material_kind),
+            value=HullMaterial(hull_material_value) if hull_material_value is not None else None,
+        )
+    vessel_category: VesselCategoryClaim | None = None
+    if vessel_category_kind is not None:
+        vessel_category = VesselCategoryClaim(
+            assertion_kind=AssertionKind(vessel_category_kind),
+            value=VesselCategory(vessel_category_value)
+            if vessel_category_value is not None
+            else None,
+        )
+    return CurrentPhysicalBoatClaimObservation(
+        claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
+        revision_id=PhysicalBoatClaimRevisionId(revision_id),
+        recorded_by_account_id=AccountId(recorded_by_account_id),
+        recorded_at=recorded_at,
+        draft=draft,
+        keel_configuration=keel_configuration,
+        loa_length=loa_length,
+        rudder_configuration=rudder_configuration,
+        hull_configuration=hull_configuration,
+        cockpit_position=cockpit_position,
+        deck_saloon=deck_saloon,
+        beam=beam,
+        hull_material=hull_material,
+        vessel_category=vessel_category,
+    )
+
+
+def list_current_physical_boat_claim_observations(
+    conn: Any, physical_boat_id: PhysicalBoatId
+) -> list[CurrentPhysicalBoatClaimObservation]:
+    """Every claiming Organization's current `draft` + `keel_configuration` +
+    `loa_length` + `rudder_configuration` observation for one
+    PhysicalBoatId, from a single query (SLICE-0055, extended SLICE-0085).
+
+    Reads only the explicit current head per claiming Organization -- never
+    `MAX(recorded_at)` or row order -- across every Organization that has
+    ever claimed this PhysicalBoatId, not only the publishing Organization.
+    A PhysicalBoat with no current claim at all from any Organization
+    returns an empty list. Superseded revisions are history, never observed
+    here. Used by the SLICE-0055 mixed native-inventory funnel (extended
+    SLICE-0085 for `loa`/`rudder_configuration`); the SLICE-0051 draft-only
+    funnel keeps using `list_current_draft_observations_for_physical_boat`
+    unchanged.
+    """
+    if not isinstance(physical_boat_id, PhysicalBoatId):
+        raise TypeError(
+            f"physical_boat_id must be a PhysicalBoatId, got {type(physical_boat_id).__name__}"
+        )
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS, [physical_boat_id.value])
+        rows = cur.fetchall()
+    return [_decode_claim_observation_row(row) for row in rows]
+
+
+def list_current_physical_boat_claim_observations_for_many(
+    conn: Any, physical_boat_ids: Sequence[PhysicalBoatId]
+) -> dict[PhysicalBoatId, list[CurrentPhysicalBoatClaimObservation]]:
+    """Batched variant of `list_current_physical_boat_claim_observations`
+    for several PhysicalBoatIds at once, from a single SQL statement --
+    SLICE-0092 amendment Finding D ("safe bounded/batched candidate/
+    eligibility/observations strategy").
+
+    Returns one entry per *distinct* input id; a PhysicalBoatId with no
+    current claim at all from any Organization maps to an empty list
+    (never a missing key), so a caller can always index this dict by every
+    id it asked for without a membership check. Duplicate input ids are
+    accepted and de-duplicated before querying. An empty *physical_boat_ids*
+    returns `{}` without issuing any SQL (never an unbounded/empty-`ANY`
+    round trip).
+
+    This collapses what would otherwise be N separate single-PhysicalBoat
+    statements (one per candidate in a bulk Search funnel) into exactly
+    one, cutting that funnel's per-request SQL round trips for this read
+    from O(N) to O(1) -- the identical per-row decode logic
+    (`_decode_claim_observation_row`) is shared with the single-id reader,
+    so this is not a second, independently maintained read path.
+    """
+    distinct_ids = sorted({pb_id.value for pb_id in physical_boat_ids})
+    if not distinct_ids:
+        return {}
+    with conn.cursor() as cur:
+        cur.execute(_SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS_FOR_MANY, [distinct_ids])
+        rows = cur.fetchall()
+    result: dict[PhysicalBoatId, list[CurrentPhysicalBoatClaimObservation]] = {
+        PhysicalBoatId(value): [] for value in distinct_ids
+    }
+    for physical_boat_id_value, *rest in rows:
+        result[PhysicalBoatId(physical_boat_id_value)].append(
+            _decode_claim_observation_row(tuple(rest))
+        )
+    return result
 
 
 def list_physical_boat_claim_revisions(
