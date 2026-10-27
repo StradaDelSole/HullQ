@@ -16,9 +16,9 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest Owner-accepted slice:       SLICE-0091 (implementation; local FINISH pending)
-Current queue:                  SLICE-0092 — NOT SELECTED / NOT READY
-Current capability:             Explicit Sail/Power/Motorsailer category foundation (not Power technical Search)
+Latest Owner-accepted slice:       SLICE-0091 (implementation; Owner-local FINISH SUCCESS)
+Current queue:                  SLICE-0092 — SELECTED / READY (Owner START after reviewed PR merge)
+Current capability:             Qualified broker-claim Search for design-unresolved Sail boats (Power-ready candidate spine, no Power technical Search)
 Current operational restriction: No production email/provider; no external broker upload/pilot (#355)
 Technical native Search count:  9 hard Sail criteria; joint Sail+Power external release #366/#372 still outstanding
 Production Launch Pack:         NOT_STARTED
@@ -28,7 +28,9 @@ Production Launch Pack:         NOT_STARTED
 - SLICE-0089 is **Owner-accepted and implementation-merged**: exact accepted implementation HEAD `f57b2433db9d3a46ea49d7a5c2eec527c1ab6884`, PR #376 squash `f6e45d13d517455fab7c07b2891f2708a559c680`, exact-HEAD CI/manufacturer successful, separate formal acceptance closure `docs/slices/SLICE-0089-acceptance-closure.md`. The factual branded HTML print/download, broker opt-in weekly/monthly persisted schedule, bounded idempotent worker and local deterministic delivery adapter close `REQ-BROKER-028` / `MVP-BROKER-008` in accepted nonproduction scope. Review findings A–G resolved; actual real email provider and supervised production delivery are NOT activated. Owner-local `FINISH_SLICE.bat 0089` confirmed SUCCESS after formal docs closure merge.
 - SLICE-0090 is **Owner-accepted docs-only DESIGN_RESEARCH**, exact reviewed HEAD `847c56cde1c48ea285da87ac70c72a6cfdfde5b8`, PR #379 squash merged as `0e78f2c64c2d21e0b2fd5d8a97213b49cbdedeb8`, six-job CI/manufacturer PASS and independent Findings A–K closed. Retained architecture, nine-external-source rights matrix and 13 synthetic hard cases provide **research only**; no Power product implementation, source ingestion or public pilot is authorized. Separate `docs/slices/SLICE-0090-acceptance-closure.md` records formal Owner acceptance; Owner-local FINISH 0090 confirmed SUCCESS. #372 stays open.
 
-- SLICE-0091 is **Owner-accepted IMPLEMENTATION**, exact reviewed HEAD `ec3fbef167812a18df60b521a8261e3f0bd8cd59`, PR #384 squash merged as `b707c8ebf00a7e40f849e49f60490327583eb74a`; independent findings A–J closed, six-job CI/manufacturer PASS. Durable category claims (SAIL/POWER/MOTORSAILER), source-qualified design/concrete current provenance, derived UNKNOWN/CONFLICT, conservative Sail-only search exclusion and broker claim round-trip implemented. Nine Sail technical criteria unchanged, no Power specialist search, external source admission or live pilot; full detail in `docs/slices/SLICE-0091-acceptance-closure.md`. Owner-local FINISH 0091 pending; #372 remains OPEN.
+- SLICE-0091 is **Owner-accepted IMPLEMENTATION**, exact reviewed HEAD `ec3fbef167812a18df60b521a8261e3f0bd8cd59`, PR #384 squash merged as `b707c8ebf00a7e40f849e49f60490327583eb74a`; independent findings A–J closed, six-job CI/manufacturer PASS. Durable category claims (SAIL/POWER/MOTORSAILER), source-qualified design/concrete current provenance, derived UNKNOWN/CONFLICT, conservative Sail-only search exclusion and broker claim round-trip implemented. Nine Sail technical criteria unchanged, no Power specialist search, external source admission or live pilot; full detail in `docs/slices/SLICE-0091-acceptance-closure.md`. Owner-local FINISH 0091 confirmed SUCCESS; #372 remains OPEN.
+
+- SLICE-0092 is selected as the qualified design-unresolved, issuer-labeled current-broker-claim Search path from SLICE-0090 §4 row B. Only an explicitly SAIL and currently qualified professional listing may yield a new Sail technical result; Power criteria, motorsailer policy and external release remain future. The contract is `docs/slices/SLICE-0092-qualified-design-unresolved-search.md`, whose READY review/merge and Owner START are prerequisites to implementation.
 
 ## Historical execution ranges
 
@@ -38,8 +40,8 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0039 | terminal historical `BLOCKED` exception; do not reopen |
 | SLICE-0040–0089 | accepted work (0089 Owner-local FINISH SUCCESS); see acceptance closures and `PROJECT_STATE.md` |
 | SLICE-0090 | Owner-accepted DESIGN_RESEARCH (not implementation); Owner-local FINISH SUCCESS |
-| SLICE-0091 | Owner-accepted category IMPLEMENTATION; Owner-local FINISH pending |
-| SLICE-0092 | NOT SELECTED / NOT READY; no automatic execution |
+| SLICE-0091 | Owner-accepted category IMPLEMENTATION; Owner-local FINISH SUCCESS |
+| SLICE-0092 | SELECTED / READY documentation PR #386; no implementation without reviewed READY merge and Owner-local START |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
