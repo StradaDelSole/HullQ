@@ -341,8 +341,15 @@ ORDER BY h.claiming_organization_id
 #: rationale, and the same single consistent PostgreSQL MVCC snapshot that
 #: `hullq.domain.vessel_category.resolve_vessel_category`'s same-PhysicalBoat
 #: cross-Organization contradiction check relies on.
+#:
+#: SLICE-0091 amendment Finding C: also carries each row's own
+#: `claim_revision_id`/`recorded_by_account_id`/`recorded_at` -- the exact
+#: current-revision identity/issuer/time evidence
+#: `hullq.domain.vessel_category.ConcreteVesselCategoryEvidence` retains, so
+#: a cross-Organization disagreement can always name its sources.
 _SELECT_CURRENT_PHYSICAL_BOAT_CLAIM_OBSERVATIONS = """
-SELECT h.claiming_organization_id, r.draft_assertion_kind, r.draft_value,
+SELECT h.claiming_organization_id, r.claim_revision_id, r.recorded_by_account_id, r.recorded_at,
+       r.draft_assertion_kind, r.draft_value,
        r.keel_configuration_assertion_kind, r.keel_configuration_value,
        r.loa_length_assertion_kind, r.loa_length_value,
        r.rudder_configuration_assertion_kind, r.rudder_configuration_value,
@@ -1083,9 +1090,18 @@ class CurrentPhysicalBoatClaimObservation:
     Each field is `None` when that Organization's current claim snapshot
     omits it entirely -- mechanically distinct from an explicit `UNKNOWN`
     claim, exactly like `CurrentDraftObservation.draft`.
+
+    SLICE-0091 amendment Finding C: `revision_id`/`recorded_by_account_id`/
+    `recorded_at` identify the exact current claim revision this
+    observation came from -- added so a vessel-category cross-Organization
+    `CONFLICT` can always name which current source disagrees and when it
+    was recorded, never only an anonymous value.
     """
 
     claiming_organization_id: MarketplaceOrganizationId
+    revision_id: PhysicalBoatClaimRevisionId
+    recorded_by_account_id: AccountId
+    recorded_at: datetime
     draft: DraftClaim | None
     keel_configuration: KeelConfigurationClaim | None
     loa_length: LoaLengthClaim | None
@@ -1125,6 +1141,9 @@ def list_current_physical_boat_claim_observations(
     observations = []
     for (
         claiming_organization_id,
+        revision_id,
+        recorded_by_account_id,
+        recorded_at,
         draft_kind,
         draft_value,
         keel_kind,
@@ -1217,6 +1236,9 @@ def list_current_physical_boat_claim_observations(
         observations.append(
             CurrentPhysicalBoatClaimObservation(
                 claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
+                revision_id=PhysicalBoatClaimRevisionId(revision_id),
+                recorded_by_account_id=AccountId(recorded_by_account_id),
+                recorded_at=recorded_at,
                 draft=draft,
                 keel_configuration=keel_configuration,
                 loa_length=loa_length,

@@ -58,6 +58,7 @@ from typing import Any
 
 from hullq.application.current_public_eligibility import resolve_current_public_eligibility
 from hullq.application.native_listing_freshness import resolve_current_freshness
+from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_freshness import FreshnessStatus
@@ -244,6 +245,22 @@ def evaluate_draft_max_requirement(
 
     for candidate, freshness in current_candidates:
         if candidate.boat_design_ref.value not in compatible_ids:
+            continue
+        # SLICE-0091 amendment Finding A: this pure draft_max funnel is a
+        # second Sail entrypoint distinct from
+        # hullq.application.native_inventory_query -- the fail-closed
+        # category pre-filter must be applied here too, or an explicit
+        # POWER/MOTORSAILER/CONFLICT vessel could still surface as a
+        # confirmed Sail match through this unmodified SLICE-0051 path.
+        # UNKNOWN (including every legacy null-category row) is untouched,
+        # preserving accepted SLICE-0051 behavior exactly.
+        category_resolution = resolve_physical_boat_vessel_category(
+            conn,
+            physical_boat_id=candidate.physical_boat_id,
+            boat_design_ref=candidate.boat_design_ref,
+        )
+        if category_resolution.is_explicitly_non_sail_or_conflicted:
+            confirmed_non_match_count += 1
             continue
         result = _classify_candidate(
             conn,

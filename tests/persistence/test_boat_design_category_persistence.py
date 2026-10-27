@@ -18,9 +18,13 @@ import pytest
 
 from hullq.domain.physical_boat_claims import AssertionKind, VesselCategory
 from hullq.domain.provenance import ResolverKind, ResolverMetadata
-from hullq.domain.vessel_category import BoatDesignCategoryAssertionId, DesignVesselCategoryAssertion
+from hullq.domain.vessel_category import (
+    BoatDesignCategoryAssertionId,
+    DesignVesselCategoryAssertion,
+)
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.boat_design_category import (
+    CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
     BoatDesignCategoryAssertionWriteStatus,
     fetch_boat_design_category_assertion,
     fetch_current_boat_design_category_assertion,
@@ -107,7 +111,11 @@ def _insert_minimal_boat_design(conn: Any, design_id: str, model_id: str) -> Non
 
 
 def _issuer() -> ResolverMetadata:
-    return ResolverMetadata(kind=ResolverKind.HUMAN, identifier="slice-0091-test", version="1")
+    return ResolverMetadata(
+        kind=ResolverKind.DETERMINISTIC_TOOL,
+        identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+        version="1",
+    )
 
 
 def test_migration_adds_the_expected_category_tables(category_conn: Any) -> None:
@@ -266,3 +274,85 @@ def test_exact_retry_is_idempotent_already_exists(category_conn: Any) -> None:
     )
     assert retry.status is BoatDesignCategoryAssertionWriteStatus.ALREADY_EXISTS
     assert retry.current_assertion_id == BoatDesignCategoryAssertionId("BDCAT-R")
+
+
+# ---------------------------------------------------------------------------
+# Amendment Finding D: issuer admission boundary
+# ---------------------------------------------------------------------------
+
+
+def test_unauthorized_human_issuer_is_rejected_without_mutation(category_conn: Any) -> None:
+    """An arbitrary caller-supplied HUMAN issuer must never become
+    authoritative design category truth -- no row written, no head
+    created."""
+    _insert_minimal_boat_design(category_conn, "BD-5", "BM-5")
+    untrusted = write_boat_design_category_assertion(
+        category_conn,
+        boat_design_id="BD-5",
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-UNTRUSTED"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.POWER),
+        issuer=ResolverMetadata(
+            kind=ResolverKind.HUMAN, identifier="random-internal-caller", version=None
+        ),
+    )
+    assert untrusted.status is BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
+    assert untrusted.current_assertion_id is None
+    assert fetch_current_boat_design_category_assertion(category_conn, "BD-5") is None
+    assert (
+        fetch_boat_design_category_assertion(
+            category_conn, BoatDesignCategoryAssertionId("BDCAT-UNTRUSTED")
+        )
+        is None
+    )
+
+
+def test_unauthorized_deterministic_tool_with_unrecognized_identifier_is_rejected(
+    category_conn: Any,
+) -> None:
+    """Even the right `ResolverKind` fails closed unless the identifier
+    exactly matches the one reviewed allowlist entry -- the boundary is the
+    specific identity, not merely the actor kind."""
+    _insert_minimal_boat_design(category_conn, "BD-6", "BM-6")
+    result = write_boat_design_category_assertion(
+        category_conn,
+        boat_design_id="BD-6",
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-UNLISTED"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
+        issuer=ResolverMetadata(
+            kind=ResolverKind.DETERMINISTIC_TOOL, identifier="some-other-tool", version="1"
+        ),
+    )
+    assert result.status is BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
+    assert fetch_current_boat_design_category_assertion(category_conn, "BD-6") is None
+
+
+def test_llm_issuer_is_rejected(category_conn: Any) -> None:
+    _insert_minimal_boat_design(category_conn, "BD-7", "BM-7")
+    result = write_boat_design_category_assertion(
+        category_conn,
+        boat_design_id="BD-7",
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-LLM"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
+        issuer=ResolverMetadata(
+            kind=ResolverKind.LLM, identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER, version="1"
+        ),
+    )
+    assert result.status is BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
+    assert fetch_current_boat_design_category_assertion(category_conn, "BD-7") is None
+
+
+def test_authorized_issuer_still_succeeds(category_conn: Any) -> None:
+    """Positive control: the exact reviewed allowlist entry is unaffected."""
+    _insert_minimal_boat_design(category_conn, "BD-8", "BM-8")
+    result = write_boat_design_category_assertion(
+        category_conn,
+        boat_design_id="BD-8",
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-OK"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
+        issuer=_issuer(),
+    )
+    assert result.status is BoatDesignCategoryAssertionWriteStatus.CREATED

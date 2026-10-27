@@ -66,12 +66,22 @@ from hullq.domain.publishing_eligibility import (
     OrganizationPublishingEligibility,
     ProfessionalCategory,
 )
-from hullq.domain.vessel_category import BoatDesignCategoryAssertionId, DesignVesselCategoryAssertion
+from hullq.domain.vessel_category import (
+    BoatDesignCategoryAssertionId,
+    DesignVesselCategoryAssertion,
+)
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
-from hullq.persistence.boat_design_category import write_boat_design_category_assertion
+from hullq.persistence.boat_design_category import (
+    CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+    write_boat_design_category_assertion,
+)
 from hullq.persistence.broker_identity import seed_marketplace_organization
 from hullq.persistence.market_episode import create_market_episode, fetch_market_episode
-from hullq.persistence.media_gallery import create_uploaded_image_placement, insert_approved_media_asset, set_cover
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
 from hullq.persistence.native_listing import create_native_listing, fetch_native_listing
 from hullq.persistence.native_listing_lifecycle import publish_native_listing
 from hullq.persistence.native_listing_offer import (
@@ -364,7 +374,11 @@ def _write_vessel_category_claim(
 
 
 def _issuer() -> ResolverMetadata:
-    return ResolverMetadata(kind=ResolverKind.HUMAN, identifier="slice-0091-test", version="1")
+    return ResolverMetadata(
+        kind=ResolverKind.DETERMINISTIC_TOOL,
+        identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+        version="1",
+    )
 
 
 def _query_result(conn: Any) -> set[str]:

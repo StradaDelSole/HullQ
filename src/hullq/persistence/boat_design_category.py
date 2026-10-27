@@ -25,13 +25,24 @@ so, exactly like `hullq.persistence.physical_boat_claims`, this module locks
 that parent row (`SELECT ... FOR UPDATE`) for the duration of the write
 transaction rather than taking a PostgreSQL advisory lock.
 
-No evidence/source-rights admission of any kind is performed here: the
-caller-supplied `issuer` (`hullq.domain.provenance.ResolverMetadata`, the
-same type `FieldResolution.resolver` already uses) is recorded for audit
-only, never checked against a Source registry. A real, source-rights-gated
-design-side category admission path -- if one is ever wanted -- is an
-explicit future decision (SLICE-0090 decision-map row A names only this
-narrower foundation), not silently introduced here.
+No source-rights/evidence-quality admission (as `FieldResolution` performs
+for externally-sourced physical facts) is performed here -- category is a
+type/admission foundation, not a physical fact with a source-rights gate.
+`issuer` (`hullq.domain.provenance.ResolverMetadata`, the same type
+`FieldResolution.resolver` already uses) is nonetheless not merely recorded
+for audit: amendment review Finding D found that an *unauthorized* caller
+could otherwise install a positive design category that silently excludes a
+listing from Sail Search with zero admission control. `write_boat_design_category_assertion`
+therefore checks *issuer* against `_AUTHORIZED_CATALOG_CATEGORY_ISSUERS`, a
+single explicit, narrowly bounded allowlist entry -- mirroring the existing
+`_ACCEPTED_SAIL_BOAT_TYPES` import-allowlist convention
+(`hullq.domain.import_nautix`): extended only by a deliberate, reviewed code
+change, never by caller-supplied role/session metadata, and never a
+source-rights/evidence-quality engine of its own. An unrecognized issuer
+(including an otherwise-plausible but unlisted `DETERMINISTIC_TOOL`
+identifier, or any `HUMAN`/`LLM` issuer) fails the write closed as
+`ISSUER_NOT_AUTHORIZED` before any row is touched -- it can never become
+authoritative category truth.
 """
 
 from __future__ import annotations
@@ -39,14 +50,18 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Final
 
 from hullq.domain.physical_boat_claims import AssertionKind, VesselCategory
 from hullq.domain.provenance import ResolverKind, ResolverMetadata
-from hullq.domain.vessel_category import BoatDesignCategoryAssertionId, DesignVesselCategoryAssertion
+from hullq.domain.vessel_category import (
+    BoatDesignCategoryAssertionId,
+    DesignVesselCategoryAssertion,
+)
 from hullq.persistence.fingerprint import fingerprint_dict
 
 __all__ = [
+    "CATALOG_CATEGORY_ADMISSION_IDENTIFIER",
     "BoatDesignCategoryAssertionRecord",
     "BoatDesignCategoryAssertionWriteResult",
     "BoatDesignCategoryAssertionWriteStatus",
@@ -56,6 +71,19 @@ __all__ = [
     "list_boat_design_category_assertion_revisions",
     "write_boat_design_category_assertion",
 ]
+
+#: The exact, single identity authorized to assert BoatDesign-level category
+#: -- amendment Finding D. Not a generalized actor/rights registry: a
+#: deliberate allowlist entry extended only by a reviewed code change, never
+#: by caller-supplied role/session metadata. Any real future catalog-
+#: admission pipeline must mint its `ResolverMetadata.identifier` as exactly
+#: this string (kind `DETERMINISTIC_TOOL`) to write a design category
+#: assertion that can ever exclude a listing from Sail Search.
+CATALOG_CATEGORY_ADMISSION_IDENTIFIER: Final = "hullq-catalog-category-admission"
+
+_AUTHORIZED_CATALOG_CATEGORY_ISSUERS: Final[frozenset[tuple[ResolverKind, str]]] = frozenset(
+    {(ResolverKind.DETERMINISTIC_TOOL, CATALOG_CATEGORY_ADMISSION_IDENTIFIER)}
+)
 
 
 class BoatDesignCategoryTransactionOwnershipError(RuntimeError):
@@ -78,6 +106,7 @@ class BoatDesignCategoryAssertionWriteStatus(StrEnum):
     ALREADY_EXISTS = "already_exists"
     CONFLICT = "conflict"
     BOAT_DESIGN_NOT_FOUND = "boat_design_not_found"
+    ISSUER_NOT_AUTHORIZED = "issuer_not_authorized"
 
 
 _STATUSES_REQUIRING_CURRENT = frozenset(
@@ -88,7 +117,10 @@ _STATUSES_REQUIRING_CURRENT = frozenset(
     }
 )
 _STATUSES_FORBIDDING_CURRENT = frozenset(
-    {BoatDesignCategoryAssertionWriteStatus.BOAT_DESIGN_NOT_FOUND}
+    {
+        BoatDesignCategoryAssertionWriteStatus.BOAT_DESIGN_NOT_FOUND,
+        BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED,
+    }
 )
 
 
@@ -285,6 +317,15 @@ def write_boat_design_category_assertion(
             "requires an IDLE connection so it can safely own and commit its own top-level "
             "transaction. Call conn.commit()/conn.rollback() first, or pass a freshly opened "
             "connection."
+        )
+
+    # Amendment Finding D: checked before any statement runs -- a pure
+    # comparison against a fixed allowlist, nothing durable to consult yet.
+    # An unauthorized issuer must never reach the lock/insert below, and the
+    # BoatDesign row's current state (if any) must be provably untouched.
+    if (issuer.kind, issuer.identifier) not in _AUTHORIZED_CATALOG_CATEGORY_ISSUERS:
+        return BoatDesignCategoryAssertionWriteResult(
+            status=BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
         )
 
     with conn.transaction(), conn.cursor() as cur:

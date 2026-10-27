@@ -60,6 +60,8 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimSnapshot,
     RudderConfiguration,
     RudderConfigurationClaim,
+    VesselCategory,
+    VesselCategoryClaim,
 )
 
 __all__ = [
@@ -370,6 +372,7 @@ _CLAIM_KEYS = frozenset(
         "physical_boat.deck_saloon",
         "physical_boat.beam",
         "physical_boat.hull_material",
+        "physical_boat.vessel_category",
     }
 )
 
@@ -559,6 +562,27 @@ def _parse_hull_material(raw: Any) -> HullMaterialClaim:
     )
 
 
+def _parse_vessel_category(raw: Any) -> VesselCategoryClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.vessel_category")
+    kind = _assertion_kind(raw_kind, "physical_boat.vessel_category")
+    value: VesselCategory | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        if not isinstance(raw_value, str) or raw_value not in {k.value for k in VesselCategory}:
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.vessel_category.value must be a recognized vessel category"
+            )
+        value = VesselCategory(raw_value)
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.vessel_category.value must be omitted/null when assertion_kind is "
+            f"{kind.value}"
+        )
+    return _construct(
+        lambda: VesselCategoryClaim(assertion_kind=kind, value=value),
+        "physical_boat.vessel_category",
+    )
+
+
 def _parse_boat_name(raw: Any) -> BoatNameClaim:
     raw_kind, raw_value = _assertion_object(raw, "physical_boat.boat_name")
     kind = _assertion_kind(raw_kind, "physical_boat.boat_name")
@@ -654,6 +678,11 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
         if "physical_boat.hull_material" in raw
         else None
     )
+    vessel_category = (
+        _parse_vessel_category(raw["physical_boat.vessel_category"])
+        if "physical_boat.vessel_category" in raw
+        else None
+    )
 
     claims = _construct(
         lambda: PhysicalBoatClaimSnapshot(
@@ -670,6 +699,7 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
             deck_saloon=deck_saloon,
             beam=beam,
             hull_material=hull_material,
+            vessel_category=vessel_category,
         ),
         "physical_boat",
     )

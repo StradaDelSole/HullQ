@@ -787,3 +787,76 @@ class TestClaimEditRequest:
         assert parsed.claims.hull_configuration.value.value == "MONOHULL"
         assert str(parsed.claims.beam.value) == "4.2"
         assert parsed.claims.hull_material.value.value == "STEEL"
+
+    # SLICE-0091 amendment Finding B: physical_boat.vessel_category must be
+    # accepted by the existing authorized claim-edit request exactly like
+    # every other optional categorical claim field.
+
+    def test_vessel_category_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.vessel_category": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "SAIL",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.vessel_category is not None
+        assert parsed.claims.vessel_category.value.value == "SAIL"
+
+    def test_vessel_category_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.vessel_category": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "CONFLICT",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_vessel_category_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.vessel_category": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "SAIL",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_vessel_category_absent_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM, **{"physical_boat.vessel_category": {"assertion_kind": "ABSENT"}}
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_vessel_category_omitted_key_leaves_claim_none(self) -> None:
+        parsed = parse_physical_boat_claim_edit_request(_BASE_CLAIM)
+        assert parsed.claims.vessel_category is None
+
+    def test_vessel_category_combinable_with_hull_material(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.vessel_category": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "MOTORSAILER",
+                },
+                "physical_boat.hull_material": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "STEEL",
+                },
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.vessel_category.value.value == "MOTORSAILER"
+        assert parsed.claims.hull_material.value.value == "STEEL"

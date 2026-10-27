@@ -139,8 +139,14 @@ def main() -> int:
             BoatDesignCategoryAssertionId,
             DesignVesselCategoryAssertion,
         )
-        from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
-        from hullq.persistence.boat_design_category import write_boat_design_category_assertion
+        from hullq.persistence.alembic_baseline import (
+            alembic_upgrade_head,
+            prepare_alembic_baseline,
+        )
+        from hullq.persistence.boat_design_category import (
+            CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+            write_boat_design_category_assertion,
+        )
         from hullq.persistence.market_episode import create_market_episode
         from hullq.persistence.native_listing import create_native_listing
         from hullq.persistence.native_listing_offer import (
@@ -149,12 +155,13 @@ def main() -> int:
         )
         from hullq.persistence.physical_boat import create_physical_boat
         from hullq.persistence.physical_boat_claims import (
-            fetch_current_physical_boat_claim,
             write_physical_boat_claim_revision,
         )
 
-        sys.path.insert(0, str((REPO_ROOT / "tests" / "persistence")))
-        from _field_resolution_support import admit_resolved_categorical_field  # type: ignore[import-not-found]
+        sys.path.insert(0, str(REPO_ROOT / "tests" / "persistence"))
+        from _field_resolution_support import (
+            admit_resolved_categorical_field,  # type: ignore[import-not-found]
+        )
 
         from hullq.search.keel_design_bridge import lookup_keel_canonical_value
 
@@ -172,7 +179,11 @@ def main() -> int:
         UNK = AssertionKind.UNKNOWN
 
         def _issuer() -> ResolverMetadata:
-            return ResolverMetadata(kind=ResolverKind.HUMAN, identifier="inspector", version="1")
+            return ResolverMetadata(
+                kind=ResolverKind.DETERMINISTIC_TOOL,
+                identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+                version="1",
+            )
 
         conn = psycopg.connect(url)
 
@@ -423,6 +434,25 @@ def main() -> int:
         check7 = r7.resolution.value == "UNKNOWN"
         ok &= check7
         print(f"7. retraction POWER -> UNKNOWN (new revision, not overwrite) -> resolution={r7.resolution.value} -> {'OK' if check7 else 'FAIL'}\n")
+
+        # --- 7b. amendment Finding D: unauthorized issuer is rejected ----------
+        from hullq.domain.provenance import ResolverKind as _RK
+
+        _insert_boat_design(conn, "BD-7B", "BM-7B", keel_type="fin")
+        untrusted_write = write_boat_design_category_assertion(
+            conn,
+            boat_design_id="BD-7B",
+            assertion_id=BoatDesignCategoryAssertionId("BDCAT-7B-UNTRUSTED"),
+            expected_current_assertion_id=None,
+            assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.POWER),
+            issuer=ResolverMetadata(kind=_RK.HUMAN, identifier="random-internal-caller", version=None),
+        )
+        check7b = untrusted_write.status.value == "issuer_not_authorized"
+        ok &= check7b
+        print(
+            "7b. unauthorized HUMAN issuer attempting to install design category POWER -> "
+            f"write status={untrusted_write.status.value} (no mutation) -> {'OK' if check7b else 'FAIL'}\n"
+        )
 
         # --- 8. real nine-criterion Sail funnel exclusion ----------------------
         from datetime import UTC, datetime
