@@ -61,6 +61,8 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimSnapshot,
     RudderConfiguration,
     RudderConfigurationClaim,
+    VesselCategory,
+    VesselCategoryClaim,
 )
 from hullq.domain.provenance import SubjectKind
 from hullq.domain.publishing_eligibility import (
@@ -511,6 +513,7 @@ def _write_claim(
     deck_saloon: DeckSaloonClaim | None = None,
     beam: BeamClaim | None = None,
     hull_material: HullMaterialClaim | None = None,
+    vessel_category: VesselCategoryClaim | None = None,
 ) -> None:
     conn = psycopg.connect(api_url)
     try:
@@ -558,6 +561,7 @@ def _write_claim(
                 deck_saloon=deck_saloon,
                 beam=beam,
                 hull_material=hull_material,
+                vessel_category=vessel_category,
             ),
         )
         assert result.status.value in ("created", "revised"), result
@@ -915,6 +919,68 @@ class TestSearchFitTruthParity:
         body = response.json()
         assert body["result_class"] == "CONFIRMED_NON_MATCH"
         assert body["blockers"] == []
+        # SLICE-0091 amendment Finding I: an ordinary technical mismatch
+        # never carries vessel category exclusion evidence.
+        assert body["vessel_category_exclusion"] is None
+
+    def test_confirmed_non_match_vessel_category_exclusion_carries_evidence(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """SLICE-0091 amendment review Finding I: a `CONFIRMED_NON_MATCH`
+        produced by the category pre-filter (never an ordinary nine-
+        criterion technical mismatch) must retain *why*, bounded to the
+        resolved enum values only -- no Organization/Account identity."""
+        _seed_org_and_membership(
+            api_url, org_id="ORG-SF-CATX", account_id="ACC-SF-CATX", membership_id="OM-SF-CATX"
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            _insert_boat_design(
+                conn,
+                "BD-SF-CATX",
+                "BM-SF-CATX",
+                baseline_keel_type="fin",
+                baseline_draft_max_m=1.30,
+            )
+            _admit_design_keel_and_draft(
+                conn, "BD-SF-CATX", keel_type="fin", draft_max_m=Decimal("1.30")
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-SF-CATX",
+            org_id="ORG-SF-CATX",
+            account_id="ACC-SF-CATX",
+            membership_id="OM-SF-CATX",
+            physical_boat_id="PB-SF-CATX",
+            market_episode_id="ME-SF-CATX",
+            boat_design_id="BD-SF-CATX",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-SF-CATX",
+            org_id="ORG-SF-CATX",
+            account_id="ACC-SF-CATX",
+            revision_id="PBCREV-SF-CATX",
+            draft=_draft_value("1.20"),
+            keel_configuration=_keel_value("FIN"),
+            vessel_category=VesselCategoryClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value=VesselCategory.POWER
+            ),
+        )
+        _log_in(client, "ACC-SF-CATX")
+        response = client.get(
+            _search_fit_path("ORG-SF-CATX", "NL-SF-CATX"), params={"draft_max": "1.5"}
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "CONFIRMED_NON_MATCH"
+        assert body["blockers"] == []
+        assert body["vessel_category_exclusion"] == {
+            "resolution": "POWER",
+            "reason": "CONCRETE_ONLY",
+        }
 
     def test_missing_concrete_claim_is_insufficient_with_blocker(
         self, client: TestClient, api_url: str

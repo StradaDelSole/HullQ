@@ -559,6 +559,10 @@ class TestEditDetailRead:
             "assertion_kind": "VALUE_ASSERTION",
             "value": "GRP_FIBERGLASS",
         }
+        full_claim_body["physical_boat.vessel_category"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "SAIL",
+        }
         claim_response = client.post(
             _claim_path("ORG-READ-FULL", "NL-READ-FULL"),
             json=full_claim_body,
@@ -626,6 +630,10 @@ class TestEditDetailRead:
         assert claim["physical_boat.hull_material"] == {
             "assertion_kind": "VALUE_ASSERTION",
             "value": "GRP_FIBERGLASS",
+        }
+        assert claim["physical_boat.vessel_category"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "SAIL",
         }
 
 
@@ -1443,3 +1451,161 @@ class TestClaimSave:
             == "CLAIM-CLM-INVARIANT"
         )
         assert _claim_revision_count(api_url, "PB-CLM-INVARIANT", "ORG-CLM-INVARIANT") == 1
+
+    # -----------------------------------------------------------------------
+    # SLICE-0091 amendment Finding B: the existing authorized claim-edit
+    # request/readback must round-trip vessel_category, and an edit to an
+    # unrelated field must never silently erase an existing category claim.
+    # -----------------------------------------------------------------------
+
+    def test_vessel_category_round_trips_through_save_and_read(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url, org_id="ORG-CLM-VCAT", account_id="ACC-CLM-VCAT", membership_id="OM-CLM-VCAT"
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-CLM-VCAT",
+            org_id="ORG-CLM-VCAT",
+            account_id="ACC-CLM-VCAT",
+            membership_id="OM-CLM-VCAT",
+            physical_boat_id="PB-CLM-VCAT",
+            market_episode_id="ME-CLM-VCAT",
+            offer_revision_id="REV-CLM-VCAT",
+            claim_revision_id="CLAIM-CLM-VCAT",
+        )
+        _log_in(client, "ACC-CLM-VCAT")
+
+        body = _claim_body("CLAIM-CLM-VCAT", build_year=2022)
+        body["physical_boat.vessel_category"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "SAIL",
+        }
+        response = client.post(
+            _claim_path("ORG-CLM-VCAT", "NL-CLM-VCAT"), json=body, headers=_csrf_headers()
+        )
+        assert response.status_code == 200, response.json()
+        assert response.json()["outcome"] == "SAVED"
+
+        read_back = client.get(_edit_path("ORG-CLM-VCAT", "NL-CLM-VCAT"))
+        assert read_back.status_code == 200
+        assert read_back.json()["claim"]["physical_boat.vessel_category"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "SAIL",
+        }
+
+    def test_unrelated_edit_preserves_existing_vessel_category(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """A real client always resubmits the full current claim snapshot
+        read back from GET .../edit (the existing full-snapshot-resubmission
+        architecture every other optional claim field already relies on) --
+        changing only `build_year` here must not erase the already-saved
+        `vessel_category` claim."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-CLM-VCATKEEP",
+            account_id="ACC-CLM-VCATKEEP",
+            membership_id="OM-CLM-VCATKEEP",
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-CLM-VCATKEEP",
+            org_id="ORG-CLM-VCATKEEP",
+            account_id="ACC-CLM-VCATKEEP",
+            membership_id="OM-CLM-VCATKEEP",
+            physical_boat_id="PB-CLM-VCATKEEP",
+            market_episode_id="ME-CLM-VCATKEEP",
+            offer_revision_id="REV-CLM-VCATKEEP",
+            claim_revision_id="CLAIM-CLM-VCATKEEP",
+        )
+        _log_in(client, "ACC-CLM-VCATKEEP")
+
+        first_body = _claim_body("CLAIM-CLM-VCATKEEP", build_year=2022)
+        first_body["physical_boat.vessel_category"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "MOTORSAILER",
+        }
+        first_response = client.post(
+            _claim_path("ORG-CLM-VCATKEEP", "NL-CLM-VCATKEEP"),
+            json=first_body,
+            headers=_csrf_headers(),
+        )
+        assert first_response.status_code == 200, first_response.json()
+        current_revision_id = first_response.json()["current_claim_revision_id"]
+
+        read_back = client.get(_edit_path("ORG-CLM-VCATKEEP", "NL-CLM-VCATKEEP"))
+        assert read_back.status_code == 200
+        claim_wire = read_back.json()["claim"]
+        assert claim_wire["physical_boat.vessel_category"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "MOTORSAILER",
+        }
+
+        # Resubmit the exact readback, changing only build_year -- the
+        # realistic "unrelated edit" a real editor performs.
+        unrelated_edit_body: dict[str, Any] = {
+            "revision_id": str(uuid.uuid4()),
+            "expected_current_revision_id": current_revision_id,
+            **claim_wire,
+        }
+        unrelated_edit_body["physical_boat.build_year"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": 2023,
+        }
+        second_response = client.post(
+            _claim_path("ORG-CLM-VCATKEEP", "NL-CLM-VCATKEEP"),
+            json=unrelated_edit_body,
+            headers=_csrf_headers(),
+        )
+        assert second_response.status_code == 200, second_response.json()
+
+        final_read = client.get(_edit_path("ORG-CLM-VCATKEEP", "NL-CLM-VCATKEEP"))
+        assert final_read.status_code == 200
+        final_claim = final_read.json()["claim"]
+        assert final_claim["physical_boat.build_year"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": 2023,
+        }
+        assert final_claim["physical_boat.vessel_category"] == {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "MOTORSAILER",
+        }
+
+    def test_vessel_category_unrecognized_value_is_invalid_payload(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-CLM-VCATBAD",
+            account_id="ACC-CLM-VCATBAD",
+            membership_id="OM-CLM-VCATBAD",
+        )
+        _create_promoted_listing(
+            api_url,
+            listing_id="NL-CLM-VCATBAD",
+            org_id="ORG-CLM-VCATBAD",
+            account_id="ACC-CLM-VCATBAD",
+            membership_id="OM-CLM-VCATBAD",
+            physical_boat_id="PB-CLM-VCATBAD",
+            market_episode_id="ME-CLM-VCATBAD",
+            offer_revision_id="REV-CLM-VCATBAD",
+            claim_revision_id="CLAIM-CLM-VCATBAD",
+        )
+        _log_in(client, "ACC-CLM-VCATBAD")
+
+        body = _claim_body("CLAIM-CLM-VCATBAD")
+        body["physical_boat.vessel_category"] = {
+            "assertion_kind": "VALUE_ASSERTION",
+            "value": "CONFLICT",
+        }
+        response = client.post(
+            _claim_path("ORG-CLM-VCATBAD", "NL-CLM-VCATBAD"), json=body, headers=_csrf_headers()
+        )
+        assert response.status_code == 400
+        assert response.json() == {"error": "invalid_payload"}
+        assert (
+            _current_claim_revision_id(api_url, "PB-CLM-VCATBAD", "ORG-CLM-VCATBAD")
+            == "CLAIM-CLM-VCATBAD"
+        )

@@ -93,6 +93,8 @@ __all__ = [
     "PhysicalBoatClaimSnapshot",
     "RudderConfiguration",
     "RudderConfigurationClaim",
+    "VesselCategory",
+    "VesselCategoryClaim",
 ]
 
 
@@ -221,6 +223,26 @@ class HullMaterial(StrEnum):
     OTHER = "OTHER"
 
 
+class VesselCategory(StrEnum):
+    """`physical_boat.vessel_category` categorical values -- SLICE-0091
+    (`docs/slices/SLICE-0091-vessel-category-foundation.md` §A).
+
+    Positive, explicitly sourced propulsion/rig category claims only --
+    never inferred from a display name, hull shape, rig text, engine count,
+    model name, keel or marketing label. `UNKNOWN`/`CONFLICT` are never
+    members of this enum: `UNKNOWN` is this field's own explicit
+    `AssertionKind`, and `CONFLICT` is a resolution-time outcome
+    (`hullq.domain.vessel_category.VesselCategoryResolution`) produced only
+    by combining this claim with the independent design-side assertion
+    and/or another Organization's current claim for the same PhysicalBoat --
+    never a fifth assertion kind and never a value a publisher can assert
+    directly."""
+
+    SAIL = "SAIL"
+    POWER = "POWER"
+    MOTORSAILER = "MOTORSAILER"
+
+
 def _validate_claim(
     assertion_kind: AssertionKind,
     value: object,
@@ -261,6 +283,15 @@ _BEAM_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN}
 #: ordinary VALUE_ASSERTION value of its own enum, never a separate
 #: assertion_kind.
 _HULL_MATERIAL_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+#: SLICE-0091: identical two-state shape to keel/rudder/hull_configuration/
+#: hull_material above -- no ABSENT (a concrete vessel's propulsion/rig
+#: category is either positively asserted or explicitly UNKNOWN; it is never
+#: "absent" the way a boat name can genuinely not exist). `CONFLICT` is never
+#: a member of this field's allowed-kind set or of `VesselCategory` itself --
+#: it is a resolution-time outcome produced by
+#: `hullq.domain.vessel_category.resolve_vessel_category`, never a publisher
+#: input (SLICE-0091 contract §A).
+_VESSEL_CATEGORY_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 #: SLICE-0065: the only PhysicalBoat/LISTING_OFFER field that allows ABSENT
 #: (registry `physical_boat.boat_name`) -- every other field's own frozenset
 #: above is untouched, so adding ABSENT to the shared `AssertionKind`
@@ -478,6 +509,28 @@ class HullMaterialClaim:
             _require_kind(self.value, HullMaterial, "HullMaterialClaim.value")
 
 
+@dataclass(frozen=True)
+class VesselCategoryClaim:
+    """`physical_boat.vessel_category`: VALUE_ASSERTION(VesselCategory) or
+    explicit UNKNOWN -- SLICE-0091. The publisher's own concrete-boat
+    category claim, independent of (never backfilled from, never silently
+    overridden by) the separate design-side assertion
+    (`hullq.domain.vessel_category.DesignVesselCategoryAssertion`). `OTHER`
+    is deliberately not offered: a motorsailer/mixed-propulsion vessel that
+    is genuinely neither pure SAIL nor pure POWER has its own explicit
+    `MOTORSAILER` value rather than an unqualified catch-all."""
+
+    assertion_kind: AssertionKind
+    value: VesselCategory | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(
+            self.assertion_kind, self.value, _VESSEL_CATEGORY_ALLOWED, "VesselCategoryClaim"
+        )
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            _require_kind(self.value, VesselCategory, "VesselCategoryClaim.value")
+
+
 # ---------------------------------------------------------------------------
 # The bounded seven-field claim snapshot, plus the optional SLICE-0065
 # boat-name field, the optional SLICE-0086 hull_configuration/
@@ -510,6 +563,7 @@ class PhysicalBoatClaimSnapshot:
     deck_saloon: DeckSaloonClaim | None = None
     beam: BeamClaim | None = None
     hull_material: HullMaterialClaim | None = None
+    vessel_category: VesselCategoryClaim | None = None
 
     def __post_init__(self) -> None:
         _require_kind(
@@ -565,4 +619,10 @@ class PhysicalBoatClaimSnapshot:
         if self.hull_material is not None:
             _require_kind(
                 self.hull_material, HullMaterialClaim, "PhysicalBoatClaimSnapshot.hull_material"
+            )
+        if self.vessel_category is not None:
+            _require_kind(
+                self.vessel_category,
+                VesselCategoryClaim,
+                "PhysicalBoatClaimSnapshot.vessel_category",
             )

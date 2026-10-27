@@ -228,6 +228,8 @@ def _claims_to_wire_dict(claims: PhysicalBoatClaimSnapshot) -> dict[str, Any]:
         body["physical_boat.beam"] = _claim_wrapper_wire(claims.beam)
     if claims.hull_material is not None:
         body["physical_boat.hull_material"] = _claim_wrapper_wire(claims.hull_material)
+    if claims.vessel_category is not None:
+        body["physical_boat.vessel_category"] = _claim_wrapper_wire(claims.vessel_category)
     return body
 
 

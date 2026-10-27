@@ -93,9 +93,11 @@ from hullq.application.native_inventory_query import (
     classify_concrete_candidate,
     run_mixed_boat_design_configuration_query,
 )
+from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId, MembershipRole
+from hullq.domain.vessel_category import VesselCategoryExclusionEvidence
 from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.persistence.market_episode import fetch_market_episode
 from hullq.persistence.native_listing import fetch_native_listing
@@ -378,6 +380,18 @@ class SearchFitView:
     `concrete_criterion_evidence` is populated only when the design level is
     itself a `CONFIRMED_MATCH` (Required Behavior §B): design/configuration
     eligibility alone never confirms a concrete listed yacht.
+
+    `vessel_category_exclusion` is populated only when the SLICE-0091 §C
+    category pre-filter itself produced this `CONFIRMED_NON_MATCH` -- `None`
+    in every other case. Amendment review Finding I: without this, a broker
+    previewing their own DRAFT listing against this exact pre-filter saw a
+    bare `CONFIRMED_NON_MATCH` mechanically indistinguishable from an
+    ordinary technical mismatch, with zero explanation. Deliberately the
+    bounded, cross-Organization-identity-free `VesselCategoryExclusionEvidence`
+    (see that type's docstring) -- never the full resolution result, even
+    though this preview is already scoped to the owning broker's own
+    listing, since the full result's `concrete_evidence` can still name a
+    *different* claiming Organization under `CROSS_ORGANIZATION_DISAGREEMENT`.
     """
 
     native_listing_id: str
@@ -396,6 +410,7 @@ class SearchFitView:
     design_evaluation: DesignQueryEvaluation | None
     design_configuration_evidence: tuple[ConfigurationEvidence, ...]
     concrete_criterion_evidence: tuple[SearchCriterionEvidence, ...]
+    vessel_category_exclusion: VesselCategoryExclusionEvidence | None
     blockers: tuple[SearchFitBlocker, ...]
 
 
@@ -611,6 +626,7 @@ def evaluate_organization_listing_search_fit(
                 design_evaluation=None,
                 design_configuration_evidence=(),
                 concrete_criterion_evidence=(),
+                vessel_category_exclusion=None,
                 blockers=(SearchFitBlocker.BOATDESIGN_NOT_LINKED,),
             )
         else:
@@ -641,16 +657,45 @@ def evaluate_organization_listing_search_fit(
                 for configuration_evaluation in design_evaluation.configuration_evaluations
             )
 
+            # Explicit annotation: a bare `()` literal below would otherwise
+            # be inferred as the empty-tuple type `tuple[()]`, conflicting
+            # with the `tuple[SearchCriterionEvidence, ...]`
+            # `classify_concrete_candidate` assigns in the sibling branch.
+            concrete_evidence: tuple[SearchCriterionEvidence, ...]
             if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
-                result_class, concrete_evidence = classify_concrete_candidate(
-                    conn,
-                    native_listing_id=native_listing_id,
-                    publishing_organization_id=organization_id,
-                    physical_boat_id=physical_boat_id,
-                    boat_design_id=boat_design_ref.value,
-                    query=query,
-                    active_definitions=active_definitions,
+                # SLICE-0091 §A/§C: identical fail-closed category pre-filter
+                # as the public native-inventory funnel
+                # (`hullq.application.native_inventory_query.
+                # evaluate_native_inventory_requirements`) -- this private
+                # DRAFT preview must never show a broker a confirmed Sail
+                # match for a vessel explicitly categorized POWER/
+                # MOTORSAILER, or caught in an unresolved design/concrete
+                # category CONFLICT.
+                category_resolution = resolve_physical_boat_vessel_category(
+                    conn, physical_boat_id=physical_boat_id, boat_design_ref=boat_design_ref
                 )
+                if category_resolution.is_explicitly_non_sail_or_conflicted:
+                    result_class = ResultClass.CONFIRMED_NON_MATCH
+                    concrete_evidence = ()
+                    # Amendment Finding I: retain *why* -- bounded, enum-only,
+                    # never the full result (which can name a different
+                    # claiming Organization under
+                    # CROSS_ORGANIZATION_DISAGREEMENT).
+                    vessel_category_exclusion = VesselCategoryExclusionEvidence(
+                        resolution=category_resolution.resolution,
+                        reason=category_resolution.reason,
+                    )
+                else:
+                    result_class, concrete_evidence = classify_concrete_candidate(
+                        conn,
+                        native_listing_id=native_listing_id,
+                        publishing_organization_id=organization_id,
+                        physical_boat_id=physical_boat_id,
+                        boat_design_id=boat_design_ref.value,
+                        query=query,
+                        active_definitions=active_definitions,
+                    )
+                    vessel_category_exclusion = None
             else:
                 # Design/configuration eligibility never admitted this
                 # design to the concrete funnel (Required Behavior §B) --
@@ -658,6 +703,7 @@ def evaluate_organization_listing_search_fit(
                 # closed, without ever consulting the concrete claim.
                 result_class = design_evaluation.result_class
                 concrete_evidence = ()
+                vessel_category_exclusion = None
 
             view = SearchFitView(
                 native_listing_id=native_listing_id.value,
@@ -676,6 +722,7 @@ def evaluate_organization_listing_search_fit(
                 design_evaluation=design_evaluation,
                 design_configuration_evidence=design_configuration_evidence,
                 concrete_criterion_evidence=concrete_evidence,
+                vessel_category_exclusion=vessel_category_exclusion,
                 blockers=_derive_blockers(result_class, concrete_evidence),
             )
     # The snapshot transaction above committed trivially (read-only) on
