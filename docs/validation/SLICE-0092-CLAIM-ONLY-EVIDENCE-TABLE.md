@@ -113,7 +113,8 @@ explicit, non-misleading disclaimer string
 | Amendment (Finding B): D29 suppression for the claim-only path | `::test_claim_only_d29_suppressed_organization_excludes_entirely` |
 | Amendment (Finding B): two real PG connections, concurrent revision, no torn hybrid | `::test_claim_only_two_connection_concurrent_revision_never_sees_hybrid_state` |
 | Amendment (Finding C): internal provenance retained + public non-leakage | `::test_source_evidence_retains_publisher_revision_provenance`, `::test_public_api_never_leaks_internal_source_evidence` |
-| Amendment (Finding D): batched read + measured bounded population performance | `tests/persistence/test_native_inventory_query_claim_only_performance_slice_0092.py::test_claim_only_candidate_population_performance` |
+| Amendment (Finding D, round 1): batched claim-observation read + measured population performance | `tests/persistence/test_native_inventory_query_claim_only_performance_slice_0092.py::test_claim_only_candidate_population_performance` (parametrized 0/40/200) |
+| Amendment (Finding D, round 2): batched D29 eligibility+freshness, proven equivalent to the single-id resolver | `tests/persistence/test_current_public_eligibility_for_many_slice_0092.py` |
 
 ## 6. Amendment (independent review PR #387) — internal provenance (Finding C)
 
@@ -139,6 +140,8 @@ and `::test_public_api_never_leaks_internal_source_evidence`.
 
 ## 7. Amendment (independent review PR #387) — candidate performance (Finding D)
 
+### Round 1 (claim-observation read)
+
 `hullq.persistence.physical_boat_claims.list_current_physical_boat_claim_observations_for_many`
 batches the claim-observation read this slice's own claim-only funnel owns
 across every currently-eligible candidate into exactly **one** SQL
@@ -146,20 +149,74 @@ statement, regardless of population size (proven deterministically by a
 call-count spy, not a timing heuristic --
 `tests/persistence/test_native_inventory_query_claim_only_performance_slice_0092.py::test_claim_only_candidate_population_performance`).
 
-Measured, real evidence against a representative 40-candidate synthetic
-population (16 publisher-owned-SAIL matching, 8 publisher-owned-SAIL
-non-matching, 8 explicit POWER, 4 no-category, 4 SAIL-claimed-by-a-
-different-Organization-only): **523 total SQL statements, 0.243s elapsed,
-~13.1 statements/candidate**, all 40 candidates correctly classified (none
-silently dropped by the batching change). The per-candidate D29 eligibility/
-freshness cost (~12-13 statements/candidate) is pre-existing shared
-architecture (`hullq.application.current_public_eligibility`,
-`hullq.application.native_listing_freshness`), reused unchanged by both the
-design-linked and claim-only funnels; batching it would require rewriting
-those shared resolvers for every other caller, out of this slice's scope.
-This slice's own additive claim-observation read is exactly 1 statement for
-the whole population rather than 1 per candidate -- the part of the new
-path this slice fully owns is bounded to O(1), not O(N).
+Round-1 measured evidence against a representative 40-candidate synthetic
+population: 523 total SQL statements, 0.243s elapsed, ~13.1
+statements/candidate. The reviewer's follow-up round correctly identified
+that this left the *remaining* per-candidate D29 eligibility/freshness cost
+(~12-13 of those ~13.1 statements/candidate) still unbounded in population
+size — addressed below.
+
+### Round 2 (D29 eligibility + freshness, the remaining gap)
+
+`hullq.application.current_public_eligibility.resolve_current_public_eligibility_for_many`
+(new) resolves D29 current-public eligibility AND freshness for the
+**entire** candidate population through a small constant number of batched
+`= ANY(%s)` statements covering every candidate's *cheap* facts (lifecycle,
+organization publishing eligibility, market-episode/physical-boat existence,
+freshness evidence). Any candidate failing one of these cheap checks is
+returned immediately as an authoritative `SUPPRESSED` result with zero
+further reads (`evaluate_current_public_eligibility`'s own rule: `status`
+is `SUPPRESSED` iff *any* reason fired, so a cheap reason alone already
+decides it). Only "survivor" candidates that pass every cheap check reach
+the expensive, **unchanged** per-candidate reads
+(`fetch_current_native_listing_offer`, `fetch_current_physical_boat_claim`,
+`resolve_cover_state_and_image_presence`) and the identical, unmodified pure
+`evaluate_current_public_eligibility` evaluator — byte-for-byte the same
+decision the pre-existing single-id `resolve_current_public_eligibility`
+would reach for that listing. That single-id function itself is completely
+untouched, so every other caller (`public_listing_read`,
+`broker_inventory_read`, the existing accepted design-linked Search path)
+is unaffected; only `evaluate_claim_only_candidates`
+(`hullq.application.native_inventory_query`) now calls the batched sibling.
+
+**D29-equivalence proof** (bulk resolver vs. the pre-existing single-id
+resolver, for every suppression state reachable through this repository's
+accepted write paths —
+`tests/persistence/test_current_public_eligibility_for_many_slice_0092.py`,
+7 tests): fully-eligible control, `LIFECYCLE_NOT_ACTIVE`,
+`FRESHNESS_NOT_CURRENT`, `ORGANIZATION_NOT_ELIGIBLE` (each proven to produce
+an identical `status`, and for cheap-suppressed cases a provably truthful
+subset of the full reason set), a `DRAFT`-only `MARKET_EPISODE_UNRESOLVED`
+case, a mixed-population single-call proof (four different axes resolved
+together, never cross-contaminating), and a direct proof that
+`publish_native_listing`'s own readiness gate makes `OFFER_MISSING`/
+`PHYSICAL_BOAT_CLAIM_MISSING`/`COVER_MISSING`/`NO_PUBLIC_USABLE_IMAGE`/
+`PHYSICAL_BOAT_MISSING` unreachable for an `ACTIVE` listing in the first
+place (a listing missing any of them never leaves `INCOMPLETE_LISTING`,
+so neither resolver can ever observe those states post-`ACTIVE`) — see that
+test module's docstring for the full architectural rationale.
+
+**Round-2 measured evidence** (`tests/persistence/
+test_native_inventory_query_claim_only_performance_slice_0092.py::test_claim_only_candidate_population_performance`,
+parametrized at the reviewer's requested 0/40/200 sizes, same representative
+40%/20%/20%/10%/10% category mix scaled to each size):
+
+| Population | Total SQL statements | Elapsed | Statements/candidate |
+|---|---|---|---|
+| 0 | 2 | 0.001s | — (no candidates) |
+| 40 | 169 | 0.091s | 4.22 |
+| 200 | 809 | 0.389s | 4.04 |
+
+This is a real, measured ~3.2x reduction in statements/candidate (13.1 →
+~4.1) at the same 40-candidate size, and the near-constant ~4.0-4.2
+statements/candidate from 40→200 is itself the evidence that the batched
+cheap-fact cost is now genuinely O(1) against population size — the
+remaining per-candidate cost is only the offer + cover/media-gallery reads
+for survivors (claim observations remain the round-1 O(1) batched read).
+No valid candidate is dropped at any size (asserted exactly against the
+expected per-category classification at each size). The design-linked
+Search path's own `resolve_current_public_eligibility`/
+`resolve_current_freshness` calls are untouched.
 
 ## 8. Amendment (independent review PR #387) — buyer sensitivity truth (Finding A)
 
@@ -204,3 +261,13 @@ Evidence:
 | Real PG + FastAPI + built Astro SSR: the exact zero-design-matches-with-claim-only-match page renders the unambiguous disclosure | `scripts/inspect_slice_0092_claim_only_search.py` step 6 (`NL-0092-INSP-CLAIM-TWIN`) |
 | Locale text exists/interpolates/stays visibly distinct from the design-confirmed labels | `web/src/lib/__tests__/searchSensitivityText.test.ts`, `web/src/lib/__tests__/searchText.test.ts` |
 | Decision-neutral tone preserved for the new copy | `searchSensitivityText.test.ts`'s existing banned-word check, extended to the new strings |
+
+## 9. Amendment (independent review PR #387, round 2) — dependency security gate (Finding E)
+
+Exact-HEAD CI reported `msgpack==1.2.1`, `CVE-2026-114613`, fixed in
+`1.2.3`. `uv lock --upgrade-package msgpack` bumped the lockfile's resolved
+`msgpack` to `1.2.4` (the next available patched version) — a minimal,
+locked resolver update, no audit ignore/exception/suppression, no other
+package's resolved version changed (confirmed by diffing `uv.lock`). `uv
+sync --locked --all-groups` installed the new lock cleanly; `uv run
+pip-audit` reports no known vulnerabilities.

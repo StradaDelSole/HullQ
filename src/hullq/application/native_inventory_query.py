@@ -97,8 +97,11 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from hullq.application.current_public_eligibility import resolve_current_public_eligibility
-from hullq.application.native_listing_freshness import resolve_current_freshness
+from hullq.application.current_public_eligibility import (
+    resolve_current_public_eligibility,
+    resolve_current_public_eligibility_for_many,
+)
+from hullq.application.native_listing_freshness import CurrentFreshness, resolve_current_freshness
 from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
@@ -822,39 +825,45 @@ def evaluate_claim_only_candidates(
     ... Sail entrypoints", one evaluation, never two independently
     maintained claim-only funnels.
 
-    Per candidate: D29 current-public eligibility is re-resolved at the
-    explicit *as_of* boundary exactly like the design-linked funnel
-    (ineligible candidates are excluded outright, never counted -- this
-    remains a per-candidate read, matching the existing accepted
-    design-linked funnel's own identical shape; batching it would require
-    rewriting the shared `resolve_current_public_eligibility`/
-    `resolve_current_freshness` resolvers every other read-model caller
-    also depends on, which is out of this slice's scope). Amendment review
-    Finding D: the per-PhysicalBoat claim-observation read -- the one part
-    of this new path this slice fully owns -- is batched across every
-    currently-eligible candidate into exactly one SQL statement
-    (`list_current_physical_boat_claim_observations_for_many`) instead of
-    one statement per candidate, cutting this funnel's own additive SQL
-    round trips for that read from O(N) to O(1). The category-admission
-    precondition (contract §A) and the technical per-criterion evidence
-    (contract §E: "one coherent PostgreSQL statement for each PhysicalBoat")
-    still come from the identical per-PhysicalBoat observation list --
-    batching changes only how many statements fetch that list, never which
-    rows back which decision.
+    Amendment review (PR #387) Finding D: D29 current-public eligibility
+    AND freshness for the **entire** candidate population are resolved
+    through exactly one batched call,
+    `hullq.application.current_public_eligibility.
+    resolve_current_public_eligibility_for_many` -- a small constant number
+    of `= ANY(%s)` statements covering every candidate's *cheap* facts
+    (lifecycle/organization/episode/boat/freshness), with the expensive
+    per-candidate reads (offer/claim/cover) issued only for candidates that
+    survive every cheap check. This never weakens D29 (the identical pure
+    `evaluate_current_public_eligibility` evaluator decides every survivor;
+    an obviously-suppressed candidate's `status` is exactly as
+    authoritative from the cheap facts alone, since any one reason already
+    forces `SUPPRESSED`) and never drops a candidate from the population
+    (every id gets an entry). The per-PhysicalBoat claim-observation read
+    -- the other part of this new path this slice fully owns -- is
+    separately batched across every *eligible* candidate into exactly one
+    SQL statement (`list_current_physical_boat_claim_observations_for_many`).
+    The category-admission precondition (contract §A) and the technical
+    per-criterion evidence (contract §E: "one coherent PostgreSQL statement
+    for each PhysicalBoat") still come from that identical per-PhysicalBoat
+    observation list -- batching changes only how many statements fetch
+    inputs, never which rows back which decision.
     """
     all_candidates = list_active_design_unresolved_listings(conn)
     if not all_candidates:
         return (), (), ()
 
-    eligible_candidates: list[tuple[ActiveDesignUnresolvedListing, Any]] = []
+    bulk_eligibility = resolve_current_public_eligibility_for_many(
+        conn, [candidate.native_listing_id for candidate in all_candidates], as_of=as_of
+    )
+    eligible_candidates: list[tuple[ActiveDesignUnresolvedListing, CurrentFreshness]] = []
     for candidate in all_candidates:
-        eligibility = resolve_current_public_eligibility(
-            conn, candidate.native_listing_id, as_of=as_of
-        )
-        if eligibility is None or eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE:
+        bulk_result = bulk_eligibility.get(candidate.native_listing_id.value)
+        if (
+            bulk_result is None
+            or bulk_result.eligibility.status is not CurrentPublicEligibilityStatus.ELIGIBLE
+        ):
             continue
-        freshness = resolve_current_freshness(conn, candidate.native_listing_id, as_of=as_of)
-        eligible_candidates.append((candidate, freshness))
+        eligible_candidates.append((candidate, bulk_result.freshness))
     if not eligible_candidates:
         return (), (), ()
 
