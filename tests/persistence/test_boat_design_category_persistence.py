@@ -24,7 +24,7 @@ from hullq.domain.vessel_category import (
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.boat_design_category import (
-    CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+    CATALOG_ADMISSION_SECRET_ENV_VAR,
     BoatDesignCategoryAssertionWriteStatus,
     fetch_boat_design_category_assertion,
     fetch_current_boat_design_category_assertion,
@@ -34,6 +34,15 @@ from hullq.persistence.boat_design_category import (
 
 VA = AssertionKind.VALUE_ASSERTION
 UNK = AssertionKind.UNKNOWN
+_TEST_ADMISSION_SECRET = "slice-0091-test-catalog-admission-secret"
+
+
+@pytest.fixture(autouse=True)
+def _configured_admission_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every test in this file gets a real configured catalog-admission
+    secret by default; tests exercising the missing/wrong-secret paths
+    override it explicitly via the same `monkeypatch` fixture instance."""
+    monkeypatch.setenv(CATALOG_ADMISSION_SECRET_ENV_VAR, _TEST_ADMISSION_SECRET)
 
 
 def _with_search_path(base_url: str, schema_name: str) -> str:
@@ -111,9 +120,11 @@ def _insert_minimal_boat_design(conn: Any, design_id: str, model_id: str) -> Non
 
 
 def _issuer() -> ResolverMetadata:
+    """Ordinary audit/provenance metadata -- amendment Finding G: this no
+    longer decides authorization by itself, only `admission_secret` does."""
     return ResolverMetadata(
         kind=ResolverKind.DETERMINISTIC_TOOL,
-        identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+        identifier="slice-0091-test-harness",
         version="1",
     )
 
@@ -139,6 +150,7 @@ def test_first_write_for_unknown_boat_design_fails_closed(category_conn: Any) ->
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert result.status is BoatDesignCategoryAssertionWriteStatus.BOAT_DESIGN_NOT_FOUND
     assert result.current_assertion_id is None
@@ -154,6 +166,7 @@ def test_create_revise_readback_and_history(category_conn: Any) -> None:
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert created.status is BoatDesignCategoryAssertionWriteStatus.CREATED
     assert created.current_assertion_id == BoatDesignCategoryAssertionId("BDCAT-1")
@@ -175,6 +188,7 @@ def test_create_revise_readback_and_history(category_conn: Any) -> None:
             assertion_kind=VA, value=VesselCategory.MOTORSAILER
         ),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert revised.status is BoatDesignCategoryAssertionWriteStatus.REVISED
 
@@ -205,6 +219,7 @@ def test_retraction_to_unknown_is_a_new_revision_never_an_overwrite(category_con
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.POWER),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     retracted = write_boat_design_category_assertion(
         category_conn,
@@ -213,6 +228,7 @@ def test_retraction_to_unknown_is_a_new_revision_never_an_overwrite(category_con
         expected_current_assertion_id=BoatDesignCategoryAssertionId("BDCAT-A"),
         assertion=DesignVesselCategoryAssertion(assertion_kind=UNK, value=None),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert retracted.status is BoatDesignCategoryAssertionWriteStatus.REVISED
     current = fetch_current_boat_design_category_assertion(category_conn, "BD-2")
@@ -234,6 +250,7 @@ def test_stale_expected_predecessor_fails_closed_as_conflict(category_conn: Any)
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     stale = write_boat_design_category_assertion(
         category_conn,
@@ -242,6 +259,7 @@ def test_stale_expected_predecessor_fails_closed_as_conflict(category_conn: Any)
         expected_current_assertion_id=None,  # stale -- real current is BDCAT-X
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.POWER),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert stale.status is BoatDesignCategoryAssertionWriteStatus.CONFLICT
     assert stale.current_assertion_id == BoatDesignCategoryAssertionId("BDCAT-X")
@@ -261,6 +279,7 @@ def test_exact_retry_is_idempotent_already_exists(category_conn: Any) -> None:
         expected_current_assertion_id=None,
         assertion=assertion,
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert first.status is BoatDesignCategoryAssertionWriteStatus.CREATED
 
@@ -271,88 +290,128 @@ def test_exact_retry_is_idempotent_already_exists(category_conn: Any) -> None:
         expected_current_assertion_id=None,
         assertion=assertion,
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert retry.status is BoatDesignCategoryAssertionWriteStatus.ALREADY_EXISTS
     assert retry.current_assertion_id == BoatDesignCategoryAssertionId("BDCAT-R")
 
 
 # ---------------------------------------------------------------------------
-# Amendment Finding D: issuer admission boundary
+# Amendment Finding G: genuine admission-secret authorization boundary
+# (supersedes the earlier Finding D self-declared-issuer-literal check,
+# which any caller could read from source and trivially replicate).
 # ---------------------------------------------------------------------------
 
 
-def test_unauthorized_human_issuer_is_rejected_without_mutation(category_conn: Any) -> None:
-    """An arbitrary caller-supplied HUMAN issuer must never become
-    authoritative design category truth -- no row written, no head
-    created."""
+def test_missing_admission_secret_configuration_rejects_every_caller(
+    category_conn: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A deployment that has never configured the real secret admits
+    nobody -- never a silent default-allow -- even with the exact right
+    *value* supplied by the caller, since there is nothing correct to match
+    against."""
+    monkeypatch.delenv(CATALOG_ADMISSION_SECRET_ENV_VAR, raising=False)
     _insert_minimal_boat_design(category_conn, "BD-5", "BM-5")
-    untrusted = write_boat_design_category_assertion(
+    result = write_boat_design_category_assertion(
         category_conn,
         boat_design_id="BD-5",
-        assertion_id=BoatDesignCategoryAssertionId("BDCAT-UNTRUSTED"),
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-NOENV"),
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.POWER),
-        issuer=ResolverMetadata(
-            kind=ResolverKind.HUMAN, identifier="random-internal-caller", version=None
-        ),
+        issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
-    assert untrusted.status is BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
-    assert untrusted.current_assertion_id is None
+    assert result.status is BoatDesignCategoryAssertionWriteStatus.ADMISSION_NOT_AUTHORIZED
+    assert result.current_assertion_id is None
     assert fetch_current_boat_design_category_assertion(category_conn, "BD-5") is None
     assert (
         fetch_boat_design_category_assertion(
-            category_conn, BoatDesignCategoryAssertionId("BDCAT-UNTRUSTED")
+            category_conn, BoatDesignCategoryAssertionId("BDCAT-NOENV")
         )
         is None
     )
 
 
-def test_unauthorized_deterministic_tool_with_unrecognized_identifier_is_rejected(
-    category_conn: Any,
-) -> None:
-    """Even the right `ResolverKind` fails closed unless the identifier
-    exactly matches the one reviewed allowlist entry -- the boundary is the
-    specific identity, not merely the actor kind."""
+def test_wrong_admission_secret_is_rejected_without_mutation(category_conn: Any) -> None:
+    """A real secret is configured, but the caller supplies the wrong
+    value -- fails closed, no row written, no head created."""
     _insert_minimal_boat_design(category_conn, "BD-6", "BM-6")
     result = write_boat_design_category_assertion(
         category_conn,
         boat_design_id="BD-6",
-        assertion_id=BoatDesignCategoryAssertionId("BDCAT-UNLISTED"),
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-WRONG"),
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
-        issuer=ResolverMetadata(
-            kind=ResolverKind.DETERMINISTIC_TOOL, identifier="some-other-tool", version="1"
-        ),
+        issuer=_issuer(),
+        admission_secret="definitely-not-the-configured-secret",
     )
-    assert result.status is BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
+    assert result.status is BoatDesignCategoryAssertionWriteStatus.ADMISSION_NOT_AUTHORIZED
     assert fetch_current_boat_design_category_assertion(category_conn, "BD-6") is None
 
 
-def test_llm_issuer_is_rejected(category_conn: Any) -> None:
+def test_empty_admission_secret_is_rejected(category_conn: Any) -> None:
     _insert_minimal_boat_design(category_conn, "BD-7", "BM-7")
     result = write_boat_design_category_assertion(
         category_conn,
         boat_design_id="BD-7",
-        assertion_id=BoatDesignCategoryAssertionId("BDCAT-LLM"),
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-EMPTY"),
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
-        issuer=ResolverMetadata(
-            kind=ResolverKind.LLM, identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER, version="1"
-        ),
+        issuer=_issuer(),
+        admission_secret="",
     )
-    assert result.status is BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
+    assert result.status is BoatDesignCategoryAssertionWriteStatus.ADMISSION_NOT_AUTHORIZED
     assert fetch_current_boat_design_category_assertion(category_conn, "BD-7") is None
 
 
-def test_authorized_issuer_still_succeeds(category_conn: Any) -> None:
-    """Positive control: the exact reviewed allowlist entry is unaffected."""
+def test_correct_secret_succeeds_regardless_of_issuer_kind(category_conn: Any) -> None:
+    """Finding G's explicit consequence: `issuer` is audit metadata only --
+    a HUMAN or LLM issuer with the *correct* secret is just as authorized
+    as a DETERMINISTIC_TOOL one, since the secret (not the issuer literal)
+    is what actually grants the capability."""
     _insert_minimal_boat_design(category_conn, "BD-8", "BM-8")
-    result = write_boat_design_category_assertion(
+    human_result = write_boat_design_category_assertion(
         category_conn,
         boat_design_id="BD-8",
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-HUMAN-OK"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
+        issuer=ResolverMetadata(
+            kind=ResolverKind.HUMAN, identifier="an-owner-operator", version=None
+        ),
+        admission_secret=_TEST_ADMISSION_SECRET,
+    )
+    assert human_result.status is BoatDesignCategoryAssertionWriteStatus.CREATED
+
+    current = fetch_current_boat_design_category_assertion(category_conn, "BD-8")
+    assert current is not None
+    assert current.issuer.kind is ResolverKind.HUMAN
+    category_conn.commit()
+
+    _insert_minimal_boat_design(category_conn, "BD-9", "BM-9")
+    llm_result = write_boat_design_category_assertion(
+        category_conn,
+        boat_design_id="BD-9",
+        assertion_id=BoatDesignCategoryAssertionId("BDCAT-LLM-OK"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
+        issuer=ResolverMetadata(kind=ResolverKind.LLM, identifier="an-llm-assistant", version="1"),
+        admission_secret=_TEST_ADMISSION_SECRET,
+    )
+    assert llm_result.status is BoatDesignCategoryAssertionWriteStatus.CREATED
+
+
+def test_authorized_secret_still_succeeds(category_conn: Any) -> None:
+    """Positive control: the configured secret, supplied correctly, is
+    unaffected by this amendment."""
+    _insert_minimal_boat_design(category_conn, "BD-10", "BM-10")
+    result = write_boat_design_category_assertion(
+        category_conn,
+        boat_design_id="BD-10",
         assertion_id=BoatDesignCategoryAssertionId("BDCAT-OK"),
         expected_current_assertion_id=None,
         assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     assert result.status is BoatDesignCategoryAssertionWriteStatus.CREATED

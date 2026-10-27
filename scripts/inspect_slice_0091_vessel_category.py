@@ -30,6 +30,7 @@ Run: uv run python scripts/inspect_slice_0091_vessel_category.py
 
 from __future__ import annotations
 
+import contextlib
 import os
 import sys
 import uuid
@@ -144,7 +145,7 @@ def main() -> int:
             prepare_alembic_baseline,
         )
         from hullq.persistence.boat_design_category import (
-            CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+            CATALOG_ADMISSION_SECRET_ENV_VAR,
             write_boat_design_category_assertion,
         )
         from hullq.persistence.market_episode import create_market_episode
@@ -178,10 +179,18 @@ def main() -> int:
         VA = AssertionKind.VALUE_ASSERTION
         UNK = AssertionKind.UNKNOWN
 
+        # This inspector plays the role of the trusted catalog-admission
+        # tool, so -- unlike an ordinary caller -- it genuinely knows the
+        # deployment's real admission secret (amendment Finding G: the
+        # secret lives in configuration, never in source any importer of
+        # the shared write function could read).
+        _TEST_ADMISSION_SECRET = "inspector-demo-catalog-admission-secret"
+        os.environ[CATALOG_ADMISSION_SECRET_ENV_VAR] = _TEST_ADMISSION_SECRET
+
         def _issuer() -> ResolverMetadata:
             return ResolverMetadata(
                 kind=ResolverKind.DETERMINISTIC_TOOL,
-                identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+                identifier="inspector-demo-tool",
                 version="1",
             )
 
@@ -196,6 +205,7 @@ def main() -> int:
             expected_current_assertion_id=None,
             assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
             issuer=_issuer(),
+            admission_secret=_TEST_ADMISSION_SECRET,
         )
         conn.commit()
 
@@ -204,7 +214,10 @@ def main() -> int:
         )
 
         create_physical_boat(
-            conn, physical_boat=PhysicalBoat(id=PhysicalBoatId("PB-1"), boat_design_ref=BoatDesignRef("BD-1"))
+            conn,
+            physical_boat=PhysicalBoat(
+                id=PhysicalBoatId("PB-1"), boat_design_ref=BoatDesignRef("BD-1")
+            ),
         )
         r1 = resolve_physical_boat_vessel_category(
             conn, physical_boat_id=PhysicalBoatId("PB-1"), boat_design_ref=BoatDesignRef("BD-1")
@@ -212,15 +225,23 @@ def main() -> int:
         conn.commit()  # a read leaves the connection non-IDLE; next write needs IDLE
         check1 = r1.resolution.value == "SAIL" and r1.reason.value == "DESIGN_ONLY"
         ok &= check1
-        print(f"1. design-only SAIL -> resolution={r1.resolution.value} reason={r1.reason.value} -> {'OK' if check1 else 'FAIL'}")
+        print(
+            f"1. design-only SAIL -> resolution={r1.resolution.value} reason={r1.reason.value} -> {'OK' if check1 else 'FAIL'}"
+        )
 
         # --- 2. concrete-only POWER ------------------------------------------
         _insert_boat_design(conn, "BD-2", "BM-2", keel_type="fin")
         create_physical_boat(
-            conn, physical_boat=PhysicalBoat(id=PhysicalBoatId("PB-2"), boat_design_ref=BoatDesignRef("BD-2"))
+            conn,
+            physical_boat=PhysicalBoat(
+                id=PhysicalBoatId("PB-2"), boat_design_ref=BoatDesignRef("BD-2")
+            ),
         )
         create_market_episode(
-            conn, market_episode=MarketEpisode(id=MarketEpisodeId("ME-2"), physical_boat_id=PhysicalBoatId("PB-2"))
+            conn,
+            market_episode=MarketEpisode(
+                id=MarketEpisodeId("ME-2"), physical_boat_id=PhysicalBoatId("PB-2")
+            ),
         )
         account2 = AccountId("ACC-2")
         org2 = MarketplaceOrganization(
@@ -240,7 +261,9 @@ def main() -> int:
             account_id=account2,
             candidate_organization=org2,
             membership=membership2,
-            listing=NativeListing(id=NativeListingId("NL-2"), market_episode_id=MarketEpisodeId("ME-2")),
+            listing=NativeListing(
+                id=NativeListingId("NL-2"), market_episode_id=MarketEpisodeId("ME-2")
+            ),
         )
         write_physical_boat_claim_revision(
             conn,
@@ -264,7 +287,9 @@ def main() -> int:
         conn.commit()
         check2 = r2.resolution.value == "POWER" and r2.reason.value == "CONCRETE_ONLY"
         ok &= check2
-        print(f"2. concrete-only POWER -> resolution={r2.resolution.value} reason={r2.reason.value} -> {'OK' if check2 else 'FAIL'}")
+        print(
+            f"2. concrete-only POWER -> resolution={r2.resolution.value} reason={r2.reason.value} -> {'OK' if check2 else 'FAIL'}"
+        )
 
         # --- 3. agreement -----------------------------------------------------
         _insert_boat_design(conn, "BD-3", "BM-3", keel_type="fin")
@@ -275,13 +300,20 @@ def main() -> int:
             expected_current_assertion_id=None,
             assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.SAIL),
             issuer=_issuer(),
+            admission_secret=_TEST_ADMISSION_SECRET,
         )
         conn.commit()
         create_physical_boat(
-            conn, physical_boat=PhysicalBoat(id=PhysicalBoatId("PB-3"), boat_design_ref=BoatDesignRef("BD-3"))
+            conn,
+            physical_boat=PhysicalBoat(
+                id=PhysicalBoatId("PB-3"), boat_design_ref=BoatDesignRef("BD-3")
+            ),
         )
         create_market_episode(
-            conn, market_episode=MarketEpisode(id=MarketEpisodeId("ME-3"), physical_boat_id=PhysicalBoatId("PB-3"))
+            conn,
+            market_episode=MarketEpisode(
+                id=MarketEpisodeId("ME-3"), physical_boat_id=PhysicalBoatId("PB-3")
+            ),
         )
         account3 = AccountId("ACC-3")
         org3 = MarketplaceOrganization(
@@ -301,7 +333,9 @@ def main() -> int:
             account_id=account3,
             candidate_organization=org3,
             membership=membership3,
-            listing=NativeListing(id=NativeListingId("NL-3"), market_episode_id=MarketEpisodeId("ME-3")),
+            listing=NativeListing(
+                id=NativeListingId("NL-3"), market_episode_id=MarketEpisodeId("ME-3")
+            ),
         )
         write_physical_boat_claim_revision(
             conn,
@@ -325,7 +359,9 @@ def main() -> int:
         conn.commit()
         check3 = r3.resolution.value == "SAIL" and r3.reason.value == "SOURCES_AGREE"
         ok &= check3
-        print(f"3. design+concrete agree SAIL -> resolution={r3.resolution.value} reason={r3.reason.value} -> {'OK' if check3 else 'FAIL'}")
+        print(
+            f"3. design+concrete agree SAIL -> resolution={r3.resolution.value} reason={r3.reason.value} -> {'OK' if check3 else 'FAIL'}"
+        )
 
         # --- 4. design-vs-concrete conflict ------------------------------------
         write_physical_boat_claim_revision(
@@ -348,9 +384,13 @@ def main() -> int:
             conn, physical_boat_id=PhysicalBoatId("PB-3"), boat_design_ref=BoatDesignRef("BD-3")
         )
         conn.commit()
-        check4 = r4.resolution.value == "CONFLICT" and r4.reason.value == "DESIGN_CONCRETE_DISAGREEMENT"
+        check4 = (
+            r4.resolution.value == "CONFLICT" and r4.reason.value == "DESIGN_CONCRETE_DISAGREEMENT"
+        )
         ok &= check4
-        print(f"4. design SAIL vs concrete POWER -> resolution={r4.resolution.value} reason={r4.reason.value} (never a guess) -> {'OK' if check4 else 'FAIL'}")
+        print(
+            f"4. design SAIL vs concrete POWER -> resolution={r4.resolution.value} reason={r4.reason.value} (never a guess) -> {'OK' if check4 else 'FAIL'}"
+        )
 
         # --- 5. cross-Organization disagreement --------------------------------
         account3b = AccountId("ACC-3B")
@@ -371,7 +411,9 @@ def main() -> int:
             account_id=account3b,
             candidate_organization=org3b,
             membership=membership3b,
-            listing=NativeListing(id=NativeListingId("NL-3B"), market_episode_id=MarketEpisodeId("ME-3")),
+            listing=NativeListing(
+                id=NativeListingId("NL-3B"), market_episode_id=MarketEpisodeId("ME-3")
+            ),
         )
         write_physical_boat_claim_revision(
             conn,
@@ -393,14 +435,22 @@ def main() -> int:
             conn, physical_boat_id=PhysicalBoatId("PB-3"), boat_design_ref=BoatDesignRef("BD-3")
         )
         conn.commit()
-        check5 = r5.resolution.value == "CONFLICT" and r5.reason.value == "CROSS_ORGANIZATION_DISAGREEMENT"
+        check5 = (
+            r5.resolution.value == "CONFLICT"
+            and r5.reason.value == "CROSS_ORGANIZATION_DISAGREEMENT"
+        )
         ok &= check5
-        print(f"5. two Organizations disagree (POWER vs SAIL) -> resolution={r5.resolution.value} reason={r5.reason.value} -> {'OK' if check5 else 'FAIL'}")
+        print(
+            f"5. two Organizations disagree (POWER vs SAIL) -> resolution={r5.resolution.value} reason={r5.reason.value} -> {'OK' if check5 else 'FAIL'}"
+        )
 
         # --- 6. no evidence at all (legacy null) -------------------------------
         _insert_boat_design(conn, "BD-6", "BM-6", keel_type="fin")
         create_physical_boat(
-            conn, physical_boat=PhysicalBoat(id=PhysicalBoatId("PB-6"), boat_design_ref=BoatDesignRef("BD-6"))
+            conn,
+            physical_boat=PhysicalBoat(
+                id=PhysicalBoatId("PB-6"), boat_design_ref=BoatDesignRef("BD-6")
+            ),
         )
         r6 = resolve_physical_boat_vessel_category(
             conn, physical_boat_id=PhysicalBoatId("PB-6"), boat_design_ref=BoatDesignRef("BD-6")
@@ -408,7 +458,9 @@ def main() -> int:
         conn.commit()
         check6 = r6.resolution.value == "UNKNOWN" and not r6.is_explicitly_non_sail_or_conflicted
         ok &= check6
-        print(f"6. legacy null category (no evidence anywhere) -> resolution={r6.resolution.value} -> never excluded from Sail -> {'OK' if check6 else 'FAIL'}")
+        print(
+            f"6. legacy null category (no evidence anywhere) -> resolution={r6.resolution.value} -> never excluded from Sail -> {'OK' if check6 else 'FAIL'}"
+        )
 
         # --- 7. retraction ------------------------------------------------------
         write_physical_boat_claim_revision(
@@ -433,9 +485,12 @@ def main() -> int:
         conn.commit()
         check7 = r7.resolution.value == "UNKNOWN"
         ok &= check7
-        print(f"7. retraction POWER -> UNKNOWN (new revision, not overwrite) -> resolution={r7.resolution.value} -> {'OK' if check7 else 'FAIL'}\n")
+        print(
+            f"7. retraction POWER -> UNKNOWN (new revision, not overwrite) -> resolution={r7.resolution.value} -> {'OK' if check7 else 'FAIL'}\n"
+        )
 
-        # --- 7b. amendment Finding D: unauthorized issuer is rejected ----------
+        # --- 7b. amendment Finding G: wrong admission secret is rejected,
+        # REGARDLESS of how trustworthy the issuer metadata looks --------
         from hullq.domain.provenance import ResolverKind as _RK
 
         _insert_boat_design(conn, "BD-7B", "BM-7B", keel_type="fin")
@@ -445,13 +500,21 @@ def main() -> int:
             assertion_id=BoatDesignCategoryAssertionId("BDCAT-7B-UNTRUSTED"),
             expected_current_assertion_id=None,
             assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.POWER),
-            issuer=ResolverMetadata(kind=_RK.HUMAN, identifier="random-internal-caller", version=None),
+            # Deliberately a plausible-looking DETERMINISTIC_TOOL issuer --
+            # Finding G's whole point is that issuer metadata alone (even
+            # a believable one) is never the real authorization boundary;
+            # only possessing the actual configured secret is.
+            issuer=ResolverMetadata(
+                kind=_RK.DETERMINISTIC_TOOL, identifier="looks-legit-catalog-tool", version="1"
+            ),
+            admission_secret="a-guessed-or-leaked-wrong-secret",
         )
-        check7b = untrusted_write.status.value == "issuer_not_authorized"
+        check7b = untrusted_write.status.value == "admission_not_authorized"
         ok &= check7b
         print(
-            "7b. unauthorized HUMAN issuer attempting to install design category POWER -> "
-            f"write status={untrusted_write.status.value} (no mutation) -> {'OK' if check7b else 'FAIL'}\n"
+            "7b. plausible-looking issuer + wrong admission secret attempting to install "
+            f"design category POWER -> write status={untrusted_write.status.value} "
+            f"(no mutation) -> {'OK' if check7b else 'FAIL'}\n"
         )
 
         # --- 8. real nine-criterion Sail funnel exclusion ----------------------
@@ -468,8 +531,13 @@ def main() -> int:
         from hullq.persistence.native_listing_lifecycle import publish_native_listing
 
         def _publish_matching_sail_listing(
-            listing_id: str, physical_boat_id: str, market_episode_id: str, design_id: str,
-            org_id: str, account_id: str, vessel_category: VesselCategoryClaim | None,
+            listing_id: str,
+            physical_boat_id: str,
+            market_episode_id: str,
+            design_id: str,
+            org_id: str,
+            account_id: str,
+            vessel_category: VesselCategoryClaim | None,
         ) -> None:
             _insert_boat_design(conn, design_id, f"BM-{design_id}", keel_type="fin")
             admit_resolved_categorical_field(
@@ -495,63 +563,115 @@ def main() -> int:
                 state=MembershipState.ACTIVE,
             )
             create_physical_boat(
-                conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id), boat_design_ref=BoatDesignRef(design_id))
+                conn,
+                physical_boat=PhysicalBoat(
+                    id=PhysicalBoatId(physical_boat_id), boat_design_ref=BoatDesignRef(design_id)
+                ),
             )
             create_market_episode(
-                conn, market_episode=MarketEpisode(id=MarketEpisodeId(market_episode_id), physical_boat_id=PhysicalBoatId(physical_boat_id))
+                conn,
+                market_episode=MarketEpisode(
+                    id=MarketEpisodeId(market_episode_id),
+                    physical_boat_id=PhysicalBoatId(physical_boat_id),
+                ),
             )
             create_native_listing(
-                conn, account_id=account, candidate_organization=org, membership=membership,
-                listing=NativeListing(id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(market_episode_id)),
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
+                listing=NativeListing(
+                    id=NativeListingId(listing_id),
+                    market_episode_id=MarketEpisodeId(market_episode_id),
+                ),
             )
             write_native_listing_offer_revision(
-                conn, account_id=account, candidate_organization=org, membership=membership,
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
                 native_listing_id=NativeListingId(listing_id),
                 revision_id=NativeListingOfferRevisionId(f"REV-{listing_id}"),
                 expected_current_revision_id=None,
                 offer=NativeListingOfferSnapshot(
-                    asking_price_mode=AskingPriceMode.AMOUNT, location_country="FR",
+                    asking_price_mode=AskingPriceMode.AMOUNT,
+                    location_country="FR",
                     broker_description="A well-maintained boat.",
-                    asking_price_amount=Decimal("150000.00"), currency="EUR",
+                    asking_price_amount=Decimal("150000.00"),
+                    currency="EUR",
                 ),
             )
             write_physical_boat_claim_revision(
-                conn, account_id=account, candidate_organization=org, membership=membership,
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
                 native_listing_id=NativeListingId(listing_id),
                 revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-{listing_id}-1"),
                 expected_current_revision_id=None,
                 claims=PhysicalBoatClaimSnapshot(
-                    marketed_brand_claim="Beneteau", model_designation_claim="Oceanis 40",
+                    marketed_brand_claim="Beneteau",
+                    model_designation_claim="Oceanis 40",
                     build_year=BuildYearClaim(assertion_kind=VA, value=2019),
-                    keel_configuration=KeelConfigurationClaim(assertion_kind=VA, value=KeelConfiguration.FIN),
+                    keel_configuration=KeelConfigurationClaim(
+                        assertion_kind=VA, value=KeelConfiguration.FIN
+                    ),
                     vessel_category=vessel_category,
                 ),
             )
             with conn.transaction():
                 with conn.cursor() as cur:
-                    cur.execute("INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING", [account.value])
+                    cur.execute(
+                        "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                        [account.value],
+                    )
                 seed_marketplace_organization(conn, org)
                 asset = insert_approved_media_asset(
-                    conn, owner_organization_id=org.id, uploaded_by_account_id=account,
-                    rights_declared=True, source_kind=MediaSourceKind.BROKER_UPLOAD, source_reference=None,
-                    original_object_key=f"original/{listing_id}", derivative_object_key=f"derivative/{listing_id}",
-                    content_hash=f"hash-{listing_id}", mime_type="image/jpeg", width=800, height=600, byte_size=12345,
+                    conn,
+                    owner_organization_id=org.id,
+                    uploaded_by_account_id=account,
+                    rights_declared=True,
+                    source_kind=MediaSourceKind.BROKER_UPLOAD,
+                    source_reference=None,
+                    original_object_key=f"original/{listing_id}",
+                    derivative_object_key=f"derivative/{listing_id}",
+                    content_hash=f"hash-{listing_id}",
+                    mime_type="image/jpeg",
+                    width=800,
+                    height=600,
+                    byte_size=12345,
                 )
                 placement = create_uploaded_image_placement(
-                    conn, native_listing_id=NativeListingId(listing_id), owner_organization_id=org.id, media_asset=asset
+                    conn,
+                    native_listing_id=NativeListingId(listing_id),
+                    owner_organization_id=org.id,
+                    media_asset=asset,
                 )
                 set_cover(
-                    conn, native_listing_id=NativeListingId(listing_id), owner_organization_id=org.id,
-                    media_placement_id=placement.media_placement_id, expected_version=placement.gallery_version,
+                    conn,
+                    native_listing_id=NativeListingId(listing_id),
+                    owner_organization_id=org.id,
+                    media_placement_id=placement.media_placement_id,
+                    expected_version=placement.gallery_version,
                 )
             publish_native_listing(
-                conn, account_id=account, candidate_organization=org, membership=membership,
+                conn,
+                account_id=account,
+                candidate_organization=org,
+                membership=membership,
                 native_listing_id=NativeListingId(listing_id),
             )
 
-        _publish_matching_sail_listing("NL-LEG", "PB-LEG", "ME-LEG", "BD-LEG", "ORG-LEG", "ACC-LEG", None)
         _publish_matching_sail_listing(
-            "NL-PWR", "PB-PWR", "ME-PWR", "BD-PWR", "ORG-PWR", "ACC-PWR",
+            "NL-LEG", "PB-LEG", "ME-LEG", "BD-LEG", "ORG-LEG", "ACC-LEG", None
+        )
+        _publish_matching_sail_listing(
+            "NL-PWR",
+            "PB-PWR",
+            "ME-PWR",
+            "BD-PWR",
+            "ORG-PWR",
+            "ACC-PWR",
             VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
         )
         outcome = evaluate_native_inventory_requirements(
@@ -568,7 +688,9 @@ def main() -> int:
 
         conn.close()
         conn = None
-        print(f"SLICE-0091 VESSEL CATEGORY FOUNDATION PROOF RESULT -> {'PASS' if ok else 'FAIL'} [SLICE-0091-DONE]")
+        print(
+            f"SLICE-0091 VESSEL CATEGORY FOUNDATION PROOF RESULT -> {'PASS' if ok else 'FAIL'} [SLICE-0091-DONE]"
+        )
         return 0 if ok else 1
     finally:
         # A connection left open (even idle-in-transaction holding only a
@@ -577,10 +699,8 @@ def main() -> int:
         # exception path, so a real bug fails fast with its traceback
         # instead of hanging on an unreleased lock.
         if conn is not None:
-            try:
+            with contextlib.suppress(Exception):
                 conn.close()
-            except Exception:
-                pass
         _drop_schema(base_url, schema_name)
 
 

@@ -66,7 +66,7 @@ from hullq.domain.vessel_category import (
 )
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
 from hullq.persistence.boat_design_category import (
-    CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+    CATALOG_ADMISSION_SECRET_ENV_VAR,
     write_boat_design_category_assertion,
 )
 from hullq.persistence.broker_identity import seed_marketplace_organization
@@ -95,6 +95,12 @@ from hullq.search.draft_max_design_bridge import (
 from ._field_resolution_support import admit_resolved_draft_max
 
 VA = AssertionKind.VALUE_ASSERTION
+_TEST_ADMISSION_SECRET = "slice-0091-test-catalog-admission-secret"
+
+
+@pytest.fixture(autouse=True)
+def _configured_admission_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(CATALOG_ADMISSION_SECRET_ENV_VAR, _TEST_ADMISSION_SECRET)
 
 
 def _with_search_path(base_url: str, schema_name: str) -> str:
@@ -342,7 +348,7 @@ def _make_active_listing(
 def _issuer() -> ResolverMetadata:
     return ResolverMetadata(
         kind=ResolverKind.DETERMINISTIC_TOOL,
-        identifier=CATALOG_CATEGORY_ADMISSION_IDENTIFIER,
+        identifier="slice-0091-test-harness",
         version="1",
     )
 
@@ -391,8 +397,11 @@ def test_explicit_design_motorsailer_excludes_pure_draft_max_confirmed_match(api
         boat_design_id="BD-91SR-MS",
         assertion_id=BoatDesignCategoryAssertionId("BDCAT-91SR-MS"),
         expected_current_assertion_id=None,
-        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=VesselCategory.MOTORSAILER),
+        assertion=DesignVesselCategoryAssertion(
+            assertion_kind=VA, value=VesselCategory.MOTORSAILER
+        ),
         issuer=_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
     )
     api_conn.commit()
     _make_active_listing(

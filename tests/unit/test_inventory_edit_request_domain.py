@@ -833,9 +833,7 @@ class TestClaimEditRequest:
             parse_physical_boat_claim_edit_request(body)
 
     def test_vessel_category_absent_is_invalid(self) -> None:
-        body = dict(
-            _BASE_CLAIM, **{"physical_boat.vessel_category": {"assertion_kind": "ABSENT"}}
-        )
+        body = dict(_BASE_CLAIM, **{"physical_boat.vessel_category": {"assertion_kind": "ABSENT"}})
         with pytest.raises(InvalidInventoryEditRequestError):
             parse_physical_boat_claim_edit_request(body)
 

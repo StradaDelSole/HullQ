@@ -132,8 +132,10 @@ def upgrade() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["boat_design_id", "previous_assertion_id"],
-            ["boat_design_category_assertions.boat_design_id",
-             "boat_design_category_assertions.assertion_id"],
+            [
+                "boat_design_category_assertions.boat_design_id",
+                "boat_design_category_assertions.assertion_id",
+            ],
             name="fk_bd_cat_assertions_previous_same_design",
         ),
         sa.CheckConstraint(
@@ -180,8 +182,10 @@ def upgrade() -> None:
         # BoatDesign's assertion is impossible in any DB-valid state.
         sa.ForeignKeyConstraint(
             ["boat_design_id", "current_assertion_id"],
-            ["boat_design_category_assertions.boat_design_id",
-             "boat_design_category_assertions.assertion_id"],
+            [
+                "boat_design_category_assertions.boat_design_id",
+                "boat_design_category_assertions.assertion_id",
+            ],
             name="fk_bd_cat_heads_current_same_design",
         ),
     )

@@ -28,25 +28,43 @@ transaction rather than taking a PostgreSQL advisory lock.
 No source-rights/evidence-quality admission (as `FieldResolution` performs
 for externally-sourced physical facts) is performed here -- category is a
 type/admission foundation, not a physical fact with a source-rights gate.
-`issuer` (`hullq.domain.provenance.ResolverMetadata`, the same type
-`FieldResolution.resolver` already uses) is nonetheless not merely recorded
-for audit: amendment review Finding D found that an *unauthorized* caller
-could otherwise install a positive design category that silently excludes a
-listing from Sail Search with zero admission control. `write_boat_design_category_assertion`
-therefore checks *issuer* against `_AUTHORIZED_CATALOG_CATEGORY_ISSUERS`, a
-single explicit, narrowly bounded allowlist entry -- mirroring the existing
-`_ACCEPTED_SAIL_BOAT_TYPES` import-allowlist convention
-(`hullq.domain.import_nautix`): extended only by a deliberate, reviewed code
-change, never by caller-supplied role/session metadata, and never a
-source-rights/evidence-quality engine of its own. An unrecognized issuer
-(including an otherwise-plausible but unlisted `DETERMINISTIC_TOOL`
-identifier, or any `HUMAN`/`LLM` issuer) fails the write closed as
-`ISSUER_NOT_AUTHORIZED` before any row is touched -- it can never become
-authoritative category truth.
+
+## Admission secret vs. issuer metadata (amendment review Finding G)
+
+Amendment review Finding D first closed the "any caller, any issuer" gap by
+checking `issuer` against a fixed allowlist constant -- but Finding G then
+observed that the allowlisted *value* was itself just an ordinary string
+literal inside this publicly importable module: any caller could read it
+from source and trivially supply it, so it was not a real authorization
+boundary, only a typo/accident guard. `issuer`
+(`hullq.domain.provenance.ResolverMetadata`, the same type
+`FieldResolution.resolver` already uses) is retained as audit/provenance
+metadata -- *who/what claims to have asserted this* -- but it is no longer
+what decides authorization.
+
+The actual admission gate is now `admission_secret`: a caller-supplied
+string compared, in constant time (`hmac.compare_digest`), against the
+value of the `HULLQ_CATALOG_ADMISSION_SECRET` environment variable. This
+mirrors the exact pattern this codebase already uses for every other
+capability only a privileged backend process should hold (e.g.
+`HULLQ_PREVIEW_SIGNING_SECRET`, `HULLQ_SESSION_SIGNING_SECRET`): the value
+that actually grants the capability lives in deployment configuration, not
+in source code that any importer of this module can read. An unset or
+empty environment variable fails every write closed (there is deliberately
+no default/placeholder secret that would silently authorize every caller);
+a caller-supplied secret that does not match fails closed the same way.
+Neither case touches any row. This is still a single bounded secret
+comparison -- not a generalized actor/rights registry, not a reuse of
+`FieldResolution`'s source-rights machinery, and it invents no third-party
+rights. A genuinely stronger boundary (e.g. a dedicated authenticated
+catalog-admission service/role) remains a future decision, not silently
+assumed here.
 """
 
 from __future__ import annotations
 
+import hmac
+import os
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -61,7 +79,7 @@ from hullq.domain.vessel_category import (
 from hullq.persistence.fingerprint import fingerprint_dict
 
 __all__ = [
-    "CATALOG_CATEGORY_ADMISSION_IDENTIFIER",
+    "CATALOG_ADMISSION_SECRET_ENV_VAR",
     "BoatDesignCategoryAssertionRecord",
     "BoatDesignCategoryAssertionWriteResult",
     "BoatDesignCategoryAssertionWriteStatus",
@@ -72,18 +90,22 @@ __all__ = [
     "write_boat_design_category_assertion",
 ]
 
-#: The exact, single identity authorized to assert BoatDesign-level category
-#: -- amendment Finding D. Not a generalized actor/rights registry: a
-#: deliberate allowlist entry extended only by a reviewed code change, never
-#: by caller-supplied role/session metadata. Any real future catalog-
-#: admission pipeline must mint its `ResolverMetadata.identifier` as exactly
-#: this string (kind `DETERMINISTIC_TOOL`) to write a design category
-#: assertion that can ever exclude a listing from Sail Search.
-CATALOG_CATEGORY_ADMISSION_IDENTIFIER: Final = "hullq-catalog-category-admission"
+#: The deployment-configuration secret that actually authorizes a design
+#: category write -- amendment Finding G. Never hardcoded/defaulted in
+#: source; absent/empty means no caller can ever be admitted, fail closed.
+CATALOG_ADMISSION_SECRET_ENV_VAR: Final = "HULLQ_CATALOG_ADMISSION_SECRET"
 
-_AUTHORIZED_CATALOG_CATEGORY_ISSUERS: Final[frozenset[tuple[ResolverKind, str]]] = frozenset(
-    {(ResolverKind.DETERMINISTIC_TOOL, CATALOG_CATEGORY_ADMISSION_IDENTIFIER)}
-)
+
+def _admission_secret_is_valid(admission_secret: str) -> bool:
+    configured = os.environ.get(CATALOG_ADMISSION_SECRET_ENV_VAR, "")
+    if not configured:
+        # Fail closed: a deployment that has never configured a real
+        # catalog-admission secret admits nobody -- never treat an empty/
+        # unset value as a wildcard or default-allow.
+        return False
+    if not isinstance(admission_secret, str) or not admission_secret:
+        return False
+    return hmac.compare_digest(admission_secret.encode("utf-8"), configured.encode("utf-8"))
 
 
 class BoatDesignCategoryTransactionOwnershipError(RuntimeError):
@@ -106,7 +128,7 @@ class BoatDesignCategoryAssertionWriteStatus(StrEnum):
     ALREADY_EXISTS = "already_exists"
     CONFLICT = "conflict"
     BOAT_DESIGN_NOT_FOUND = "boat_design_not_found"
-    ISSUER_NOT_AUTHORIZED = "issuer_not_authorized"
+    ADMISSION_NOT_AUTHORIZED = "admission_not_authorized"
 
 
 _STATUSES_REQUIRING_CURRENT = frozenset(
@@ -119,7 +141,7 @@ _STATUSES_REQUIRING_CURRENT = frozenset(
 _STATUSES_FORBIDDING_CURRENT = frozenset(
     {
         BoatDesignCategoryAssertionWriteStatus.BOAT_DESIGN_NOT_FOUND,
-        BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED,
+        BoatDesignCategoryAssertionWriteStatus.ADMISSION_NOT_AUTHORIZED,
     }
 )
 
@@ -136,10 +158,7 @@ class BoatDesignCategoryAssertionWriteResult:
             raise ValueError(
                 f"A {self.status.value.upper()} write result must carry current_assertion_id"
             )
-        if (
-            self.status in _STATUSES_FORBIDDING_CURRENT
-            and self.current_assertion_id is not None
-        ):
+        if self.status in _STATUSES_FORBIDDING_CURRENT and self.current_assertion_id is not None:
             raise ValueError(
                 f"A {self.status.value.upper()} write result must not carry current_assertion_id"
             )
@@ -272,10 +291,16 @@ def write_boat_design_category_assertion(
     expected_current_assertion_id: BoatDesignCategoryAssertionId | None,
     assertion: DesignVesselCategoryAssertion,
     issuer: ResolverMetadata,
+    admission_secret: str,
 ) -> BoatDesignCategoryAssertionWriteResult:
     """Durably write *assertion* as the new current head for *boat_design_id*
-    iff the BoatDesign exists and the expected predecessor matches the real
-    durable current head.
+    iff the BoatDesign exists, *admission_secret* is authorized (see this
+    module's docstring, amendment Finding G), and the expected predecessor
+    matches the real durable current head.
+
+    *issuer* is retained as audit/provenance metadata only -- it does not
+    decide authorization; see this module's docstring for why a
+    self-declared identifier cannot be a real authorization boundary.
 
     Immutable-revision + explicit-current-head shape, identical idempotency
     rule to `hullq.persistence.physical_boat_claims.write_physical_boat_claim_revision_row`:
@@ -319,13 +344,13 @@ def write_boat_design_category_assertion(
             "connection."
         )
 
-    # Amendment Finding D: checked before any statement runs -- a pure
-    # comparison against a fixed allowlist, nothing durable to consult yet.
-    # An unauthorized issuer must never reach the lock/insert below, and the
+    # Amendment Finding G: checked before any statement runs -- a pure,
+    # constant-time secret comparison, nothing durable to consult yet. An
+    # unauthorized caller must never reach the lock/insert below, and the
     # BoatDesign row's current state (if any) must be provably untouched.
-    if (issuer.kind, issuer.identifier) not in _AUTHORIZED_CATALOG_CATEGORY_ISSUERS:
+    if not _admission_secret_is_valid(admission_secret):
         return BoatDesignCategoryAssertionWriteResult(
-            status=BoatDesignCategoryAssertionWriteStatus.ISSUER_NOT_AUTHORIZED
+            status=BoatDesignCategoryAssertionWriteStatus.ADMISSION_NOT_AUTHORIZED
         )
 
     with conn.transaction(), conn.cursor() as cur:

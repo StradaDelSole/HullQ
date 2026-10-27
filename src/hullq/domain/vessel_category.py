@@ -52,6 +52,7 @@ __all__ = [
     "ConcreteVesselCategoryEvidence",
     "DesignVesselCategoryAssertion",
     "DesignVesselCategoryEvidence",
+    "VesselCategoryExclusionEvidence",
     "VesselCategoryResolution",
     "VesselCategoryResolutionReason",
     "VesselCategoryResolutionResult",
@@ -150,8 +151,14 @@ class DesignVesselCategoryEvidence:
     previous_assertion_id: BoatDesignCategoryAssertionId | None
 
     def __post_init__(self) -> None:
-        _require_kind(self.assertion_id, BoatDesignCategoryAssertionId, "DesignVesselCategoryEvidence.assertion_id")
-        _require_kind(self.assertion, DesignVesselCategoryAssertion, "DesignVesselCategoryEvidence.assertion")
+        _require_kind(
+            self.assertion_id,
+            BoatDesignCategoryAssertionId,
+            "DesignVesselCategoryEvidence.assertion_id",
+        )
+        _require_kind(
+            self.assertion, DesignVesselCategoryAssertion, "DesignVesselCategoryEvidence.assertion"
+        )
         _require_kind(self.issuer, ResolverMetadata, "DesignVesselCategoryEvidence.issuer")
         if self.previous_assertion_id is not None:
             _require_kind(
@@ -193,7 +200,9 @@ class ConcreteVesselCategoryEvidence:
             "ConcreteVesselCategoryEvidence.claiming_organization_id",
         )
         _require_kind(
-            self.revision_id, PhysicalBoatClaimRevisionId, "ConcreteVesselCategoryEvidence.revision_id"
+            self.revision_id,
+            PhysicalBoatClaimRevisionId,
+            "ConcreteVesselCategoryEvidence.revision_id",
         )
         _require_kind(
             self.recorded_by_account_id,
@@ -299,7 +308,9 @@ class VesselCategoryResolutionResult:
     concrete_evidence: tuple[ConcreteVesselCategoryEvidence, ...]
 
     def __post_init__(self) -> None:
-        _require_kind(self.resolution, VesselCategoryResolution, "VesselCategoryResolutionResult.resolution")
+        _require_kind(
+            self.resolution, VesselCategoryResolution, "VesselCategoryResolutionResult.resolution"
+        )
         _require_kind(
             self.reason, VesselCategoryResolutionReason, "VesselCategoryResolutionResult.reason"
         )
@@ -334,12 +345,14 @@ class VesselCategoryResolutionResult:
                     f"reason {self.reason.value!r} requires resolution UNKNOWN, "
                     f"got {self.resolution.value!r}"
                 )
-        elif self.reason in _CONFLICT_REASONS:
-            if self.resolution is not VesselCategoryResolution.CONFLICT:
-                raise ValueError(
-                    f"reason {self.reason.value!r} requires resolution CONFLICT, "
-                    f"got {self.resolution.value!r}"
-                )
+        elif (
+            self.reason in _CONFLICT_REASONS
+            and self.resolution is not VesselCategoryResolution.CONFLICT
+        ):
+            raise ValueError(
+                f"reason {self.reason.value!r} requires resolution CONFLICT, "
+                f"got {self.resolution.value!r}"
+            )
 
     @property
     def design_value(self) -> VesselCategory | None:
@@ -361,7 +374,8 @@ class VesselCategoryResolutionResult:
         return frozenset(
             entry.claim.value
             for entry in self.concrete_evidence
-            if entry.claim is not None and entry.claim.assertion_kind is AssertionKind.VALUE_ASSERTION
+            if entry.claim is not None
+            and entry.claim.assertion_kind is AssertionKind.VALUE_ASSERTION
         )
 
     @property
@@ -378,6 +392,51 @@ class VesselCategoryResolutionResult:
             VesselCategoryResolution.MOTORSAILER,
             VesselCategoryResolution.CONFLICT,
         )
+
+
+@dataclass(frozen=True)
+class VesselCategoryExclusionEvidence:
+    """Bounded, cross-Organization-identity-free record of why a candidate
+    was excluded from the existing Sail-only technical Search funnel by the
+    SLICE-0091 §C category pre-filter -- amendment review Finding I.
+
+    Before this type existed, `hullq.application.native_inventory_query`/
+    `hullq.application.broker_search_fit` discarded `category_resolution`
+    entirely once `is_explicitly_non_sail_or_conflicted` was `True`: a
+    `CONFIRMED_NON_MATCH` produced by this pre-filter was mechanically
+    indistinguishable from an ordinary nine-criterion technical mismatch,
+    with zero retained evidence explaining why.
+
+    Carries only the resolved `VesselCategoryResolution`/
+    `VesselCategoryResolutionReason` enum members -- no Organization id, no
+    Account id, no claim/assertion identity or raw source value. This is
+    deliberately a strict subset of `VesselCategoryResolutionResult`, whose
+    own `concrete_evidence` can name a *different* claiming Organization
+    under `CROSS_ORGANIZATION_DISAGREEMENT` and must never be serialized
+    that broadly (see its docstring). An enum-only pair is safe to retain on
+    any `NativeInventoryCandidateEvaluation`/`SearchFitView`, including a
+    future more-public-facing surface, without that risk.
+    """
+
+    resolution: VesselCategoryResolution
+    reason: VesselCategoryResolutionReason
+
+    def __post_init__(self) -> None:
+        _require_kind(
+            self.resolution, VesselCategoryResolution, "VesselCategoryExclusionEvidence.resolution"
+        )
+        _require_kind(
+            self.reason, VesselCategoryResolutionReason, "VesselCategoryExclusionEvidence.reason"
+        )
+        if self.resolution not in (
+            VesselCategoryResolution.POWER,
+            VesselCategoryResolution.MOTORSAILER,
+            VesselCategoryResolution.CONFLICT,
+        ):
+            raise ValueError(
+                "VesselCategoryExclusionEvidence.resolution must be an explicit non-Sail/"
+                f"conflicted resolution (POWER/MOTORSAILER/CONFLICT), got {self.resolution.value!r}"
+            )
 
 
 def _extract_positive_values(

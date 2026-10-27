@@ -2099,6 +2099,17 @@ def create_app(
                     _serialize_criterion_evidence(evidence)
                     for evidence in view.concrete_criterion_evidence
                 ],
+                # SLICE-0091 amendment Finding I: bounded, enum-only --
+                # never the full VesselCategoryResolutionResult, which can
+                # name a different claiming Organization.
+                "vessel_category_exclusion": (
+                    {
+                        "resolution": view.vessel_category_exclusion.resolution.value,
+                        "reason": view.vessel_category_exclusion.reason.value,
+                    }
+                    if view.vessel_category_exclusion is not None
+                    else None
+                ),
                 "blockers": [blocker.value for blocker in view.blockers],
             }
         )

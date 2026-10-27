@@ -104,6 +104,7 @@ from hullq.domain.market_identity import NativeListingId, PhysicalBoatId
 from hullq.domain.native_listing_freshness import FreshnessStatus
 from hullq.domain.physical_boat_claims import AssertionKind
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
+from hullq.domain.vessel_category import VesselCategoryExclusionEvidence
 from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.persistence.inventory_search import list_active_design_linked_listings
 from hullq.persistence.physical_boat_claims import list_current_physical_boat_claim_observations
@@ -221,6 +222,18 @@ class NativeInventoryCandidateEvaluation:
     evaluated NamedVariant alike, regardless of which one(s) matched) --
     the typed BoatDesign/NamedVariant observed-value evidence
     `design_evaluation` alone cannot recover (second amendment Finding 1).
+
+    `vessel_category_exclusion` is populated only when the SLICE-0091 §C
+    category pre-filter itself produced this `CONFIRMED_NON_MATCH` (the
+    design level was a `CONFIRMED_MATCH` but the resolved vessel category is
+    explicitly `POWER`/`MOTORSAILER`/`CONFLICT`) -- `None` in every other
+    case, including an ordinary nine-criterion technical non-match/
+    insufficient-data result and a design/configuration-level exclusion.
+    Amendment review Finding I: without this, such a candidate was
+    mechanically indistinguishable from an ordinary technical mismatch, with
+    zero retained evidence explaining why. Deliberately the bounded,
+    cross-Organization-identity-free `VesselCategoryExclusionEvidence`, never
+    the full `VesselCategoryResolutionResult` (see that type's docstring).
     """
 
     native_listing_id: NativeListingId
@@ -228,6 +241,7 @@ class NativeInventoryCandidateEvaluation:
     design_evaluation: DesignQueryEvaluation
     design_configuration_evidence: tuple[ConfigurationEvidence, ...]
     concrete_criterion_evidence: tuple[SearchCriterionEvidence, ...]
+    vessel_category_exclusion: VesselCategoryExclusionEvidence | None
     publishing_organization_id: MarketplaceOrganizationId
     freshness_status: FreshnessStatus
     last_confirmed_at: datetime | None
@@ -946,6 +960,13 @@ def evaluate_native_inventory_requirements(
             if category_resolution.is_explicitly_non_sail_or_conflicted:
                 result_class = ResultClass.CONFIRMED_NON_MATCH
                 concrete_evidence = ()
+                # Amendment Finding I: retain *why* -- bounded, enum-only,
+                # never the full result (which can name a different
+                # claiming Organization under CROSS_ORGANIZATION_DISAGREEMENT).
+                vessel_category_exclusion = VesselCategoryExclusionEvidence(
+                    resolution=category_resolution.resolution,
+                    reason=category_resolution.reason,
+                )
             else:
                 result_class, concrete_evidence = classify_concrete_candidate(
                     conn,
@@ -956,6 +977,7 @@ def evaluate_native_inventory_requirements(
                     query=query,
                     active_definitions=active_definitions,
                 )
+                vessel_category_exclusion = None
         else:
             # Design/configuration eligibility never admitted this design to
             # the concrete funnel (Required Behavior §C) -- the listing is
@@ -964,6 +986,7 @@ def evaluate_native_inventory_requirements(
             # Finding 1: this evidence is retained, not discarded.
             result_class = design_evaluation.result_class
             concrete_evidence = ()
+            vessel_category_exclusion = None
 
         evaluation = NativeInventoryCandidateEvaluation(
             native_listing_id=candidate.native_listing_id,
@@ -971,6 +994,7 @@ def evaluate_native_inventory_requirements(
             design_evaluation=design_evaluation,
             design_configuration_evidence=design_configuration_evidence,
             concrete_criterion_evidence=concrete_evidence,
+            vessel_category_exclusion=vessel_category_exclusion,
             publishing_organization_id=candidate.publishing_organization_id,
             freshness_status=freshness.status,
             last_confirmed_at=freshness.last_confirmed_at,

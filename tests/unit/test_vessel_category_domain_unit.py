@@ -138,7 +138,9 @@ def test_design_unknown_concrete_omitted_resolves_unknown_both_unknown() -> None
 
 @pytest.mark.parametrize("category", list(VesselCategory))
 def test_design_only_positive_resolves_to_design_value(category: VesselCategory) -> None:
-    result = resolve_vessel_category(design_evidence=_design_evidence(category), concrete_evidence=())
+    result = resolve_vessel_category(
+        design_evidence=_design_evidence(category), concrete_evidence=()
+    )
     assert result.resolution.value == category.value
     assert result.reason is VesselCategoryResolutionReason.DESIGN_ONLY
     assert result.design_value is category
@@ -156,7 +158,9 @@ def test_concrete_only_positive_resolves_to_concrete_value(category: VesselCateg
     assert result.reason is VesselCategoryResolutionReason.CONCRETE_ONLY
     assert result.concrete_values == frozenset({category})
     assert len(result.concrete_evidence) == 1
-    assert result.concrete_evidence[0].claiming_organization_id == MarketplaceOrganizationId("ORG-A")
+    assert result.concrete_evidence[0].claiming_organization_id == MarketplaceOrganizationId(
+        "ORG-A"
+    )
 
 
 def test_design_unknown_concrete_positive_resolves_concrete_only() -> None:
@@ -204,7 +208,9 @@ def test_design_sail_concrete_power_resolves_conflict_never_a_guess() -> None:
     # Finding C: evidence identity is recoverable from the result alone.
     assert result.design_evidence is not None
     assert result.design_evidence.assertion_id == BoatDesignCategoryAssertionId("BDCAT-1")
-    assert result.concrete_evidence[0].claiming_organization_id == MarketplaceOrganizationId("ORG-A")
+    assert result.concrete_evidence[0].claiming_organization_id == MarketplaceOrganizationId(
+        "ORG-A"
+    )
     assert result.concrete_evidence[0].revision_id == PhysicalBoatClaimRevisionId("PBCREV-ORG-A")
 
 
@@ -262,7 +268,8 @@ def test_retraction_to_unknown_is_observed_as_an_ordinary_unknown_input() -> Non
 def test_rejects_non_evidence_values_in_concrete_tuple() -> None:
     with pytest.raises(TypeError):
         resolve_vessel_category(
-            design_evidence=None, concrete_evidence=("SAIL",)  # type: ignore[arg-type]
+            design_evidence=None,
+            concrete_evidence=("SAIL",),  # type: ignore[arg-type]
         )
 
 
