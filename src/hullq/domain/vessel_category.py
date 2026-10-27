@@ -370,13 +370,14 @@ class VesselCategoryResolutionResult:
         """Every distinct positive value currently asserted by *any*
         claiming Organization (empty when none; exactly one element on
         agreement; two or more only under `CROSS_ORGANIZATION_DISAGREEMENT`).
-        Derived from `concrete_evidence`."""
-        return frozenset(
-            entry.claim.value
-            for entry in self.concrete_evidence
-            if entry.claim is not None
-            and entry.claim.assertion_kind is AssertionKind.VALUE_ASSERTION
-        )
+        Derived from `concrete_evidence`, reusing `_extract_positive_values`'s
+        identical explicit narrowing (`claim.value` is independently typed
+        `VesselCategory | None` on `VesselCategoryClaim`, so a bare
+        `assertion_kind is VALUE_ASSERTION` filter alone does not narrow it
+        for a type checker -- the non-`None` guarantee is this module's own
+        business invariant, made explicit via `assert` rather than widened
+        away)."""
+        return _extract_positive_values(self.concrete_evidence)
 
     @property
     def is_explicitly_non_sail_or_conflicted(self) -> bool:

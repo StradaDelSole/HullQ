@@ -943,6 +943,11 @@ def evaluate_native_inventory_requirements(
             for configuration_evaluation in design_evaluation.configuration_evaluations
         )
 
+        # Explicit annotation: a bare `()` literal below would otherwise be
+        # inferred as the empty-tuple type `tuple[()]`, conflicting with the
+        # `tuple[SearchCriterionEvidence, ...]` `classify_concrete_candidate`
+        # assigns in the sibling branch.
+        concrete_evidence: tuple[SearchCriterionEvidence, ...]
         if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
             # SLICE-0091 §A/§C: category is an admission/type foundation,
             # not a tenth technical Sail criterion -- this fail-closed

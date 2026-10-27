@@ -10,27 +10,31 @@ own `<form>` at all. Because that page's "Save claim" action always
 resubmits the *entire* current claim snapshot (never a partial patch), the
 missing field meant an ordinary, unrelated edit through the real page
 silently erased an already-saved vessel category. This script drives that
-exact real page -- a real same-origin browser `<form method="POST">`
-submission, through a real built Astro/Node SSR server and a real FastAPI
-backend against a real disposable PostgreSQL 18 schema -- mirroring
-`scripts/inspect_professional_inventory_editing.py`'s identical real
-browser-style login/session discipline (no Account/membership fact is ever
+exact real page through authenticated, same-origin HTTP form submissions
+(`urllib` plus a standards-compliant cookie jar for the real OIDC/session
+login) against a real built Astro/Node SSR server and a real FastAPI
+backend, over a real disposable PostgreSQL 18 schema -- amendment review
+Finding J: this is HTTP-level form-POST evidence, not a genuine automated
+browser (no JS execution, no DOM rendering, no Playwright/Selenium-style
+page automation). It mirrors
+`scripts/inspect_professional_inventory_editing.py`'s identical
+authenticated-session-login discipline (no Account/membership fact is ever
 injected outside the signed session).
 
 Demonstrates:
 
     1. the real editor's "PhysicalBoat claim" form offers a vessel category
        field and starts with no category assigned
-    2. a real browser form POST sets the vessel category (SAIL); the
+    2. an authenticated HTTP form POST sets the vessel category (SAIL); the
        authoritative current claim head reflects it
-    3. a second, *unrelated* real browser form POST (changing only
+    3. a second, *unrelated* authenticated HTTP form POST (changing only
        `boat_name`, repeating every other current field exactly as the
        real form would) leaves the vessel category untouched -- the exact
        Finding E regression
-    4. a real browser form POST carrying a stale
+    4. an authenticated HTTP form POST carrying a stale
        `expected_current_revision_id` is rejected (re-rendered with the
        "changed since you loaded the page" outcome, zero mutation)
-    5. a real browser form POST carrying a forbidden/invalid vessel
+    5. an authenticated HTTP form POST carrying a forbidden/invalid vessel
        category value is rejected (re-rendered with the invalid-payload
        outcome, zero mutation)
     6. finishes with the required PASS marker
@@ -187,10 +191,13 @@ class BrowserSession:
     def post_form(
         self, url: str, fields: dict[str, str], *, origin: str
     ) -> tuple[int, http.client.HTTPMessage, bytes]:
-        """Simulates a real browser's same-origin HTML `<form method="POST">`
-        submission to *url*: url-encoded body, and the `Origin` header a
-        real browser attaches to every POST (urllib does not add this
-        automatically, so it is supplied explicitly here)."""
+        """Submits an authenticated, same-origin HTTP form POST to *url*,
+        matching the wire shape a browser's HTML `<form method="POST">`
+        would send: url-encoded body, plus the `Origin` header a browser
+        attaches to every same-origin POST (urllib does not add this
+        automatically, so it is supplied explicitly here). This is `urllib`
+        issuing an HTTP request, not a genuine browser -- no JS execution,
+        no DOM rendering, no page automation."""
         headers = {"Content-Type": "application/x-www-form-urlencoded", "Origin": origin}
         return self.request(
             "POST", url, extra_headers=headers, data=urlencode(fields).encode("utf-8")
@@ -564,7 +571,7 @@ def main() -> int:
         claim_expected_1 = _hidden_field_value(claim_form, "expected_current_revision_id")
         assert claim_expected_1 == db_claim_before.revision_id.value
 
-        # 2. Real browser Save claim: set vessel category to SAIL.
+        # 2. Authenticated HTTP form POST, Save claim: set vessel category to SAIL.
         status, _, body = session_a.post_form(
             f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0091-EDITOR')}",
             {
@@ -598,12 +605,12 @@ def main() -> int:
         )
         ok &= set_category_ok
         print(
-            f"7. a real browser form POST sets the vessel category to SAIL; the authoritative "
+            f"7. an authenticated HTTP form POST sets the vessel category to SAIL; the authoritative "
             f"current claim head reflects it -> {'OK' if (set_category_saved_ok and set_category_ok) else 'FAIL'}\n"
         )
 
-        # 3. Re-GET (fresh revision ids), then an *unrelated* real browser
-        # form POST: only boat_name changes; every other current field
+        # 3. Re-GET (fresh revision ids), then an *unrelated* authenticated
+        # HTTP form POST: only boat_name changes; every other current field
         # (including vessel_category, exactly as the real form currently
         # renders it) is repeated unchanged -- the exact Finding E
         # regression this amendment fixes.
@@ -659,13 +666,13 @@ def main() -> int:
             f"{'OK' if category_prefilled_ok else 'FAIL'}"
         )
         print(
-            f"9. an unrelated real browser form POST (boat_name only) leaves the vessel category "
+            f"9. an unrelated authenticated HTTP form POST (boat_name only) leaves the vessel category "
             f"untouched (still SAIL) -- the exact Finding E regression -> "
             f"{'OK' if (unrelated_edit_saved_ok and category_preserved_ok) else 'FAIL'}\n"
         )
 
         # 4. Stale revision: replay the original (now stale) expected
-        # revision id via a real browser form POST.
+        # revision id via an authenticated HTTP form POST.
         status, _, body = session_a.post_form(
             f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0091-EDITOR')}",
             {
@@ -710,7 +717,7 @@ def main() -> int:
         )
         ok &= stale_rendered_ok and stale_no_mutation_ok
         print(
-            f"10. a real browser form POST carrying a stale expected_current_revision_id is "
+            f"10. an authenticated HTTP form POST carrying a stale expected_current_revision_id is "
             f"rejected (re-rendered, zero mutation; still SAIL, 3 revisions on record) -> "
             f"{'OK' if (stale_rendered_ok and stale_no_mutation_ok) else 'FAIL'}"
         )
@@ -760,7 +767,7 @@ def main() -> int:
         )
         ok &= forbidden_rendered_ok and forbidden_no_mutation_ok
         print(
-            f"11. a real browser form POST carrying a forbidden vessel category value "
+            f"11. an authenticated HTTP form POST carrying a forbidden vessel category value "
             f'("GALLEON") is rejected (re-rendered, zero mutation; still SAIL, 3 revisions on '
             f"record) -> {'OK' if (forbidden_rendered_ok and forbidden_no_mutation_ok) else 'FAIL'}\n"
         )
