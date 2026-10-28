@@ -140,6 +140,15 @@ function isValidActiveRequirement(value: unknown): value is PowerActiveRequireme
   return isSearchPowerDriveValue((value as { power_drive: unknown }).power_drive);
 }
 
+// Review amendment Finding J (second pass): a nonnegative *integer* --
+// never a fraction, never negative, never `NaN`/`Infinity`, and never
+// outside the safe-integer range. `Number.isSafeInteger` alone already
+// rejects every one of those (it requires a finite integer within
+// +/-2^53-1), so this is the single correct gate for every RESULT count.
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return Number.isSafeInteger(value) && (value as number) >= 0;
+}
+
 function isFreshnessStatus(value: unknown): value is "CONFIRMED" | "DUE_FOR_CONFIRMATION" {
   return value === "CONFIRMED" || value === "DUE_FOR_CONFIRMATION";
 }
@@ -259,10 +268,14 @@ function isValidClaimOnlyMatch(value: unknown): value is PowerClaimOnlyMatch {
  * but incomplete/truncated body (e.g.
  * `{"locale":"en","active_requirement":{"power_drive":"POD"}}` with every
  * result-surface field missing), a non-array where an array is required, a
- * count that does not match its own array's length, a contradictory BASE
- * payload (`active_requirement: null` alongside non-empty/non-zero
- * result-surface fields), an unrecognized `source_basis`, or any
- * malformed nested evidence object. Exported for direct unit testing.
+ * count that is not a nonnegative integer or does not match its own
+ * array's length, a BASE payload carrying ANY key other than `locale`/
+ * `active_requirement` at all (review amendment Finding J, second pass --
+ * the real FastAPI BASE contract is exactly `{locale, active_requirement}`
+ * and nothing else, so no malformed/negative/non-array extra field on BASE
+ * is ever tolerated, regardless of its shape), an unrecognized
+ * `source_basis`, or any malformed nested evidence object. Exported for
+ * direct unit testing.
  */
 export function validatePowerSearchResultBody(
   value: unknown,
@@ -289,21 +302,15 @@ export function validatePowerSearchResultBody(
   }
 
   if (activeRequirement === null) {
-    // BASE state: every result-surface field must be either absent or
-    // genuinely empty/zero -- a BASE body that nonetheless carries
-    // non-empty match arrays or positive counts is self-contradictory,
-    // never treated as a valid empty result.
-    const hasContradictoryMatches =
-      (Array.isArray(v.design_linked_matches) && v.design_linked_matches.length > 0) ||
-      (Array.isArray(v.publisher_claim_matches) && v.publisher_claim_matches.length > 0);
-    const hasContradictoryCount = (
-      [
-        v.design_linked_match_count,
-        v.design_linked_insufficient_data_count,
-        v.publisher_claim_match_count,
-      ] as unknown[]
-    ).some((count) => typeof count === "number" && count > 0);
-    if (hasContradictoryMatches || hasContradictoryCount) return null;
+    // BASE state (review amendment Finding J, second pass): the real
+    // FastAPI BASE contract returns *exactly* `{locale, active_requirement}`
+    // and nothing else -- so instead of selectively tolerating some
+    // malformed/negative/non-array extra field, reject the presence of ANY
+    // other key whatsoever, regardless of its value or type. This is
+    // strictly simpler than enumerating every possible malformed shape and
+    // is exactly compatible with the real backend's own BASE response.
+    const keys = Object.keys(v);
+    if (keys.length !== 2 || !keys.includes("active_requirement")) return null;
     return { locale: v.locale, active_requirement: null };
   }
 
@@ -317,15 +324,12 @@ export function validatePowerSearchResultBody(
     return null;
   }
   if (
-    typeof v.design_linked_match_count !== "number" ||
+    !isNonNegativeSafeInteger(v.design_linked_match_count) ||
     v.design_linked_match_count !== v.design_linked_matches.length
   ) {
     return null;
   }
-  if (
-    typeof v.design_linked_insufficient_data_count !== "number" ||
-    v.design_linked_insufficient_data_count < 0
-  ) {
+  if (!isNonNegativeSafeInteger(v.design_linked_insufficient_data_count)) {
     return null;
   }
   if (
@@ -335,7 +339,7 @@ export function validatePowerSearchResultBody(
     return null;
   }
   if (
-    typeof v.publisher_claim_match_count !== "number" ||
+    !isNonNegativeSafeInteger(v.publisher_claim_match_count) ||
     v.publisher_claim_match_count !== v.publisher_claim_matches.length
   ) {
     return null;
@@ -353,12 +357,54 @@ export function validatePowerSearchResultBody(
 }
 
 /**
+ * A query string that unambiguously means either "no filter" (zero
+ * recognized keys at all) or "exactly one `power_drive` filter, with
+ * exactly one value, that is one of the five accepted tokens" --
+ * `{ ok: false }` for every other shape: an invalid token value, duplicate
+ * `power_drive` keys (even with identical values), or any unrecognized/
+ * extra query key alongside or instead of `power_drive`.
+ *
+ * Review amendment Finding J (second pass): `URLSearchParams.get(...)`
+ * alone cannot distinguish "the filter is genuinely absent" from "the
+ * filter is present but invalid/duplicated/accompanied by unknown keys" --
+ * it silently returns `null` for an invalid value and the *first* value
+ * for duplicates, either of which this module's caller must never treat
+ * as "no filter was requested" or "the filter was requested and must be
+ * matched against the first duplicate". Exported for direct unit testing.
+ */
+export function parseCanonicalPowerSearchQuery(
+  queryString: string,
+): { ok: true; powerDrive: SearchPowerDriveValue | null } | { ok: false } {
+  const params = new URLSearchParams(queryString);
+  const keys = new Set(params.keys());
+  if (keys.size === 0) {
+    return { ok: true, powerDrive: null };
+  }
+  if (keys.size !== 1 || !keys.has("power_drive")) {
+    return { ok: false };
+  }
+  const values = params.getAll("power_drive");
+  if (values.length !== 1) {
+    return { ok: false };
+  }
+  const [value] = values;
+  if (!isSearchPowerDriveValue(value)) {
+    return { ok: false };
+  }
+  return { ok: true, powerDrive: value };
+}
+
+/**
  * Call FastAPI's `/api/search/{locale}/power` route with *queryString* (no
  * leading `?`, may be empty) and classify the real response. A network
- * failure, an unparseable body, or a body that fails
- * `validatePowerSearchResultBody` all collapse to `status: 502` with no
- * result/invalid payload -- callers must treat this as a recovery case,
- * not a confirmed empty result.
+ * failure, an unparseable body, a non-canonical request query (invalid,
+ * duplicated or unrecognized `power_drive` keys -- `parseCanonicalPowerSearchQuery`),
+ * or a body that fails `validatePowerSearchResultBody` all collapse to
+ * `status: 502` with no result/invalid payload -- callers must treat this
+ * as a recovery case, not a confirmed empty result. Real upstream 400/308
+ * handling (the normal response to an invalid/unrecognized query) is
+ * unaffected -- this 502 path only ever fires for an HTTP-200 response
+ * that does not actually answer a canonical request.
  */
 export async function fetchPowerSearch(
   apiBaseUrl: string,
@@ -389,22 +435,21 @@ export async function fetchPowerSearch(
     return { status: 400, location: null, result: null, invalid };
   }
   if (response.status === 200) {
+    // Review amendment Finding J (second pass): a non-canonical request
+    // query (invalid/duplicated/unrecognized `power_drive` keys) must
+    // never be treated as "no filter" -- no HTTP-200 body can ever be a
+    // valid answer to an ambiguous request, regardless of its own shape.
+    const canonicalQuery = parseCanonicalPowerSearchQuery(queryString);
+    if (!canonicalQuery.ok) {
+      return { status: 502, location: null, result: null, invalid: null };
+    }
     let parsed: unknown;
     try {
       parsed = await response.json();
     } catch {
       parsed = null;
     }
-    // Review amendment Finding J: what was actually requested, so the
-    // validator can reject a response that answers a different request
-    // (wrong locale/drive, or a filtered query silently served BASE)
-    // rather than merely checking the body is shaped like *some* valid
-    // response.
-    const requestedPowerDrive = new URLSearchParams(queryString).get("power_drive");
-    const expected = {
-      locale,
-      powerDrive: isSearchPowerDriveValue(requestedPowerDrive) ? requestedPowerDrive : null,
-    };
+    const expected = { locale, powerDrive: canonicalQuery.powerDrive };
     const result = parsed === null ? null : validatePowerSearchResultBody(parsed, expected);
     if (result === null) {
       return { status: 502, location: null, result: null, invalid: null };

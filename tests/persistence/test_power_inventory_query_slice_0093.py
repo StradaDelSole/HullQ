@@ -52,7 +52,7 @@ from hullq.domain.physical_boat_claims import (
     VesselCategory,
     VesselCategoryClaim,
 )
-from hullq.domain.provenance import SubjectKind
+from hullq.domain.provenance import ResolverKind, ResolverMetadata, SubjectKind
 from hullq.domain.publishing_eligibility import (
     AccountId,
     MarketplaceOrganization,
@@ -64,7 +64,15 @@ from hullq.domain.publishing_eligibility import (
     OrganizationPublishingEligibility,
     ProfessionalCategory,
 )
+from hullq.domain.vessel_category import (
+    BoatDesignCategoryAssertionId,
+    DesignVesselCategoryAssertion,
+)
 from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.boat_design_category import (
+    CATALOG_ADMISSION_SECRET_ENV_VAR,
+    write_boat_design_category_assertion,
+)
 from hullq.persistence.broker_identity import seed_marketplace_organization
 from hullq.persistence.market_episode import create_market_episode, fetch_market_episode
 from hullq.persistence.media_gallery import (
@@ -90,6 +98,37 @@ from ._field_resolution_support import admit_resolved_categorical_field
 
 VA = AssertionKind.VALUE_ASSERTION
 UNK = AssertionKind.UNKNOWN
+_TEST_ADMISSION_SECRET = "slice-0093-test-catalog-admission-secret"
+
+
+@pytest.fixture(autouse=True)
+def _configured_admission_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv(CATALOG_ADMISSION_SECRET_ENV_VAR, _TEST_ADMISSION_SECRET)
+
+
+def _design_category_issuer() -> ResolverMetadata:
+    return ResolverMetadata(
+        kind=ResolverKind.DETERMINISTIC_TOOL, identifier="slice-0093-test-harness", version="1"
+    )
+
+
+def _admit_design_category(conn: Any, design_id: str, *, value: VesselCategory) -> None:
+    """Review amendment §2: durably admit a canonical BoatDesign-level
+    category assertion (`boat_design_category_assertion_heads`/
+    `boat_design_category_assertions`, SLICE-0091) -- an independent source
+    plane from the publisher's own concrete `vessel_category` claim, and
+    from the design-side drive FieldResolution `_admit_design_drive_type`
+    admits separately."""
+    result = write_boat_design_category_assertion(
+        conn,
+        boat_design_id=design_id,
+        assertion_id=BoatDesignCategoryAssertionId(f"BDCAT-{design_id}"),
+        expected_current_assertion_id=None,
+        assertion=DesignVesselCategoryAssertion(assertion_kind=VA, value=value),
+        issuer=_design_category_issuer(),
+        admission_secret=_TEST_ADMISSION_SECRET,
+    )
+    assert result.status.value == "created", result
 
 
 def _with_search_path(base_url: str, schema_name: str) -> str:
@@ -1037,6 +1076,142 @@ def test_design_linked_sail_category_excludes_despite_shaft_mapping(pwr_conn: An
     matches, non_matches, _ = _result_classes(pwr_conn, power_drive="SHAFT")
     assert "NL-93-DSAIL" not in matches
     assert "NL-93-DSAIL" in non_matches
+
+
+# ---------------------------------------------------------------------------
+# Review amendment §2 ("Final Focused Review Amendment", 2026-10-28):
+# the READY contract's "Must-never-change invariant" is exact -- "No drive
+# without a publisher's own positive POWER and current specific drive in
+# one revision qualifies". A canonical BoatDesign's own independently
+# admissible POWER category assertion (or another Organization's current
+# POWER claim) must never stand in for the publisher's own missing
+# positive POWER claim on the design-linked plane -- only the claim-only
+# plane enforced this precondition before this fix
+# (`_resolve_power_category_admission`, shared by both planes now).
+# ---------------------------------------------------------------------------
+
+
+def test_design_linked_design_only_power_category_never_admits_without_publisher_own_claim(
+    pwr_conn: Any,
+) -> None:
+    """The exact scenario the review named: a canonical BoatDesign has an
+    independently admissible POWER category assertion and a qualified
+    `shaft` drive FieldResolution; the publishing Organization's own
+    current claim has a SHAFT drive but OMITS vessel_category entirely (no
+    claim at all) -- no current publisher revision ever asserted both
+    POWER and SHAFT together. Must be INSUFFICIENT_DATA, never
+    CONFIRMED_MATCH: the design plane's own category assertion must never
+    substitute for the publisher's own missing positive POWER claim."""
+    _insert_boat_design(pwr_conn, "BD-93-DOPWR", "BM-93-DOPWR", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-DOPWR", value="shaft")
+    _admit_design_category(pwr_conn, "BD-93-DOPWR", value=VesselCategory.POWER)
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DOPWR",
+        physical_boat_id="PB-93-DOPWR",
+        market_episode_id="ME-93-DOPWR",
+        boat_design_id="BD-93-DOPWR",
+        vessel_category=None,
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-DOPWR" not in matches, (
+        "a design-only POWER category assertion must never admit the publisher's own "
+        "concrete drive claim without the publisher's own positive POWER claim"
+    )
+    assert "NL-93-DOPWR" not in non_matches
+    assert "NL-93-DOPWR" in insufficient
+
+
+def test_design_linked_publisher_retracted_category_never_admits_despite_design_power(
+    pwr_conn: Any,
+) -> None:
+    """Same design-level evidence (POWER category + qualified shaft drive),
+    but the publisher's own current claim EXPLICITLY withdraws its category
+    (`AssertionKind.UNKNOWN`, not merely omitted) while still asserting
+    SHAFT. Still no publisher revision with both POWER and SHAFT together
+    -> INSUFFICIENT_DATA, never a false match."""
+    _insert_boat_design(pwr_conn, "BD-93-DRETR", "BM-93-DRETR", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-DRETR", value="shaft")
+    _admit_design_category(pwr_conn, "BD-93-DRETR", value=VesselCategory.POWER)
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DRETR",
+        physical_boat_id="PB-93-DRETR",
+        market_episode_id="ME-93-DRETR",
+        boat_design_id="BD-93-DRETR",
+        vessel_category=VesselCategoryClaim(assertion_kind=UNK),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-DRETR" not in matches
+    assert "NL-93-DRETR" not in non_matches
+    assert "NL-93-DRETR" in insufficient
+
+
+def test_design_linked_other_organization_only_power_category_never_admits_publisher(
+    pwr_conn: Any,
+) -> None:
+    """The design plane carries no category assertion at all here; only a
+    DIFFERENT Organization currently claims POWER for the same PhysicalBoat
+    -- the publishing Organization's own current claim has SHAFT but no
+    category claim of its own. "Another Organization's category assertion
+    cannot lend the publisher its eligibility" (contract §A, generalized)
+    must hold on the design-linked plane exactly as it already does on the
+    claim-only plane -> INSUFFICIENT_DATA, never a false match."""
+    _insert_boat_design(pwr_conn, "BD-93-DOTHR", "BM-93-DOTHR", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-DOTHR", value="shaft")
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DOTHR",
+        physical_boat_id="PB-93-DOTHR",
+        market_episode_id="ME-93-DOTHR",
+        boat_design_id="BD-93-DOTHR",
+        vessel_category=None,
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    _seed_other_org_power_claim(
+        pwr_conn,
+        physical_boat_id="PB-93-DOTHR",
+        org_suffix="93-DOTHR-OTHER",
+        category_value="POWER",
+        drive_value="SHAFT",
+    )
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-DOTHR" not in matches
+    assert "NL-93-DOTHR" not in non_matches
+    assert "NL-93-DOTHR" in insufficient
+
+
+def test_design_linked_publisher_own_positive_power_and_drive_in_one_revision_confirms(
+    pwr_conn: Any,
+) -> None:
+    """Positive control: the publisher's own current claim asserts BOTH
+    POWER and SHAFT together in the same revision (in addition to the
+    design plane's own independently admissible POWER category) -> the
+    contract's precondition is genuinely satisfied -> CONFIRMED_MATCH."""
+    _insert_boat_design(pwr_conn, "BD-93-DOWN", "BM-93-DOWN", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-DOWN", value="shaft")
+    _admit_design_category(pwr_conn, "BD-93-DOWN", value=VesselCategory.POWER)
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DOWN",
+        physical_boat_id="PB-93-DOWN",
+        market_episode_id="ME-93-DOWN",
+        boat_design_id="BD-93-DOWN",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    matches, _, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-DOWN" in matches
 
 
 # ---------------------------------------------------------------------------

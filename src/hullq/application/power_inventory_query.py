@@ -275,22 +275,33 @@ def _resolve_power_claim_only_category_from_observations(
     return resolve_vessel_category(design_evidence=None, concrete_evidence=concrete_evidence)
 
 
-def _resolve_power_claim_only_admission(
+def _resolve_power_category_admission(
     category_resolution: VesselCategoryResolutionResult,
     publishing_organization_id: MarketplaceOrganizationId,
 ) -> tuple[bool, PowerCategoryExclusionEvidence | None]:
-    """Contract §A: a claim-only candidate is admitted to the Power path iff
-    the overall resolution is `POWER` **and** the publishing Organization
-    itself (never merely another current claimant) carries an explicit
-    current `VALUE_ASSERTION(POWER)` claim -- "Another Organization's
-    category assertion cannot lend the publisher its Sail eligibility",
-    generalized to POWER.
+    """Contract §A / READY "Must-never-change invariant": a candidate is
+    admitted to the Power path iff the overall resolution is `POWER`
+    **and** the publishing Organization itself (never merely another
+    current claimant, and never merely the design plane alone) carries an
+    explicit current `VALUE_ASSERTION(POWER)` claim -- "Another
+    Organization's category assertion cannot lend the publisher its Sail
+    eligibility", generalized to POWER. "No drive without a publisher's
+    own positive POWER and current specific drive in one revision
+    qualifies" (the READY contract's exact words) applies to **both**
+    Power candidate planes identically -- claim-only (where this
+    admission precondition originated) and design-linked (review
+    amendment, §2: a design-only or other-Organization-only POWER
+    resolution must never silently admit the publisher's own concrete
+    drive claim to `classify_concrete_candidate`).
 
     Returns `(admitted, exclusion_evidence)`. `exclusion_evidence` is
     populated only when the resolution is explicitly SAIL/MOTORSAILER/
-    CONFLICT. A missing/UNKNOWN category, or a POWER resolution contributed
-    only by a different Organization, is `(False, None)`: the caller
-    classifies that as `INSUFFICIENT_DATA`, never `CONFIRMED_NON_MATCH`.
+    CONFLICT. A missing/UNKNOWN category, a POWER resolution contributed
+    only by the design plane (`DESIGN_ONLY`) with no publisher claim at
+    all, or a POWER resolution contributed only by a different
+    Organization, is `(False, None)`: the caller classifies that as
+    `INSUFFICIENT_DATA`, never `CONFIRMED_NON_MATCH` and never a
+    `CONFIRMED_MATCH`.
     """
     exclusion = (
         PowerCategoryExclusionEvidence(
@@ -419,7 +430,7 @@ def evaluate_power_claim_only_candidates(
     for candidate, freshness in eligible_candidates:
         observations = observations_by_boat[candidate.physical_boat_id]
         category_resolution = _resolve_power_claim_only_category_from_observations(observations)
-        admitted, exclusion = _resolve_power_claim_only_admission(
+        admitted, exclusion = _resolve_power_category_admission(
             category_resolution, candidate.publishing_organization_id
         )
 
@@ -588,7 +599,24 @@ def evaluate_power_design_linked_candidates(
                 design_evidence=snapshot.design_evidence,
                 concrete_evidence=snapshot.concrete_evidence,
             )
-            if category_resolution.resolution is VesselCategoryResolution.POWER:
+            # Review amendment §2: admission reuses the exact same
+            # publisher-owned-POWER precondition the claim-only plane
+            # already enforces (`_resolve_power_category_admission`) --
+            # the READY contract's "No drive without a publisher's own
+            # positive POWER ... in one revision qualifies" invariant
+            # applies identically to both planes. `category_resolution.
+            # resolution is POWER` alone is NOT sufficient here: a
+            # `DESIGN_ONLY` resolution (canonical BoatDesign asserts POWER,
+            # publisher has no current category claim at all) or a POWER
+            # resolution contributed only by a different Organization must
+            # never admit the publisher's own concrete drive claim to
+            # `classify_concrete_candidate` -- that would let a bare
+            # design-level category assertion stand in for the publisher's
+            # own missing positive POWER claim.
+            admitted, category_exclusion = _resolve_power_category_admission(
+                category_resolution, candidate.publishing_organization_id
+            )
+            if admitted:
                 result_class, concrete_evidence = classify_concrete_candidate(
                     conn,
                     native_listing_id=candidate.native_listing_id,
@@ -602,21 +630,16 @@ def evaluate_power_design_linked_candidates(
                 result_class, concrete_evidence = _downgrade_mixed_non_match_to_insufficient_data(
                     result_class, concrete_evidence
                 )
-                category_exclusion = None
-            elif category_resolution.resolution in _EXPLICITLY_NON_POWER:
+            elif category_exclusion is not None:
                 result_class = ResultClass.CONFIRMED_NON_MATCH
                 concrete_evidence = ()
-                category_exclusion = PowerCategoryExclusionEvidence(
-                    resolution=category_resolution.resolution, reason=category_resolution.reason
-                )
             else:
-                # UNKNOWN: not yet established as the publisher's own POWER
-                # claim -- insufficient, never a false exclusion or a
-                # silent Sail-legacy passthrough (there is no legacy Power
-                # inventory to preserve compatibility for).
+                # Missing/UNKNOWN category, DESIGN_ONLY with no publisher
+                # claim, or POWER contributed only by a different
+                # Organization -- insufficient, never a false exclusion
+                # and never a false match via the design plane alone.
                 result_class = ResultClass.INSUFFICIENT_DATA
                 concrete_evidence = ()
-                category_exclusion = None
         else:
             result_class = design_evaluation.result_class
             concrete_evidence = ()

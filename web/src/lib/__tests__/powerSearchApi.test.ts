@@ -8,7 +8,11 @@ import assert from "node:assert/strict";
 import http from "node:http";
 import { test } from "node:test";
 
-import { fetchPowerSearch, validatePowerSearchResultBody } from "../powerSearchApi.ts";
+import {
+  fetchPowerSearch,
+  parseCanonicalPowerSearchQuery,
+  validatePowerSearchResultBody,
+} from "../powerSearchApi.ts";
 
 async function withServer(
   handler: http.RequestListener,
@@ -311,6 +315,196 @@ test("validatePowerSearchResultBody: a contradictory BASE body with a positive c
   assert.equal(result, null);
 });
 
+// ---------------------------------------------------------------------------
+// Review amendment Finding J (second pass): the real FastAPI BASE contract
+// is exactly `{locale, active_requirement}` -- ANY other key at all is
+// rejected on BASE, regardless of its own value/type (never selectively
+// tolerating a malformed array, an empty array, or a zero-valued count).
+// RESULT counts must be nonnegative integers, not merely `>= 0` numbers.
+// Request canonicalization must reject invalid/duplicate/unrecognized
+// query keys rather than silently treating them as "no filter".
+// ---------------------------------------------------------------------------
+
+test("validatePowerSearchResultBody: the exact review example -- BASE with a malformed (non-array) field -- is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: null, publisher_claim_matches: "corrupted" },
+    _BASE_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: the exact review example -- BASE with a negative count -- is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: null, publisher_claim_match_count: -1 },
+    _BASE_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: BASE with an empty (genuinely zero-valued) extra array is still rejected", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: null, publisher_claim_matches: [] },
+    _BASE_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: BASE with an extra zero-valued count field is still rejected", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: null, design_linked_match_count: 0 },
+    _BASE_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: BASE with any unrecognized extra key is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: null, extra: "unexpected" },
+    _BASE_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a genuinely minimal BASE body (only locale + active_requirement) is still accepted", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: null },
+    _BASE_EXPECTED,
+  );
+  assert.notEqual(result, null);
+  assert.equal(result?.active_requirement, null);
+});
+
+test("validatePowerSearchResultBody: a fractional RESULT count is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0.5,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a negative RESULT count is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: -1,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a non-finite RESULT count (Infinity) is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: Number.POSITIVE_INFINITY,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a NaN RESULT count is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: Number.NaN,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a string RESULT count is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: "0",
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a genuine empty RESULT with integer-typed zero counts is still accepted", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _POD_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+// ---------------------------------------------------------------------------
+// parseCanonicalPowerSearchQuery: direct unit coverage
+// ---------------------------------------------------------------------------
+
+test("parseCanonicalPowerSearchQuery: a truly empty query string is canonical (no filter)", () => {
+  assert.deepEqual(parseCanonicalPowerSearchQuery(""), { ok: true, powerDrive: null });
+});
+
+test("parseCanonicalPowerSearchQuery: exactly one valid power_drive token is canonical", () => {
+  assert.deepEqual(parseCanonicalPowerSearchQuery("power_drive=POD"), {
+    ok: true,
+    powerDrive: "POD",
+  });
+});
+
+test("parseCanonicalPowerSearchQuery: an invalid power_drive value is rejected, never read as absent", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("power_drive=BOGUS").ok, false);
+});
+
+test("parseCanonicalPowerSearchQuery: duplicate power_drive keys are rejected even with identical values", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("power_drive=POD&power_drive=POD").ok, false);
+});
+
+test("parseCanonicalPowerSearchQuery: duplicate power_drive keys with differing values are rejected", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("power_drive=POD&power_drive=SHAFT").ok, false);
+});
+
+test("parseCanonicalPowerSearchQuery: an unrecognized query key alone is rejected", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("utm_source=test").ok, false);
+});
+
+test("parseCanonicalPowerSearchQuery: a mixed valid power_drive plus an unrecognized key is rejected", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("power_drive=POD&utm_source=test").ok, false);
+});
+
 test("validatePowerSearchResultBody: malformed nested criterion_evidence is rejected", () => {
   const result = validatePowerSearchResultBody(
     {
@@ -473,6 +667,145 @@ test("fetchPowerSearch: a response for a different locale than requested collaps
       const response = await fetchPowerSearch(baseUrl, "en", "");
       assert.equal(response.status, 502);
       assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: BASE with a malformed extra field collapses to 502 (never discarded)", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, { locale: "en", active_requirement: null, publisher_claim_matches: "corrupted" }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: BASE with a negative extra count collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, { locale: "en", active_requirement: null, publisher_claim_match_count: -1 }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a fractional RESULT count collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0.5,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: an invalid power_drive request value never reaches the validator as unfiltered, collapses to 502", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, { locale: "en", active_requirement: null }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=BOGUS");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: duplicate power_drive query keys collapse to 502 even when the body looks like a valid RESULT", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD&power_drive=POD");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: an unrecognized query key collapses to 502 even when the body looks like a valid BASE", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, { locale: "en", active_requirement: null }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "utm_source=test");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a mixed valid power_drive plus an unrecognized key collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD&utm_source=test");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a genuinely valid BASE response (empty query string) is still accepted", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, { locale: "en", active_requirement: null }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "");
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+      assert.equal(response.result?.active_requirement, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a genuinely valid empty RESULT response is still accepted", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+      assert.equal(response.result?.design_linked_match_count, 0);
     },
   );
 });
