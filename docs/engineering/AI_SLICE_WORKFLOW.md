@@ -160,7 +160,11 @@ Production setup should be executed one provider/dependency at a time with an ex
 
 If launch execution uncovers a new product/domain/data/architecture decision, stop and route it back through the normal HullQ reconciliation/readiness/slice lifecycle. Pure provider-console provisioning of already-accepted configuration may remain an operator-checklist action, but evidence required by the controlling gate/runbook must still be retained.
 
-### Start a slice
+### Start a slice — confirmed Owner/Claude handoff (2026-10-28)
+
+**Binding sequence, verified against `scripts/workflow/start-slice.ps1`:** The project master completes and merges the full reviewed slice READY contract and normative specification **before** the Owner invokes START. The Owner does **not** need a separate manually drafted implementation prompt from the master afterward. `START_SLICE.bat` itself composes the task instruction from the already-merged READY slice, names the precise slice/branch, and puts that instruction on the Windows clipboard (`Set-Clipboard`). The Claude instruction is an execution pointer to the pre-existing normative artifacts, **not** a contract invented after START.
+
+The Owner does **not** routinely send the `START_SLICE.bat` terminal output, a copied prompt, or a screenshot to the project master. Successful START is an operator-local setup step: open the newly created slice worktree in VS Code, start a fresh Claude session and paste the clipboard instruction into Claude. The next normal project-master review handoff is **Claude's implementation report including exact pushed HEAD and evidence**. If START fails, the Owner may share the actual failure message for troubleshooting; this is an exception, not a required report gate. Do not withhold a prepared Claude implementation contract or request START logs as a prerequisite for implementation.
 
 1. Double-click `START_SLICE.bat` in the normal HullQ folder.
 2. Enter the slice number, for example `0005`.
@@ -169,6 +173,8 @@ If launch execution uncovers a new product/domain/data/architecture decision, st
 5. Explicitly open the sibling worktree (for example `HullQ-slice-0005`) in the VS Code window that should host Claude Code.
 6. Start a **fresh Claude conversation**. If reusing the current Claude Code session/UI, run `/clear` first.
 7. Paste only the copied START_SLICE instruction. Do not paste the previous slice report/history unless the new slice explicitly requires it.
+
+**Handoff boundary:** After successful local START, the Owner proceeds **directly** to Claude with the clipboard instruction; the master does not need START output and does not issue a second manual implementation prompt. Claude's completed slice report, not the launcher output, triggers the next independent review.
 
 The normal HullQ folder stays on `main`. Claude works in a sibling folder such as `HullQ-slice-0005`.
 
