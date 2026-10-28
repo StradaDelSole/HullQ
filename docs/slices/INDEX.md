@@ -16,9 +16,9 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest Owner-accepted slice:       SLICE-0093 (implementation merged; Owner-local FINISH pending)
-Current queue:                  SLICE-0094 — NOT SELECTED / NOT READY
-Current capability:             9 qualified Sail criteria + first Power drive arrangement criterion, separate buyer routes, own publisher category + drive
+Latest Owner-accepted slice:       SLICE-0093 (Owner-local FINISH SUCCESS)
+Current queue:                  SLICE-0094 — SELECTED / READY docs (Owner START only after independent review/merge)
+Current capability:             9 Sail hard criteria + 1 qualified Power drive criterion; next: exact installed propulsion count with true drive+count AND
 Current operational restriction: No production email/provider; no external broker upload/pilot (#355)
 Technical native Search count:  10 accepted globally = Sail 9 / Power 1; full Power parity #372 and joint external release #366 still outstanding
 Production Launch Pack:         NOT_STARTED
@@ -34,6 +34,8 @@ Production Launch Pack:         NOT_STARTED
 
 - SLICE-0093 is **Owner-accepted IMPLEMENTATION**: first source-qualified Power hard technical criterion (`power_drive=SHAFT|STERNDRIVE|POD|WATERJET|OUTBOARD`), existing shared Search kernel with own current publisher POWER category + drive and D29 gating, limited genuine v0.6 shaft/outboard bridge, separate five-locale noindex Power buyer routes, valid NautiX Sail-only export guard and unchanged nine Sail criteria. Independently reviewed exact HEAD `4b9060e7fce7ebb7a7893c87890571210f94d825` with all Findings A–K and publisher-owned-category invariant closed; full exact-head six-job CI/manufacturer SUCCESS; Owner explicitly accepted 2026-10-28. PR #390 squash merged as `c38a60d821a6e9a88fba023a0008a36a3dcd51e1`. Formal closure: `docs/slices/SLICE-0093-acceptance-closure.md`. Global accepted count **10 = Sail 9 / Power 1** in this separate docs-only closure; Owner-local FINISH 0093 pending. #355 scale/real-data STOP, #366 joint release and #372 full Power technical parity OPEN. No external pilot/public launch authorized.
 
+- SLICE-0094 is **SELECTED / READY documentation only** after Owner-confirmed local FINISH 0093. The bounded next Power capability adds source-qualified current **principal propulsion engine count**, an exact public 1–8 criterion, and a real same-publisher/same-configuration AND with existing drive. The controlling readiness is `docs/slices/SLICE-0094-power-engine-count-ready.md` with companion `specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md`. An independent READY review, exact-head CI/manufacturer, docs merge and Owner-local START are all required before implementation. No production data/pilot/launch; #355/#366/#372 still open. Global accepted criterion count stays 10 until later formal accepted closure.
+
 ## Historical execution ranges
 
 | Range | Operational meaning |
@@ -44,7 +46,7 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0090 | Owner-accepted DESIGN_RESEARCH (not implementation); Owner-local FINISH SUCCESS |
 | SLICE-0091 | Owner-accepted category IMPLEMENTATION; Owner-local FINISH SUCCESS |
 | SLICE-0092 | Owner-accepted claim-only Sail Search implementation; Owner-local FINISH SUCCESS |
-| SLICE-0093 | Owner-accepted Power drive-configuration Search criterion (global #10, Power-domain #1); implementation merged, closure in progress; Owner-local FINISH pending |
+| SLICE-0093 | Owner-accepted Power drive-configuration Search criterion (global #10, Power-domain #1); implementation+closure merged; Owner-local FINISH SUCCESS |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
