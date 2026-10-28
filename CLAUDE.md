@@ -90,6 +90,14 @@ While Claude is actively implementing, unrelated changes should not be merged to
 
 See `docs/engineering/AI_SLICE_WORKFLOW.md` when workflow details are needed.
 
+## Post-acceptance closure ownership (binding Owner decision, 2026-10-28)
+
+**Claude Code's responsibility ends at the implementation/research slice handoff and any requested same-slice amendments.** Once the Project Owner explicitly accepts the independently reviewed slice, **ChatGPT as the HullQ project master/reviewer**, not Claude Code, owns every remaining remote step: merge the exact accepted implementation PR; author and verify the separate docs-only acceptance closure, canonical project/gate/index markers; inspect and review that closure PR; monitor its own exact-HEAD CI/manufacturer/applicable Deploy gates; correct issues and merge the closure PR; verify `main`; and **hand back only for the Owner's local `FINISH_SLICE.bat` operation**.
+
+**Never ask the Owner to commission Claude for a closure review or closure documentation**. Never stop halfway at ordinary pending CI and ask the Owner to monitor it. This workflow must continue across new ChatGPT conversations without repeated Owner explanation. Preserve the independent implementation-review gate, explicit Owner Acceptance, protected PR merges, production/pilot STOPs, and accurate provenance of a documentation self-review. Never falsely claim local FINISH was performed; it remains the Owner's operation.
+
+Canonical step-by-step authority: [`docs/engineering/AI_SLICE_WORKFLOW.md`](docs/engineering/AI_SLICE_WORKFLOW.md), section **Post-Owner-Acceptance continuation — ChatGPT project master owns closure**. Current slice/queue truth: `docs/PROJECT_STATE.md`.
+
 ## Status and acceptance
 
 Claude may move the assigned slice among:

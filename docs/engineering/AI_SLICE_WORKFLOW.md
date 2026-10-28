@@ -282,6 +282,23 @@ OWNER ACCEPTANCE READY
 
 At that point report the exact accepted implementation HEAD, implementation PR, independent review result and exact-head external-gate result, then request the Project Owner's explicit acceptance. Do not merge merely because the implementation is technically ready; owner acceptance remains a separate mandatory gate.
 
+### Post-Owner-Acceptance continuation — ChatGPT project master owns closure
+
+**Binding Owner decision (2026-10-28, SLICE-0094 onward):** As soon as the Project Owner explicitly accepts an independently reviewed implementation/research slice, **ChatGPT in the project master/reviewer role owns the entire remaining remote workflow**. The Owner MUST NOT have to ask anew in each chat or relay a separate closure-review request to Claude. The project master must continue until the **only remaining next action is the Owner's local `FINISH_SLICE.bat`**.
+
+The sequence is mandatory:
+
+1. Reconfirm that the Owner accepted the **exact** reviewed implementation HEAD and verify the required exact-HEAD external gates; merge the implementation PR via the usual protected PR route (never direct-push `main`). If a head changes or a check fails, resolve/review the new exact HEAD before merging.
+2. Create the separate **docs-only Owner acceptance-closure branch/PR**. Reconcile the accepted implementation, immutable review trail, formal closure, `docs/PROJECT_STATE.md`, technical-criteria/gate markers and compact `docs/slices/INDEX.md` in the same PR. Do not secretly activate production or select the next slice.
+3. **ChatGPT project master/reviewer itself reviews the closure PR** against the actual accepted merge, normative specs and governance, inspects the complete exact-HEAD diff, corrects inaccuracies on the docs-only branch and re-reviews any changed HEAD. Do **not** delegate this closure review or closure paperwork to Claude. A reviewer who also authored the docs must describe the check as a source-based self-review, not falsely claim a second independent human/agent reviewed it. This does **not** weaken the pre-acceptance independent review of Claude's implementation, which remains mandatory.
+4. Monitor the closure PR's **own exact-HEAD six-job CI, manufacturer reproducibility and applicable Deploy checks**. If checks fail, diagnose/remediate and rerun on the new exact HEAD where needed. **Do not merge before all required gates are successful.** If a genuine blocker or missing authorization prevents progress, report that specific blocker rather than declaring closure complete.
+5. Squash-merge the docs-only closure PR when its review and remote gates pass; verify the actual resulting `origin/main` merge SHA and canonical accepted/queue markers. Record the result.
+6. **Only then hand back to the Owner** with the single next task: run the unchanged local `FINISH_SLICE.bat` and enter that slice's number; ask for the actual command output. The Owner alone performs this Windows/local worktree operation. No new slice is selected/started and no local FINISH success is claimed before the Owner's output.
+
+**Division of responsibilities:** Claude Code = assigned slice implementation and targeted amendments only. ChatGPT project master/reviewer = independent implementation review through Owner acceptance; **after explicit Owner acceptance, merge, documentation, closure review, monitoring, closure PR merge and final FINISH handoff**. Project Owner = explicit implementation acceptance and local `START_SLICE.bat`/`FINISH_SLICE.bat` operations. These are separate boundaries. Do not stop halfway to give the Owner a Claude closure-review prompt or ask the Owner to track routine CI.
+
+The durable reference for new ChatGPT conversations is this section, plus `CLAUDE.md`, `docs/PROJECT_STATE.md` and `docs/slices/INDEX.md`. Treat this Owner assignment as continuing by default unless a later explicit Owner direction changes it.
+
 ### Acceptance closure and PROJECT_STATE freshness
 
 The acceptance closure is not complete until `docs/PROJECT_STATE.md` reflects the newly accepted slice.
