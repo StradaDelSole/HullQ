@@ -1,6 +1,6 @@
 # SLICE-0094 — Owner Acceptance Closure
 
-**Status:** OWNER_ACCEPTED — IMPLEMENTATION; separate docs-only closure pending ChatGPT project-master exact-HEAD review/CI and merge; Owner-local FINISH pending  
+**Status:** OWNER_ACCEPTED — IMPLEMENTATION; formal docs-only closure record; Owner-local FINISH pending  
 **Type:** IMPLEMENTATION  
 **Capability:** Current installed principal propulsion engine count and genuine Power drive + count MUST/AND technical Search  
 **Controlling READY:** `docs/slices/SLICE-0094-power-engine-count-ready.md` (independently reviewed and previously merged READY PR #392)  
