@@ -2,7 +2,7 @@
 
 **Status:** PROPOSED NORMATIVE CONTRACT FOR SLICE-0094 READY. Not an implemented feature or production-launch authorization.  
 **Authority:** Owner-accepted joint Sail+Power direction (2026-10-22/23); accepted SLICE-0090/0091/0092/0093; `docs/governance/POST_0051_TRIGGER_GATES.md`; #372.  
-**Dependency:** `specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md` (existing Power drive criterion, unchanged).
+**Dependency and limited supersession:** `specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md` remains authoritative for its **drive token meanings, source/trust boundary, D29, publisher ownership, and existing drive-only results**. Once SLICE-0094 is independently accepted, this later contract supersedes **only** SLICE-0093's deliberately one-key/one-leaf Power request, URL, response and UI cardinality restrictions, extending that same Power route to optional `power_engine_count` and genuine 2-leaf MUST-AND. Until 0094 is accepted, the deployed/accepted API remains exactly the 0093 single-key surface. There is no change whatsoever to Sail request grammar.
 
 ## One field, one meaning
 
