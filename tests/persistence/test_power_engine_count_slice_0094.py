@@ -891,6 +891,10 @@ def test_design_linked_combined_drive_and_count_same_variant_confirms(pec_conn: 
 def test_design_linked_unsupported_factory_count_zero_never_falsely_matches(
     pec_conn: Any,
 ) -> None:
+    """Independent review Finding E: an unsupported factory `engine_count`
+    of `0` must fail closed to `INSUFFICIENT_DATA` (never a misleading
+    *confirmed* exclusion manufactured from a value this criterion does
+    not treat as a real fact, and obviously never a false match)."""
     _insert_boat_design(pec_conn, "BD-94-ZERO", "BM-94-ZERO", drive_type="shaft", engine_count=0)
     _admit_design_engine_count(pec_conn, "BD-94-ZERO", value=0)
     _make_active_listing(
@@ -904,17 +908,191 @@ def test_design_linked_unsupported_factory_count_zero_never_falsely_matches(
         power_engine_count=None,
     )
     for token in range(1, 9):
-        matches, _, _ = _result_classes(
+        matches, non_matches, insufficient = _result_classes(
             pec_conn, power_drive=None, power_engine_count=Decimal(token)
         )
         assert "NL-94-DZERO" not in matches
+        assert "NL-94-DZERO" not in non_matches, (
+            f"an unsupported factory engine_count=0 must never become a confirmed exclusion "
+            f"for requested token {token}"
+        )
+        assert "NL-94-DZERO" in insufficient
 
 
-def test_cross_variant_split_never_combines_to_match(pec_conn: Any) -> None:
-    """Design data can support only original factory count/drive, and a
-    design-level positive still requires the SAME variant to satisfy both
-    requested leaves -- variant A (SHAFT baseline) and variant B
-    (engine_count=2 override) must never be combined into one match."""
+def test_design_linked_null_factory_count_is_insufficient(pec_conn: Any) -> None:
+    """A `null` factory `engine_count` (the field genuinely absent from the
+    baseline JSON) fails closed to `INSUFFICIENT_DATA` -- already correct
+    before Finding E (the `None` raw value never reaches `decode` at all),
+    retained here as an explicit regression proof alongside Finding E's
+    `0` fix."""
+    _insert_boat_design(pec_conn, "BD-94-NULL", "BM-94-NULL", drive_type="shaft", engine_count=0)
+    with pec_conn.cursor() as cur:
+        cur.execute(
+            "UPDATE canonical_boat_designs SET baseline = %s::jsonb WHERE id = %s",
+            [
+                json.dumps({"propulsion": {"drive_type": "shaft", "engine_count": None}}),
+                "BD-94-NULL",
+            ],
+        )
+    pec_conn.commit()
+    _make_active_listing(
+        pec_conn,
+        listing_id="NL-94-DNULL",
+        physical_boat_id="PB-94-DNULL",
+        market_episode_id="ME-94-DNULL",
+        boat_design_id="BD-94-NULL",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=None,
+        power_engine_count=None,
+    )
+    matches, non_matches, insufficient = _result_classes(
+        pec_conn, power_drive=None, power_engine_count=Decimal(2)
+    )
+    assert "NL-94-DNULL" not in matches
+    assert "NL-94-DNULL" not in non_matches
+    assert "NL-94-DNULL" in insufficient
+
+
+def test_design_linked_unresolved_field_resolution_is_insufficient(pec_conn: Any) -> None:
+    """A real, schema-valid factory `engine_count` with NO admitted
+    FieldResolution at all (never qualified) fails closed to
+    `INSUFFICIENT_DATA` -- the raw JSON value alone is never promoted to
+    confirmed truth merely because it is structurally present."""
+    _insert_boat_design(pec_conn, "BD-94-UNRES", "BM-94-UNRES", drive_type="shaft", engine_count=2)
+    # Deliberately no _admit_design_engine_count call -- no FieldResolution
+    # exists for this design at all.
+    _make_active_listing(
+        pec_conn,
+        listing_id="NL-94-DUNRES",
+        physical_boat_id="PB-94-DUNRES",
+        market_episode_id="ME-94-DUNRES",
+        boat_design_id="BD-94-UNRES",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=None,
+        power_engine_count=None,
+    )
+    matches, non_matches, insufficient = _result_classes(
+        pec_conn, power_drive=None, power_engine_count=Decimal(2)
+    )
+    assert "NL-94-DUNRES" not in matches
+    assert "NL-94-DUNRES" not in non_matches
+    assert "NL-94-DUNRES" in insufficient
+
+
+def test_design_linked_stale_field_resolution_is_insufficient(pec_conn: Any) -> None:
+    """A FieldResolution admitted for one factory count, with the
+    underlying canonical baseline value later changed out from under it
+    (never re-qualified), goes stale -- `qualify_canonical_field`'s
+    snapshot-vs-raw agreement check must reject it, never silently treat
+    the new raw value as confirmed."""
+    _insert_boat_design(pec_conn, "BD-94-STALE", "BM-94-STALE", drive_type="shaft", engine_count=2)
+    _admit_design_engine_count(pec_conn, "BD-94-STALE", value=2)
+    # The canonical value changes after the FieldResolution was admitted --
+    # never re-qualified, so the resolution's own stored snapshot (2) no
+    # longer agrees with the current raw canonical value (4).
+    with pec_conn.cursor() as cur:
+        cur.execute(
+            "UPDATE canonical_boat_designs SET baseline = %s::jsonb WHERE id = %s",
+            [json.dumps({"propulsion": {"drive_type": "shaft", "engine_count": 4}}), "BD-94-STALE"],
+        )
+    pec_conn.commit()
+    _make_active_listing(
+        pec_conn,
+        listing_id="NL-94-DSTALE",
+        physical_boat_id="PB-94-DSTALE",
+        market_episode_id="ME-94-DSTALE",
+        boat_design_id="BD-94-STALE",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=None,
+        power_engine_count=None,
+    )
+    for token in (2, 4):
+        matches, non_matches, insufficient = _result_classes(
+            pec_conn, power_drive=None, power_engine_count=Decimal(token)
+        )
+        assert "NL-94-DSTALE" not in matches
+        assert "NL-94-DSTALE" not in non_matches
+        assert "NL-94-DSTALE" in insufficient
+
+
+def test_design_linked_factory_count_disagrees_with_installed_count_never_silently_resolved(
+    pec_conn: Any,
+) -> None:
+    """Independent review Finding E: a qualified factory `engine_count`
+    (2) that disagrees with the publisher's separately qualified current
+    *installed* count (3) must never be silently resolved either way.
+
+    Requesting the factory's own value (2): the design level confirms a
+    plausible configuration (factory=2 satisfies the requested leaf), so
+    the gate opens and `classify_concrete_candidate` independently
+    re-checks the *current installed* claim (3) against the same request
+    -- disagreement there is a genuine `CONFIRMED_NON_MATCH`; the factory
+    value is never promoted to the final verdict on its own.
+
+    Requesting the installed claim's own value (3): the design level's
+    only configuration (the baseline; no NamedVariant admits a different
+    factory value here) is a confirmed FALSE for that request (factory=2
+    != 3), so no configuration is ever TRUE -- never `CONFIRMED_MATCH`,
+    and (since this bridge's `configuration_space_complete` is always
+    `False`) never `CONFIRMED_NON_MATCH` either. The concrete claim is
+    therefore *never even consulted* for this request: the correct,
+    honestly fail-closed result is `INSUFFICIENT_DATA`, not a spurious
+    match manufactured from the installed claim alone and not a false
+    exclusion manufactured from the stale factory value -- "stop
+    current-state positive classification rather than ... give a
+    spurious conflict verdict" (contract)."""
+    _insert_boat_design(
+        pec_conn, "BD-94-DISAGREE", "BM-94-DISAGREE", drive_type="shaft", engine_count=2
+    )
+    _admit_design_engine_count(pec_conn, "BD-94-DISAGREE", value=2)
+    _make_active_listing(
+        pec_conn,
+        listing_id="NL-94-DISAGREE",
+        physical_boat_id="PB-94-DISAGREE",
+        market_episode_id="ME-94-DISAGREE",
+        boat_design_id="BD-94-DISAGREE",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=None,
+        power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=3),
+    )
+    matches, non_matches, insufficient = _result_classes(
+        pec_conn, power_drive=None, power_engine_count=Decimal(2)
+    )
+    assert "NL-94-DISAGREE" not in matches, (
+        "the factory value (2) must never silently override the independently qualified "
+        "current installed count (3)"
+    )
+    assert "NL-94-DISAGREE" in non_matches, (
+        "the concrete claim (3) is authoritative once the design level admits the candidate "
+        "as plausible -- a genuine disagreement is a confirmed non-match, not insufficient data"
+    )
+    assert "NL-94-DISAGREE" not in insufficient
+
+    matches_for_installed, non_matches_for_installed, insufficient_for_installed = _result_classes(
+        pec_conn, power_drive=None, power_engine_count=Decimal(3)
+    )
+    assert "NL-94-DISAGREE" not in matches_for_installed, (
+        "the installed claim alone must never manufacture a match the design level never admits"
+    )
+    assert "NL-94-DISAGREE" not in non_matches_for_installed, (
+        "the stale factory value must never manufacture a confirmed exclusion either"
+    )
+    assert "NL-94-DISAGREE" in insufficient_for_installed
+
+
+def test_variant_inheriting_drive_with_overridden_count_is_a_legitimate_match(
+    pec_conn: Any,
+) -> None:
+    """Independent review Finding B: this is a genuine *positive*
+    inheritance scenario, not an adversarial split -- variant B inherits
+    SHAFT from the baseline (no own drive override) and overrides only
+    `engine_count` to 2, so this one variant's own resolved configuration
+    legitimately satisfies both requested leaves at the design level, and
+    the publisher's current concrete claim (SHAFT + count=2) independently
+    confirms both. Retained as a positive control for
+    `test_cross_variant_split_adversarial_neither_configuration_satisfies_both_never_matches`
+    below, which exercises the genuine adversarial split the name
+    previously (incorrectly) implied this test covered."""
     with pec_conn.cursor() as cur:
         cur.execute(
             "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) "
@@ -962,20 +1140,134 @@ def test_cross_variant_split_never_combines_to_match(pec_conn: Any) -> None:
         ),
         power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=2),
     )
-    # Design-level: SHAFT (baseline) and count=2 (variant B override) never
-    # combine into one CONFIRMED_MATCH configuration -- the baseline has
-    # SHAFT+count=1 (count leaf false), variant B has inherited SHAFT (no
-    # own override) + count=2 (drive leaf true, since drive is inherited
-    # from baseline unchanged) -- actually both configurations share SHAFT
-    # (inherited), so the real adversarial signal here is the concrete
-    # claim: current installed count=2 is separately qualified at the
-    # concrete layer, and the design layer alone must never be mistaken
-    # for a confirmed concrete match without that independent confirmation.
+    # Variant B's own resolved configuration is SHAFT (inherited from
+    # baseline, no own drive override) + count=2 (its own override) -- one
+    # single configuration genuinely satisfies both requested leaves, so
+    # the design level is a real CONFIRMED_MATCH, and the publisher's
+    # current concrete claim (SHAFT + count=2) independently confirms both.
     matches, _, _ = _result_classes(pec_conn, power_drive="SHAFT", power_engine_count=Decimal(2))
     assert "NL-94-SPLIT" in matches, (
         "variant B inherits SHAFT from baseline and overrides count=2, so this variant alone "
         "legitimately satisfies both leaves and the concrete claim independently confirms both"
     )
+
+
+def test_cross_variant_split_adversarial_neither_configuration_satisfies_both_never_matches(
+    pec_conn: Any,
+) -> None:
+    """Independent review Finding B: a genuine adversarial cross-variant
+    split. Baseline is SHAFT+count=1 (properly qualified FieldResolution
+    for both fields); NamedVariant B overrides BOTH fields to OUTBOARD+
+    count=2 (also properly qualified FieldResolution for both). Baseline
+    alone satisfies the drive leaf (SHAFT) but not the count leaf
+    (1 != 2); variant B alone satisfies the count leaf (2) but not the
+    drive leaf (OUTBOARD != SHAFT) -- neither individual resolved
+    configuration satisfies both requested leaves together.
+
+    The publisher's current concrete claim is POWER + SHAFT + count=2 --
+    which, taken alone, WOULD satisfy both requested criteria. This is the
+    exact adversarial signal: a confirmed concrete claim must never
+    promote a design-level result that is not itself a genuine
+    CONFIRMED_MATCH (`evaluate_power_design_linked_candidates` only calls
+    `classify_concrete_candidate` when `design_evaluation.result_class is
+    CONFIRMED_MATCH`) -- "design truth never silently becomes concrete
+    truth" must hold even when the concrete claim alone would otherwise
+    qualify. With every listed configuration a genuine confirmed FALSE,
+    but this bridge's `configuration_space_complete` always `False`, the
+    design level is `INSUFFICIENT_DATA` (reason `CONFIGURATION_AMBIGUOUS`),
+    which keeps the listing out of `design_linked_matches`/
+    `design_linked_non_matches` -- the concrete claim is never even
+    consulted, regardless of what it says.
+    """
+    with pec_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) "
+            "VALUES (%s, %s, %s)",
+            ["BM-94-SPLITADV", "Model BM-94-SPLITADV", "0" * 64],
+        )
+        baseline_json = json.dumps({"propulsion": {"drive_type": "shaft", "engine_count": 1}})
+        named_variants_json = json.dumps(
+            [
+                {
+                    "id": "NV-94-SPLITADV-B",
+                    "overrides": {"propulsion": {"drive_type": "outboard", "engine_count": 2}},
+                }
+            ]
+        )
+        cur.execute(
+            "INSERT INTO canonical_boat_designs "
+            "(id, boat_model_id, generation, designers, baseline, named_variants, "
+            " design_options, quality, content_hash) "
+            "VALUES (%s, %s, '{}'::jsonb, '[]'::jsonb, %s::jsonb, %s::jsonb, "
+            "'[]'::jsonb, '{}'::jsonb, %s)",
+            ["BD-94-SPLITADV", "BM-94-SPLITADV", baseline_json, named_variants_json, "1" * 64],
+        )
+    pec_conn.commit()
+    # Baseline FieldResolution for both fields.
+    _admit_design_drive_type(pec_conn, "BD-94-SPLITADV", value="shaft")
+    _admit_design_engine_count(pec_conn, "BD-94-SPLITADV", value=1)
+    # Variant B's own override FieldResolution for both fields.
+    admit_resolved_categorical_field(
+        pec_conn,
+        subject_kind=SubjectKind.NAMED_VARIANT,
+        subject_id="NV-94-SPLITADV-B",
+        field_pointer="/overrides/propulsion/drive_type",
+        value="outboard",
+        resolution_id="FR-PWRDRV-NV-94-SPLITADV-B",
+        fetch_canonical_value=lookup_power_drive_canonical_value,
+    )
+    admit_resolved_draft_max(
+        pec_conn,
+        subject_kind=SubjectKind.NAMED_VARIANT,
+        subject_id="NV-94-SPLITADV-B",
+        field_pointer="/overrides/propulsion/engine_count",
+        value=Decimal(2),
+        resolution_id="FR-PWRCNT-NV-94-SPLITADV-B",
+        fetch_canonical_value=lookup_power_engine_count_canonical_value,
+    )
+    _make_active_listing(
+        pec_conn,
+        listing_id="NL-94-SPLITADV",
+        physical_boat_id="PB-94-SPLITADV",
+        market_episode_id="ME-94-SPLITADV",
+        boat_design_id="BD-94-SPLITADV",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+        power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=2),
+    )
+    outcome = evaluate_power_requirement(
+        pec_conn, power_drive="SHAFT", power_engine_count=Decimal(2), as_of=_as_of()
+    )
+    matching_ids = {m.native_listing_id.value for m in outcome.design_linked_matches}
+    non_matching_ids = {m.native_listing_id.value for m in outcome.design_linked_non_matches}
+    insufficient_ids = {m.native_listing_id.value for m in outcome.design_linked_insufficient_data}
+    assert "NL-94-SPLITADV" not in matching_ids, (
+        "neither the baseline (SHAFT+1) nor variant B (OUTBOARD+2) alone satisfies both "
+        "requested leaves -- the concrete claim (SHAFT+2) must never promote this to a match"
+    )
+    assert "NL-94-SPLITADV" not in non_matching_ids
+    assert "NL-94-SPLITADV" in insufficient_ids
+
+    # Confirm the exact per-configuration evidence: every listed
+    # configuration evaluates to a genuine confirmed FALSE (never
+    # UNKNOWN/missing), and the design-level reason is the configuration-
+    # space-incompleteness one, not a per-criterion unqualified reason.
+    insufficient_match = next(
+        m
+        for m in outcome.design_linked_insufficient_data
+        if m.native_listing_id.value == "NL-94-SPLITADV"
+    )
+    config_evaluations = insufficient_match.design_evaluation.configuration_evaluations
+    assert len(config_evaluations) == 2
+    assert all(ce.truth.value == "FALSE" for ce in config_evaluations)
+    assert insufficient_match.design_evaluation.reason is not None
+    assert insufficient_match.design_evaluation.reason.value == "CONFIGURATION_AMBIGUOUS"
+    # The concrete claim is never even consulted for this listing: no
+    # concrete criterion evidence is attached (classify_concrete_candidate
+    # is only called when design_evaluation.result_class is CONFIRMED_MATCH).
+    assert insufficient_match.concrete_criterion_evidence == ()
 
 
 # ---------------------------------------------------------------------------

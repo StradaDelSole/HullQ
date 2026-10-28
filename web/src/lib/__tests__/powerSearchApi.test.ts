@@ -992,3 +992,174 @@ test("fetchPowerSearch: an invalid power_engine_count request value collapses to
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// SLICE-0094 independent-review amendment Finding F: tightened NUMERIC leaf
+// evidence validation -- correct field, RANGE comparison, identical
+// thresholds, canonical token, and consistency with the active requirement.
+// ---------------------------------------------------------------------------
+
+function engineCountEvidence(requestedValue: string, observedValue: string | null, truth: string) {
+  return {
+    criterion: {
+      kind: "NUMERIC",
+      field: "power_engine_count",
+      comparison: "RANGE",
+      threshold_min: requestedValue,
+      threshold_max: requestedValue,
+    },
+    field: "power_engine_count",
+    truth,
+    reason: null,
+    explanation: "test explanation",
+    observed_value: observedValue,
+  };
+}
+
+function countOnlyBody(evidence: unknown) {
+  return {
+    locale: "en",
+    active_requirement: { power_engine_count: "2" },
+    design_linked_matches: [],
+    design_linked_match_count: 0,
+    design_linked_insufficient_data_count: 0,
+    publisher_claim_matches: [
+      {
+        native_listing_id: "NL-1",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        source_basis: "PUBLISHER_CLAIM",
+        criterion_evidence: [evidence],
+        discovery_token: "tok",
+      },
+    ],
+    publisher_claim_match_count: 1,
+  };
+}
+
+test("validatePowerSearchResultBody: a well-formed NUMERIC power_engine_count evidence leaf is accepted", () => {
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("2", "2", "TRUE")),
+    _COUNT_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: a NUMERIC evidence leaf with MAXIMUM instead of RANGE is rejected", () => {
+  const evidence = engineCountEvidence("2", "2", "TRUE");
+  evidence.criterion.comparison = "MAXIMUM";
+  const result = validatePowerSearchResultBody(countOnlyBody(evidence), _COUNT_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a NUMERIC evidence leaf with differing thresholds is rejected", () => {
+  const evidence = engineCountEvidence("2", "2", "TRUE");
+  evidence.criterion.threshold_max = "3";
+  const result = validatePowerSearchResultBody(countOnlyBody(evidence), _COUNT_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a NUMERIC evidence leaf with a non-canonical threshold (0) is rejected", () => {
+  const evidence = engineCountEvidence("2", "2", "TRUE");
+  evidence.criterion.threshold_min = "0";
+  evidence.criterion.threshold_max = "0";
+  const result = validatePowerSearchResultBody(countOnlyBody(evidence), _COUNT_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a NUMERIC evidence leaf with the wrong field name is rejected", () => {
+  const evidence = engineCountEvidence("2", "2", "TRUE");
+  evidence.criterion.field = "power_engine_count_bogus";
+  const result = validatePowerSearchResultBody(countOnlyBody(evidence), _COUNT_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a CATEGORICAL evidence leaf with a non-whitelisted drive value is rejected", () => {
+  const body = {
+    locale: "en",
+    active_requirement: { power_drive: "SHAFT" },
+    design_linked_matches: [],
+    design_linked_match_count: 0,
+    design_linked_insufficient_data_count: 0,
+    publisher_claim_matches: [
+      {
+        native_listing_id: "NL-1",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        source_basis: "PUBLISHER_CLAIM",
+        criterion_evidence: [
+          {
+            criterion: {
+              kind: "CATEGORICAL",
+              field: "power_drive_configuration",
+              equals: "DIESEL_ELECTRIC",
+            },
+            field: "power_drive_configuration",
+            truth: "TRUE",
+            reason: null,
+            explanation: "test",
+            observed_value: "MIXED",
+          },
+        ],
+        discovery_token: "tok",
+      },
+    ],
+    publisher_claim_match_count: 1,
+  };
+  const result = validatePowerSearchResultBody(body, {
+    locale: "en",
+    powerDrive: "SHAFT",
+  });
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: an evidence leaf requesting a value other than the active requirement is rejected", () => {
+  // active_requirement says "2", but the nested evidence leaf's own
+  // threshold claims it evaluated "3" -- structurally well-formed per
+  // leaf, but inconsistent with what the response claims to answer.
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("3", "3", "FALSE")),
+    _COUNT_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a power_engine_count evidence leaf appearing on a drive-only request is rejected", () => {
+  // No power_engine_count was requested at all (powerEngineCount is
+  // omitted from `expected`), so no NUMERIC evidence leaf for it may
+  // legitimately appear.
+  const body = {
+    locale: "en",
+    active_requirement: { power_drive: "SHAFT" },
+    design_linked_matches: [],
+    design_linked_match_count: 0,
+    design_linked_insufficient_data_count: 0,
+    publisher_claim_matches: [
+      {
+        native_listing_id: "NL-1",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        source_basis: "PUBLISHER_CLAIM",
+        criterion_evidence: [engineCountEvidence("2", "2", "TRUE")],
+        discovery_token: "tok",
+      },
+    ],
+    publisher_claim_match_count: 1,
+  };
+  const result = validatePowerSearchResultBody(body, { locale: "en", powerDrive: "SHAFT" });
+  assert.equal(result, null);
+});
+
+test("fetchPowerSearch: a malformed NUMERIC evidence shape in an otherwise-valid 200 body collapses to 502", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, countOnlyBody(engineCountEvidence("3", "3", "FALSE"))),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=2");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});

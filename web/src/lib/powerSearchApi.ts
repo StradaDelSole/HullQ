@@ -211,31 +211,71 @@ function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN
   return value === "TRUE" || value === "FALSE" || value === "UNKNOWN";
 }
 
+// SLICE-0094 independent-review amendment Finding F: this surface has
+// exactly two possible leaf criteria -- `power_drive_configuration`
+// (CATEGORICAL) and `power_engine_count` (NUMERIC) -- so this validator is
+// deliberately as strict as the real backend contract for *each*, never a
+// generically loose "any NUMERIC/CATEGORICAL shape" acceptance that could
+// let a malformed or wrong-request body slip through as if it were a
+// genuine evidence object. A CATEGORICAL leaf's `equals` must be one of
+// the five accepted drive tokens; a NUMERIC leaf must be `power_engine_count`
+// with a RANGE comparison and identical lower/upper thresholds (the
+// contract's own words: "The count filter uses an exact numeric RANGE with
+// threshold_min=threshold_max"), each an exact canonical 1-8 token -- never
+// MINIMUM/MAXIMUM, never differing thresholds, never a non-canonical
+// numeric spelling.
 function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   if (v.kind === "CATEGORICAL") {
-    return typeof v.field === "string" && typeof v.equals === "string";
+    return v.field === "power_drive_configuration" && isSearchPowerDriveValue(v.equals);
   }
   if (v.kind === "NUMERIC") {
     return (
-      typeof v.field === "string" &&
-      (v.comparison === "MINIMUM" || v.comparison === "MAXIMUM" || v.comparison === "RANGE") &&
-      (v.threshold_min === null || typeof v.threshold_min === "string") &&
-      (v.threshold_max === null || typeof v.threshold_max === "string")
+      v.field === "power_engine_count" &&
+      v.comparison === "RANGE" &&
+      typeof v.threshold_min === "string" &&
+      v.threshold_min === v.threshold_max &&
+      isSearchPowerEngineCountValue(v.threshold_min)
     );
   }
   return false;
 }
 
+// SLICE-0094 independent-review amendment Finding F: "compatibility with
+// the requested active requirement" -- an evidence leaf's own requested
+// value must match the *same* field's value in the top-level
+// `active_requirement` this response already claims to answer. Without
+// this, a body could echo a consistent-looking `active_requirement` while
+// every nested evidence object silently evaluated a *different* request --
+// structurally well-formed per leaf, but misleading about what was
+// actually requested. `expectedPowerDrive`/`expectedPowerEngineCount` are
+// `null` when that criterion was not part of the request at all, in which
+// case no evidence leaf for that field may legitimately appear.
+function criterionMatchesActiveRequirement(
+  criterion: PowerLeafCriterion,
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): boolean {
+  if (criterion.kind === "CATEGORICAL") {
+    return expectedPowerDrive !== null && criterion.equals === expectedPowerDrive;
+  }
+  return expectedPowerEngineCount !== null && criterion.threshold_min === expectedPowerEngineCount;
+}
+
 // Review amendment Finding J (MEDIUM): deep-validate every nested evidence
 // object, never only its enclosing array's shape (`Array.isArray(...)`
 // alone proves nothing about what is actually inside it).
-function isValidCriterionEvidence(value: unknown): value is PowerCriterionEvidence {
+function isValidCriterionEvidence(
+  value: unknown,
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): value is PowerCriterionEvidence {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
     isValidLeafCriterion(v.criterion) &&
+    criterionMatchesActiveRequirement(v.criterion, expectedPowerDrive, expectedPowerEngineCount) &&
     typeof v.field === "string" &&
     isValidTruthState(v.truth) &&
     (v.reason === null || typeof v.reason === "string") &&
@@ -244,7 +284,11 @@ function isValidCriterionEvidence(value: unknown): value is PowerCriterionEviden
   );
 }
 
-function isValidConfigurationEvidence(value: unknown): value is PowerConfigurationEvidence {
+function isValidConfigurationEvidence(
+  value: unknown,
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): value is PowerConfigurationEvidence {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -253,7 +297,9 @@ function isValidConfigurationEvidence(value: unknown): value is PowerConfigurati
     (v.named_variant_id === null || typeof v.named_variant_id === "string") &&
     isValidTruthState(v.truth) &&
     Array.isArray(v.criterion_evidence) &&
-    v.criterion_evidence.every(isValidCriterionEvidence)
+    v.criterion_evidence.every((evidence: unknown) =>
+      isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+    )
   );
 }
 
@@ -277,7 +323,11 @@ function isValidDesignEvaluation(value: unknown): value is PowerDesignEvaluation
   );
 }
 
-function isValidDesignLinkedMatch(value: unknown): value is PowerDesignLinkedMatch {
+function isValidDesignLinkedMatch(
+  value: unknown,
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): value is PowerDesignLinkedMatch {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -287,14 +337,22 @@ function isValidDesignLinkedMatch(value: unknown): value is PowerDesignLinkedMat
     (v.last_confirmed_at === null || typeof v.last_confirmed_at === "string") &&
     typeof v.discovery_token === "string" &&
     Array.isArray(v.criterion_evidence) &&
-    v.criterion_evidence.every(isValidCriterionEvidence) &&
+    v.criterion_evidence.every((evidence: unknown) =>
+      isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+    ) &&
     Array.isArray(v.design_configuration_evidence) &&
-    v.design_configuration_evidence.every(isValidConfigurationEvidence) &&
+    v.design_configuration_evidence.every((evidence: unknown) =>
+      isValidConfigurationEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+    ) &&
     isValidDesignEvaluation(v.design_evaluation)
   );
 }
 
-function isValidClaimOnlyMatch(value: unknown): value is PowerClaimOnlyMatch {
+function isValidClaimOnlyMatch(
+  value: unknown,
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): value is PowerClaimOnlyMatch {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -308,7 +366,9 @@ function isValidClaimOnlyMatch(value: unknown): value is PowerClaimOnlyMatch {
     v.source_basis === "PUBLISHER_CLAIM" &&
     typeof v.discovery_token === "string" &&
     Array.isArray(v.criterion_evidence) &&
-    v.criterion_evidence.every(isValidCriterionEvidence)
+    v.criterion_evidence.every((evidence: unknown) =>
+      isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+    )
   );
 }
 
@@ -397,7 +457,9 @@ export function validatePowerSearchResultBody(
   // module when genuinely absent from the wire body.
   if (
     !Array.isArray(v.design_linked_matches) ||
-    !v.design_linked_matches.every(isValidDesignLinkedMatch)
+    !v.design_linked_matches.every((match: unknown) =>
+      isValidDesignLinkedMatch(match, expected.powerDrive, expectedPowerEngineCount),
+    )
   ) {
     return null;
   }
@@ -412,7 +474,9 @@ export function validatePowerSearchResultBody(
   }
   if (
     !Array.isArray(v.publisher_claim_matches) ||
-    !v.publisher_claim_matches.every(isValidClaimOnlyMatch)
+    !v.publisher_claim_matches.every((match: unknown) =>
+      isValidClaimOnlyMatch(match, expected.powerDrive, expectedPowerEngineCount),
+    )
   ) {
     return null;
   }

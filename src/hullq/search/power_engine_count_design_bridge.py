@@ -17,14 +17,30 @@ Design-side source is BoatDesign v0.6 `propulsion.engine_count`
 (`specs/BOAT_DESIGN_SCHEMA.v0.6.json` `$defs.propulsion_shape.engine_count`:
 integer or null, minimum 0). Unlike `power_drive_design_bridge`'s taxonomy
 mapping, `engine_count` needs no `taxonomy_map` -- it is an exact `Decimal`
-comparison (`decode_decimal_for_qualification`, the identical decode every
-other numeric criterion already uses), never a categorical remap. A raw
-`engine_count` of `0`/`null`/an unresolved FieldResolution simply fails
-closed to `MISSING` via the shared `qualify_canonical_field` mechanism --
-never guessed, and never a false affirmative (the public Search whitelist
-is 1-8, so an unsupported `0` is always a genuine, non-false non-match
-against any requested token, not a confirmed exclusion manufactured by this
-module).
+comparison, never a categorical remap. A raw `engine_count` of `null` or an
+unresolved/stale FieldResolution already fails closed to `MISSING` via the
+shared `qualify_canonical_field` mechanism (never guessed).
+
+Independent review amendment Finding E: `0` is schema-*valid* (v0.6 permits
+`minimum: 0`) but is never a plausible factory fact this criterion treats
+as confirmed truth -- "zero principal propulsion engines" is not a genuine
+installed-engine-count assertion, and letting an ordinary `CONFIRMED`
+numeric qualification carry it through would manufacture a *confirmed*
+non-match (`0 != requested token`) for every one of the eight public
+tokens, which looks identical to a genuine, trustworthy factory
+disagreement even though `0` was never a real fact in the first place. This
+module's own `decode_engine_count_for_qualification` therefore rejects `0`
+(raising `ValueError`, which `qualify_canonical_field`'s existing
+`except ValueError: return (MISSING, None)` path already turns into a
+`MISSING` qualification -- the identical fail-closed mechanism every other
+decode failure already uses here, not a new branch) -- `0` becomes
+`INSUFFICIENT_DATA`, never a misleading confirmed exclusion. Deliberately
+bounded to only this one unsupported value: a factory count above the
+public 1-8 Search whitelist (e.g. `12`) is still a real installed-engine
+fact this criterion can confirm and correctly non-match against any
+requested token -- this fix never touches that case, and never weakens the
+shared generic `decode_decimal_for_qualification` every other numeric
+criterion (draft_max, loa, beam) still uses unmodified.
 
 A qualifying factory `engine_count` is never, by itself, a current
 *installed* count -- a separately qualified current `PhysicalBoatClaims
@@ -41,6 +57,7 @@ propulsion attribute, or any mapping beyond this one exact field.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from decimal import Decimal
 from typing import Any, Final
 
 from hullq.domain.provenance import SubjectKind
@@ -58,8 +75,31 @@ __all__ = [
     "PROPULSION_ENGINE_COUNT_FIELD_POINTER",
     "PROPULSION_ENGINE_COUNT_OVERRIDE_FIELD_POINTER",
     "build_boat_design_power_engine_count_configuration_set",
+    "decode_engine_count_for_qualification",
     "lookup_power_engine_count_canonical_value",
 ]
+
+
+def decode_engine_count_for_qualification(value: object) -> Decimal:
+    """Decode a raw canonical `engine_count` value or FieldResolution
+    snapshot as an exact, strictly positive `Decimal` -- SLICE-0094
+    independent-review amendment Finding E.
+
+    Reuses the identical shared `decode_decimal_for_qualification` every
+    other numeric criterion already uses for the actual Decimal parsing,
+    then rejects the one BOAT_DESIGN_SCHEMA.v0.6-valid-but-criterion-
+    unsupported value, `0` -- see this module's docstring. Raising
+    `ValueError` here (rather than silently clamping or passing it
+    through) feeds `qualify_canonical_field`'s own existing
+    `except ValueError: return (ValueQualification.MISSING, None)` path,
+    so this is not a new fail-closed mechanism, only a narrower input
+    boundary for the one already-shared one.
+    """
+    decoded = decode_decimal_for_qualification(value)
+    if decoded <= 0:
+        raise ValueError(f"engine_count {decoded!r} is not a supported factory value (must be > 0)")
+    return decoded
+
 
 #: Opaque projection field name shared by every `ResolvedConfiguration` this
 #: bridge builds and the `NumericLeafCriterion` it is evaluated against.
@@ -77,7 +117,7 @@ POWER_ENGINE_COUNT_FIELD_PROJECTION_SPEC: Final = FieldProjectionSpec(
     field_key="engine_count",
     baseline_pointer=PROPULSION_ENGINE_COUNT_FIELD_POINTER,
     override_pointer=PROPULSION_ENGINE_COUNT_OVERRIDE_FIELD_POINTER,
-    decode=decode_decimal_for_qualification,
+    decode=decode_engine_count_for_qualification,
     is_numeric=True,
 )
 

@@ -59,6 +59,17 @@ export interface PowerSearchText {
   truthTrueLabel: string;
   truthFalseLabel: string;
   truthUnknownLabel: string;
+  /**
+   * SLICE-0094 independent-review amendment Finding D: per-leaf criterion
+   * evidence -- requested value, observed truth, reason/explanation and an
+   * explicit source distinction (design-qualified vs. publisher-asserted),
+   * rendered for both design-linked and publisher-claim-only matches.
+   */
+  criterionEvidenceHeading: string;
+  criterionRequestedLabel: (fieldLabel: string, requestedValue: string) => string;
+  criterionObservedLabel: (truthLabel: string) => string;
+  sourcePublisherClaimLabel: string;
+  sourceDesignQualifiedLabel: string;
 }
 
 export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
@@ -105,6 +116,12 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     truthTrueLabel: "TRUE",
     truthFalseLabel: "FALSE",
     truthUnknownLabel: "UNKNOWN",
+    criterionEvidenceHeading: "Criterion evidence",
+    criterionRequestedLabel: (fieldLabel, requestedValue) =>
+      `Requested — ${fieldLabel}: ${requestedValue}`,
+    criterionObservedLabel: (truthLabel) => `Observed: ${truthLabel}`,
+    sourcePublisherClaimLabel: "publisher-asserted, not independently verified",
+    sourceDesignQualifiedLabel: "design-qualified (BoatDesign/FieldResolution)",
   },
   de: {
     title: "Antriebsart-Suche (intern)",
@@ -149,6 +166,12 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     truthTrueLabel: "WAHR",
     truthFalseLabel: "FALSCH",
     truthUnknownLabel: "UNBEKANNT",
+    criterionEvidenceHeading: "Kriteriennachweis",
+    criterionRequestedLabel: (fieldLabel, requestedValue) =>
+      `Angefordert — ${fieldLabel}: ${requestedValue}`,
+    criterionObservedLabel: (truthLabel) => `Beobachtet: ${truthLabel}`,
+    sourcePublisherClaimLabel: "Angabe des Anbieters, nicht unabhängig geprüft",
+    sourceDesignQualifiedLabel: "design-qualifiziert (BoatDesign/FieldResolution)",
   },
   fr: {
     title: "Recherche de configuration de propulsion (interne)",
@@ -193,6 +216,12 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     truthTrueLabel: "VRAI",
     truthFalseLabel: "FAUX",
     truthUnknownLabel: "INCONNU",
+    criterionEvidenceHeading: "Preuve par critère",
+    criterionRequestedLabel: (fieldLabel, requestedValue) =>
+      `Demandé — ${fieldLabel} : ${requestedValue}`,
+    criterionObservedLabel: (truthLabel) => `Observé : ${truthLabel}`,
+    sourcePublisherClaimLabel: "déclaration du vendeur, non vérifiée de manière indépendante",
+    sourceDesignQualifiedLabel: "qualifié par le design (BoatDesign/FieldResolution)",
   },
   pt: {
     title: "Pesquisa de configuração de propulsão (interna)",
@@ -237,6 +266,12 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     truthTrueLabel: "VERDADEIRO",
     truthFalseLabel: "FALSO",
     truthUnknownLabel: "DESCONHECIDO",
+    criterionEvidenceHeading: "Evidência por critério",
+    criterionRequestedLabel: (fieldLabel, requestedValue) =>
+      `Solicitado — ${fieldLabel}: ${requestedValue}`,
+    criterionObservedLabel: (truthLabel) => `Observado: ${truthLabel}`,
+    sourcePublisherClaimLabel: "declaração do vendedor, não verificada de forma independente",
+    sourceDesignQualifiedLabel: "qualificado pelo design (BoatDesign/FieldResolution)",
   },
   es: {
     title: "Búsqueda de configuración de propulsión (interna)",
@@ -281,5 +316,11 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     truthTrueLabel: "VERDADERO",
     truthFalseLabel: "FALSO",
     truthUnknownLabel: "DESCONOCIDO",
+    criterionEvidenceHeading: "Evidencia por criterio",
+    criterionRequestedLabel: (fieldLabel, requestedValue) =>
+      `Solicitado — ${fieldLabel}: ${requestedValue}`,
+    criterionObservedLabel: (truthLabel) => `Observado: ${truthLabel}`,
+    sourcePublisherClaimLabel: "declaración del vendedor, no verificada de forma independiente",
+    sourceDesignQualifiedLabel: "calificado por el diseño (BoatDesign/FieldResolution)",
   },
 };
