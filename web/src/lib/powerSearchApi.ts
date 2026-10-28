@@ -358,6 +358,24 @@ function hasExactActiveCriterionCoverage(
   return true;
 }
 
+// SLICE-0094 independent-review amendment Round 3, Finding G3: the shared
+// MUST-AND reduction every configuration's own aggregate `truth` must
+// equal, given its already-validated leaves -- `hullq.search.query
+// .and_reduce`'s identical semantics: FALSE dominates (any FALSE leaf
+// means the whole configuration is FALSE), TRUE only when every leaf is
+// TRUE, UNKNOWN otherwise. A configuration whose declared `truth` field
+// disagrees with this reduction of its own leaves is never genuine --
+// this is a generic response-contract consistency guard, never a
+// reimplementation of the backend Search evaluator (no scoring, no
+// qualification, no FieldResolution logic).
+function aggregateTruthFromLeaves(
+  leaves: readonly PowerCriterionEvidence[],
+): "TRUE" | "FALSE" | "UNKNOWN" {
+  if (leaves.some((leaf) => leaf.truth === "FALSE")) return "FALSE";
+  if (leaves.every((leaf) => leaf.truth === "TRUE")) return "TRUE";
+  return "UNKNOWN";
+}
+
 function isValidConfigurationEvidence(
   value: unknown,
   expectedPowerDrive: string | null,
@@ -365,21 +383,73 @@ function isValidConfigurationEvidence(
 ): value is PowerConfigurationEvidence {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
-    typeof v.configuration_id === "string" &&
-    typeof v.boat_design_id === "string" &&
-    (v.named_variant_id === null || typeof v.named_variant_id === "string") &&
-    isValidTruthState(v.truth) &&
-    Array.isArray(v.criterion_evidence) &&
-    v.criterion_evidence.every((evidence: unknown) =>
-      isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
-    ) &&
-    hasExactActiveCriterionCoverage(
-      v.criterion_evidence as PowerCriterionEvidence[],
-      expectedPowerDrive,
-      expectedPowerEngineCount,
+  if (
+    !(
+      typeof v.configuration_id === "string" &&
+      typeof v.boat_design_id === "string" &&
+      (v.named_variant_id === null || typeof v.named_variant_id === "string") &&
+      isValidTruthState(v.truth) &&
+      Array.isArray(v.criterion_evidence) &&
+      v.criterion_evidence.every((evidence: unknown) =>
+        isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+      ) &&
+      hasExactActiveCriterionCoverage(
+        v.criterion_evidence as PowerCriterionEvidence[],
+        expectedPowerDrive,
+        expectedPowerEngineCount,
+      )
     )
+  ) {
+    return false;
+  }
+  return v.truth === aggregateTruthFromLeaves(v.criterion_evidence as PowerCriterionEvidence[]);
+}
+
+// SLICE-0094 independent-review amendment Round 3, Finding G3: a positive
+// match surface (a `publisher_claim_matches[]` entry, or a design-linked
+// match's own concrete `criterion_evidence`) must have every active-
+// criterion leaf confirmed TRUE -- the backend's
+// `classify_claim_only_candidate`/`classify_concrete_candidate` only ever
+// produce a `ResultClass.CONFIRMED_MATCH` (the only result class
+// serialized into these arrays) when every active criterion's evaluation
+// is TRUE, so a FALSE or UNKNOWN leaf here directly contradicts that
+// invariant. This deliberately does NOT apply to per-configuration
+// `design_configuration_evidence` -- a legitimate OTHER, nonmatching
+// configuration's evidence still needs `isValidCriterionEvidence`'s
+// generic truth/value consistency, never an all-TRUE requirement (see
+// `isValidConfigurationEvidence` above instead, which checks internal
+// aggregate-vs-leaf consistency rather than forcing TRUE).
+function isValidPositiveCriterionEvidence(
+  value: unknown,
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): value is PowerCriterionEvidence {
+  return (
+    isValidCriterionEvidence(value, expectedPowerDrive, expectedPowerEngineCount) &&
+    (value as PowerCriterionEvidence).truth === "TRUE"
   );
+}
+
+// SLICE-0094 independent-review amendment Round 3, Finding G3: a design-
+// linked match's own `design_evaluation.result_class` must genuinely be
+// CONFIRMED_MATCH (the only result class this array ever serializes), and
+// EVERY id it lists in `matching_configuration_ids` must correspond to an
+// actually-present configuration in `design_configuration_evidence` whose
+// own (already aggregate-validated) `truth` is TRUE -- a fabricated or
+// stale matching-configuration id, or one naming a configuration that
+// is not itself genuinely TRUE, is never genuine.
+function hasGenuineMatchingConfigurations(
+  designEvaluation: PowerDesignEvaluation,
+  configurationEvidence: readonly PowerConfigurationEvidence[],
+): boolean {
+  if (designEvaluation.result_class !== "CONFIRMED_MATCH") return false;
+  if (designEvaluation.matching_configuration_ids.length === 0) return false;
+  const trueConfigurationIds = new Set(
+    configurationEvidence
+      .filter((configuration) => configuration.truth === "TRUE")
+      .map((configuration) => configuration.configuration_id),
+  );
+  return designEvaluation.matching_configuration_ids.every((id) => trueConfigurationIds.has(id));
 }
 
 function isValidResultClass(
@@ -417,7 +487,7 @@ function isValidDesignLinkedMatch(
     typeof v.discovery_token === "string" &&
     Array.isArray(v.criterion_evidence) &&
     v.criterion_evidence.every((evidence: unknown) =>
-      isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+      isValidPositiveCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
     ) &&
     hasExactActiveCriterionCoverage(
       v.criterion_evidence as PowerCriterionEvidence[],
@@ -428,7 +498,11 @@ function isValidDesignLinkedMatch(
     v.design_configuration_evidence.every((evidence: unknown) =>
       isValidConfigurationEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
     ) &&
-    isValidDesignEvaluation(v.design_evaluation)
+    isValidDesignEvaluation(v.design_evaluation) &&
+    hasGenuineMatchingConfigurations(
+      v.design_evaluation as PowerDesignEvaluation,
+      v.design_configuration_evidence as PowerConfigurationEvidence[],
+    )
   );
 }
 
@@ -451,7 +525,7 @@ function isValidClaimOnlyMatch(
     typeof v.discovery_token === "string" &&
     Array.isArray(v.criterion_evidence) &&
     v.criterion_evidence.every((evidence: unknown) =>
-      isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+      isValidPositiveCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
     ) &&
     hasExactActiveCriterionCoverage(
       v.criterion_evidence as PowerCriterionEvidence[],

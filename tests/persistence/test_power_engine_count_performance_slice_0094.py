@@ -47,6 +47,19 @@ evidence for the count-only and drive-only shapes (combined's own EXPLAIN
 was already retained) -- completing the contract's three-way comparison
 requirement. Issue #355 remains explicitly OPEN regardless.
 
+Amendment Round 3, Finding C3: Round 2's same-population comparison only
+ever seeded design-UNRESOLVED (claim-only) candidates -- the separate 0/10
+design-linked stress benchmark never ran alongside it, so the reported
+statement counts never described genuine end-to-end mixed-plane
+execution. This round adds `_seed_mixed_plane_population`, which extends
+the identical 0/40/200 inventory with a small, FIXED number (3) of
+qualified design-linked Power candidates alongside the existing Sail
+exclusions and design-unresolved Power candidates (never 200 distinct
+expensive FieldResolutions), then runs count-only/drive-only/combined
+against that ONE population, retaining precise match IDs across both
+planes. The separate 0/10 design-linked-only stress benchmark below is
+unchanged and retained. Issue #355 remains explicitly OPEN regardless.
+
 Mirrors `test_power_inventory_query_performance_slice_0093.py`'s own
 disposable-schema isolation and measurement-helper pattern (deliberately
 duplicated rather than cross-imported -- established repo convention).
@@ -446,19 +459,37 @@ def _explain_analyze_buffers(conn: Any, query: str, params: Any) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _seed_claim_only_population(
+def _seed_claim_only_population_detailed(
     conn: Any, population_size: int
-) -> tuple[set[str], set[str], set[str]]:
+) -> tuple[set[str], set[str], set[str], set[str], set[str]]:
     """40% publisher-owned POWER+SHAFT+count=2 -> CONFIRMED_MATCH; 20%
     publisher-owned POWER+SHAFT+count=1 (drive matches, count does not)
     -> CONFIRMED_NON_MATCH; 20% publisher-owned SAIL -> CONFIRMED_NON_MATCH
     (category exclusion); 10% no category claim at all -> INSUFFICIENT_DATA;
-    10% POWER claimed only by a different Organization -> INSUFFICIENT_DATA."""
+    10% POWER claimed only by a different Organization -> INSUFFICIENT_DATA.
+
+    Round 3 Finding C3: returns the fully disaggregated 5-way split
+    `(match_ids, drive_only_matching_count_mismatch_ids, sail_excluded_ids,
+    insufficient_no_category_ids, insufficient_other_org_ids)` -- the
+    count-mismatch and SAIL non-match groups are kept distinct here
+    (unlike the merged pair `_seed_claim_only_population` returns) because
+    a *drive-only* query matches the count-mismatch group but never the
+    SAIL group, and the mixed-plane comparison below needs that precise
+    distinction to assert exact retained match IDs rather than only
+    counts."""
     expected_match_ids: set[str] = set()
-    expected_non_match_ids: set[str] = set()
-    expected_insufficient_ids: set[str] = set()
+    expected_drive_only_matching_non_match_ids: set[str] = set()
+    expected_sail_excluded_ids: set[str] = set()
+    expected_insufficient_no_category_ids: set[str] = set()
+    expected_insufficient_other_org_ids: set[str] = set()
     if population_size == 0:
-        return expected_match_ids, expected_non_match_ids, expected_insufficient_ids
+        return (
+            expected_match_ids,
+            expected_drive_only_matching_non_match_ids,
+            expected_sail_excluded_ids,
+            expected_insufficient_no_category_ids,
+            expected_insufficient_other_org_ids,
+        )
 
     match_count = round(population_size * 0.4)
     non_match_count_count = round(population_size * 0.2)
@@ -492,7 +523,7 @@ def _seed_claim_only_population(
             ),
             power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=1),
         )
-        expected_non_match_ids.add(listing_id)
+        expected_drive_only_matching_non_match_ids.add(listing_id)
     for _ in range(non_match_sail_count):
         index += 1
         listing_id = _seed_claim_only_candidate(
@@ -502,7 +533,7 @@ def _seed_claim_only_population(
             power_drive_configuration=None,
             power_engine_count=None,
         )
-        expected_non_match_ids.add(listing_id)
+        expected_sail_excluded_ids.add(listing_id)
     for _ in range(insufficient_no_category_count):
         index += 1
         listing_id = _seed_claim_only_candidate(
@@ -514,7 +545,7 @@ def _seed_claim_only_population(
             ),
             power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=2),
         )
-        expected_insufficient_ids.add(listing_id)
+        expected_insufficient_no_category_ids.add(listing_id)
     for _ in range(insufficient_other_org_count):
         index += 1
         listing_id = _seed_claim_only_candidate(
@@ -529,11 +560,39 @@ def _seed_claim_only_population(
                 assertion_kind=VA, value=VesselCategory.POWER
             ),
         )
-        expected_insufficient_ids.add(listing_id)
+        expected_insufficient_other_org_ids.add(listing_id)
 
     assert index == population_size
     conn.commit()
-    return expected_match_ids, expected_non_match_ids, expected_insufficient_ids
+    return (
+        expected_match_ids,
+        expected_drive_only_matching_non_match_ids,
+        expected_sail_excluded_ids,
+        expected_insufficient_no_category_ids,
+        expected_insufficient_other_org_ids,
+    )
+
+
+def _seed_claim_only_population(
+    conn: Any, population_size: int
+) -> tuple[set[str], set[str], set[str]]:
+    """Thin wrapper preserving the original 3-way
+    `(match_ids, non_match_ids, insufficient_ids)` shape every pre-Round-3
+    caller already depends on -- merges the detailed 5-way split's
+    count-mismatch+SAIL non-match groups and its two insufficient-data
+    groups back together."""
+    (
+        match_ids,
+        drive_only_matching_ids,
+        sail_ids,
+        insufficient_no_category_ids,
+        insufficient_other_org_ids,
+    ) = _seed_claim_only_population_detailed(conn, population_size)
+    return (
+        match_ids,
+        drive_only_matching_ids | sail_ids,
+        insufficient_no_category_ids | insufficient_other_org_ids,
+    )
 
 
 @pytest.mark.parametrize("population_size", _CLAIM_ONLY_POPULATION_SIZES)
@@ -939,6 +998,193 @@ def test_design_linked_combined_power_population_performance(
             f"than the unmodified drive-only query ({drive_only_total_queries} statements) "
             f"against the identical {population_size}-candidate population"
         )
+
+
+# ---------------------------------------------------------------------------
+# Amendment Round 3, Finding C3: the previous C2 same-population comparison
+# only ever seeded design-UNRESOLVED (claim-only) candidates -- the 0/10
+# design-linked stress benchmark above runs in a genuinely separate
+# population/query and never alongside the 0/40/200 claim-only query, so
+# the C2 statement counts never described true end-to-end mixed-plane
+# execution. This extends the identical 0/40/200 inventory with a small,
+# FIXED number of qualified design-linked Power candidates (never 200
+# distinct expensive FieldResolutions) alongside the existing Sail
+# exclusions and design-unresolved Power candidates, then runs count-only/
+# drive-only/combined against that ONE population -- genuinely exercising
+# both Power candidate planes together under one real query. The separate
+# 0/10 design-linked-only stress benchmark is unchanged and retained.
+# ---------------------------------------------------------------------------
+
+_MIXED_DESIGN_LINKED_FIXED_COUNT = 3
+
+
+def _seed_mixed_plane_population(
+    conn: Any, population_size: int
+) -> tuple[set[str], set[str], set[str], set[str]]:
+    """The same detailed claim-only split `_seed_claim_only_population_detailed`
+    produces, scaled down by the fixed design-linked count, PLUS exactly
+    `_MIXED_DESIGN_LINKED_FIXED_COUNT` qualified, matching design-linked
+    candidates (reusing `_seed_design_linked_candidate` unchanged) --
+    total candidate count still equals *population_size* exactly. Returns
+    `(claim_only_match_ids, drive_only_matching_non_match_ids,
+    claim_only_other_non_match_or_insufficient_ids, design_linked_match_ids)`
+    -- the second set is precisely the count-mismatch group a drive-only
+    query also matches (distinct from the SAIL-excluded group, which never
+    matches any Power query shape)."""
+    if population_size == 0:
+        return set(), set(), set(), set()
+
+    claim_only_population_size = population_size - _MIXED_DESIGN_LINKED_FIXED_COUNT
+    assert claim_only_population_size > 0, (
+        f"population_size={population_size} must exceed the fixed design-linked count "
+        f"{_MIXED_DESIGN_LINKED_FIXED_COUNT}"
+    )
+    (
+        claim_only_match_ids,
+        drive_only_matching_non_match_ids,
+        sail_excluded_ids,
+        insufficient_no_category_ids,
+        insufficient_other_org_ids,
+    ) = _seed_claim_only_population_detailed(conn, claim_only_population_size)
+    design_linked_match_ids = {
+        _seed_design_linked_candidate(conn, index=i)
+        for i in range(1, _MIXED_DESIGN_LINKED_FIXED_COUNT + 1)
+    }
+    conn.commit()
+    other_ids = sail_excluded_ids | insufficient_no_category_ids | insufficient_other_org_ids
+    return (
+        claim_only_match_ids,
+        drive_only_matching_non_match_ids,
+        other_ids,
+        design_linked_match_ids,
+    )
+
+
+@pytest.mark.parametrize("population_size", _CLAIM_ONLY_POPULATION_SIZES)
+def test_mixed_plane_count_only_drive_only_combined_comparison_same_population(
+    perf_conn: Any, population_size: int
+) -> None:
+    """Round 3 Finding C3: count-only, drive-only and combined queries
+    against the IDENTICAL 0/40/200 inventory that contains Sail category
+    exclusions, design-unresolved Power candidates (match/non-match/
+    insufficient) AND a small fixed number of qualified design-linked
+    Power candidates, all together -- retaining precise match IDs (not
+    only counts) across both planes for every query shape."""
+    claim_match_ids, drive_only_matching_non_match_ids, _other_ids, design_match_ids = (
+        _seed_mixed_plane_population(perf_conn, population_size)
+    )
+
+    results: dict[str, tuple[set[str], set[str], int]] = {}
+    for label, kwargs in (
+        ("count-only", {"power_drive": None, "power_engine_count": Decimal(2)}),
+        ("drive-only", {"power_drive": "SHAFT", "power_engine_count": None}),
+        ("combined", {"power_drive": "SHAFT", "power_engine_count": Decimal(2)}),
+    ):
+        proxy = _CountingConnProxy(perf_conn)
+        outcome = evaluate_power_requirement(proxy, as_of=_as_of(), **kwargs)
+        actual_claim_ids = {m.native_listing_id.value for m in outcome.claim_only_matches}
+        actual_design_ids = {m.native_listing_id.value for m in outcome.design_linked_matches}
+        results[label] = (actual_claim_ids, actual_design_ids, proxy.query_count[0])
+        print(
+            f"\n[SLICE-0094 Finding C3 mixed-plane same-population comparison] "
+            f"population={population_size}, query={label}, "
+            f"claim_only_match_ids={sorted(actual_claim_ids)}, "
+            f"design_linked_match_ids={sorted(actual_design_ids)}, "
+            f"total_sql_statements={proxy.query_count[0]}"
+        )
+
+    # Retained precise match-identity evidence -- every query shape that
+    # requests SHAFT and/or count=2 must agree on the exact id sets, since
+    # the fixed design-linked candidates and the claim-only match group
+    # are always seeded as SHAFT+count=2.
+    assert results["count-only"][0] == claim_match_ids
+    assert results["combined"][0] == claim_match_ids
+    # drive-only is the broader query on this fixture: it also accepts the
+    # count-mismatched claim-only group (SHAFT+count=1), never the
+    # SAIL-excluded or insufficient-data groups.
+    assert results["drive-only"][0] == claim_match_ids | drive_only_matching_non_match_ids
+    for label in ("count-only", "drive-only", "combined"):
+        assert results[label][1] == design_match_ids, (
+            f"{label}: expected design-linked matches {sorted(design_match_ids)}, "
+            f"got {sorted(results[label][1])} -- the design-linked plane must genuinely "
+            f"participate in every query shape against this one mixed population"
+        )
+
+    if population_size == 0:
+        for label in ("count-only", "drive-only", "combined"):
+            assert results[label][2] < 5, (
+                f"{label}: expected a small constant statement count for an empty "
+                f"population, got {results[label][2]}"
+            )
+    else:
+        # Linear-bounded in the claim-only candidate count, plus a small
+        # constant contribution from the FIXED (never population-scaled)
+        # design-linked candidate count -- never claimed O(1), never
+        # claimed production-scale-ready; issue #355 stays OPEN.
+        for label in ("count-only", "drive-only", "combined"):
+            statements = results[label][2]
+            assert statements < population_size * 12 + _MIXED_DESIGN_LINKED_FIXED_COUNT * 24, (
+                f"{label}: expected a linear-bounded statement count for "
+                f"{population_size} mixed-plane candidates, got {statements} total statements"
+            )
+
+
+def test_mixed_plane_claim_only_and_design_linked_query_plan_evidence(perf_conn: Any) -> None:
+    """Round 3 Finding C3: real PostgreSQL 18 `EXPLAIN (ANALYZE, BUFFERS)`
+    for BOTH the claim-only batched-observations statement and the
+    design-linked per-candidate category+drive+count snapshot statement,
+    captured from the SAME combined-query evaluation against the
+    200-candidate mixed population -- proving both planes' representative
+    statements actually executed together, and that the design-linked
+    plane's per-candidate statement count stays pinned to the FIXED count
+    (3), never scaling with the 200-candidate claim-only population."""
+    population_size = 200
+    _, _, _, design_match_ids = _seed_mixed_plane_population(perf_conn, population_size)
+    assert len(design_match_ids) == _MIXED_DESIGN_LINKED_FIXED_COUNT
+
+    proxy = _CapturingConnProxy(perf_conn)
+    evaluate_power_requirement(
+        proxy, power_drive="SHAFT", power_engine_count=Decimal(2), as_of=_as_of()
+    )
+
+    batched_claim_calls = [
+        (query, params)
+        for query, params in proxy.captured
+        if "physical_boat_claim_heads" in query and "= ANY(%s)" in query
+    ]
+    assert len(batched_claim_calls) == 1, (
+        f"expected exactly one batched claim-observation statement for the "
+        f"{population_size}-candidate mixed population, captured {len(batched_claim_calls)}"
+    )
+    design_snapshot_calls = [
+        (query, params)
+        for query, params in proxy.captured
+        if "boat_design_category_assertion_heads" in query
+        and "power_drive_configuration_assertion_kind" in query
+        and "power_engine_count_assertion_kind" in query
+    ]
+    assert len(design_snapshot_calls) == _MIXED_DESIGN_LINKED_FIXED_COUNT, (
+        f"expected exactly {_MIXED_DESIGN_LINKED_FIXED_COUNT} (the FIXED design-linked "
+        f"count, never scaling with the {population_size}-candidate claim-only population) "
+        f"design-category-drive-count snapshot statements, captured {len(design_snapshot_calls)}"
+    )
+
+    claim_query, claim_params = batched_claim_calls[0]
+    claim_plan = _explain_analyze_buffers(perf_conn, claim_query, claim_params)
+    print(
+        f"\n[SLICE-0094 Finding C3 mixed-plane claim-only batched-observations EXPLAIN, "
+        f"population={population_size}]\n{claim_plan}"
+    )
+    assert "Execution Time" in claim_plan
+
+    design_query, design_params = design_snapshot_calls[0]
+    design_plan = _explain_analyze_buffers(perf_conn, design_query, design_params)
+    print(
+        f"\n[SLICE-0094 Finding C3 mixed-plane design-linked category+drive+count-snapshot "
+        f"EXPLAIN, one of {_MIXED_DESIGN_LINKED_FIXED_COUNT} fixed per-candidate statements, "
+        f"population={population_size}]\n{design_plan}"
+    )
+    assert "Execution Time" in design_plan
 
 
 def test_design_linked_combined_category_drive_count_snapshot_query_plan_evidence(

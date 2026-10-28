@@ -1326,12 +1326,271 @@ test("validatePowerSearchResultBody: a FALSE leaf whose observed_value equals th
   assert.equal(result, null);
 });
 
-test("validatePowerSearchResultBody: a FALSE leaf with a null observed_value (confirmed-exclusion shape) is still accepted, never suppressed", () => {
+// ---------------------------------------------------------------------------
+// Round 3 Finding G3: a positive match surface (publisher_claim_matches[]
+// or a design-linked match's own concrete criterion_evidence) must have
+// every active-criterion leaf confirmed TRUE -- the backend never
+// produces a ResultClass.CONFIRMED_MATCH (the only class these arrays
+// serialize) otherwise. The previous "FALSE leaf with a null
+// observed_value is still accepted" test below was WRONGLY placed on a
+// publisher_claim_matches entry (a positive match surface); a FALSE leaf
+// there is a genuine contradiction and must now be rejected. The
+// legitimate "confirmed-exclusion shape" (FALSE + null observed_value,
+// e.g. a NOT_APPLICABLE confirmed exclusion) is real and must stay
+// accepted, but only on an OTHER, nonmatching design configuration's own
+// evidence -- never suppressed there.
+// ---------------------------------------------------------------------------
+
+test("validatePowerSearchResultBody: a FALSE leaf on a publisher_claim_matches positive match is rejected (Round 3 Finding G3)", () => {
   const result = validatePowerSearchResultBody(
     countOnlyBody(engineCountEvidence("2", null, "FALSE")),
     _COUNT_EXPECTED,
   );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked match's own concrete criterion_evidence carrying a FALSE leaf is rejected (Round 3 Finding G3)", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", null, "FALSE")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked match's own concrete criterion_evidence carrying an UNKNOWN leaf is rejected (Round 3 Finding G3)", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", null, "UNKNOWN")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: the legitimate FALSE+null-observed-value confirmed-exclusion shape is still accepted on a nonmatching OTHER design configuration, never suppressed", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+        configurationEvidence("CFG-2", "FALSE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", null, "FALSE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
   assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: a configuration's declared aggregate truth TRUE disagreeing with a FALSE leaf is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", null, "FALSE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a configuration's declared aggregate truth UNKNOWN disagreeing with all-TRUE leaves is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+      [
+        configurationEvidence("CFG-1", "UNKNOWN", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a fabricated matching_configuration_ids entry naming an absent configuration is rejected", () => {
+  const body = designLinkedMatchBody(
+    [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+    [
+      configurationEvidence("CFG-1", "TRUE", [
+        driveEvidence("SHAFT", "TRUE"),
+        engineCountEvidence("2", "2", "TRUE"),
+      ]),
+    ],
+  );
+  body.design_linked_matches[0].design_evaluation.matching_configuration_ids = ["CFG-BOGUS"];
+  const result = validatePowerSearchResultBody(body, _COMBINED_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: matching_configuration_ids naming a configuration whose own truth is not TRUE is rejected", () => {
+  const body = designLinkedMatchBody(
+    [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+    [
+      configurationEvidence("CFG-1", "TRUE", [
+        driveEvidence("SHAFT", "TRUE"),
+        engineCountEvidence("2", "2", "TRUE"),
+      ]),
+      configurationEvidence("CFG-2", "UNKNOWN", [
+        driveEvidence(null, "UNKNOWN"),
+        engineCountEvidence("2", null, "UNKNOWN"),
+      ]),
+    ],
+  );
+  body.design_linked_matches[0].design_evaluation.matching_configuration_ids = ["CFG-2"];
+  const result = validatePowerSearchResultBody(body, _COMBINED_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: an empty matching_configuration_ids on a CONFIRMED_MATCH design-linked match is rejected", () => {
+  const body = designLinkedMatchBody(
+    [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+    [
+      configurationEvidence("CFG-1", "TRUE", [
+        driveEvidence("SHAFT", "TRUE"),
+        engineCountEvidence("2", "2", "TRUE"),
+      ]),
+    ],
+  );
+  body.design_linked_matches[0].design_evaluation.matching_configuration_ids = [];
+  const result = validatePowerSearchResultBody(body, _COMBINED_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked match whose design_evaluation.result_class is not CONFIRMED_MATCH is rejected", () => {
+  const body = designLinkedMatchBody(
+    [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+    [
+      configurationEvidence("CFG-1", "TRUE", [
+        driveEvidence("SHAFT", "TRUE"),
+        engineCountEvidence("2", "2", "TRUE"),
+      ]),
+    ],
+  );
+  body.design_linked_matches[0].design_evaluation.result_class = "INSUFFICIENT_DATA";
+  const result = validatePowerSearchResultBody(body, _COMBINED_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("fetchPowerSearch: a FALSE leaf on a publisher_claim_matches positive match collapses to 502 (Round 3 Finding G3)", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, countOnlyBody(engineCountEvidence("2", null, "FALSE"))),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=2");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a design-linked match's configuration aggregate truth disagreeing with its own leaves collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(
+        res,
+        designLinkedMatchBody(
+          [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+          [
+            configurationEvidence("CFG-1", "TRUE", [
+              driveEvidence("SHAFT", "TRUE"),
+              engineCountEvidence("2", null, "FALSE"),
+            ]),
+          ],
+        ),
+      ),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a fabricated matching_configuration_ids entry collapses to 502", async () => {
+  await withServer(
+    (_req, res) => {
+      const body = designLinkedMatchBody(
+        [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+        [
+          configurationEvidence("CFG-1", "TRUE", [
+            driveEvidence("SHAFT", "TRUE"),
+            engineCountEvidence("2", "2", "TRUE"),
+          ]),
+        ],
+      );
+      body.design_linked_matches[0].design_evaluation.matching_configuration_ids = ["CFG-BOGUS"];
+      respondJson(res, body);
+    },
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a genuine design-linked match retaining a legitimate FALSE-evidence OTHER configuration is still accepted", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(
+        res,
+        designLinkedMatchBody(
+          [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+          [
+            configurationEvidence("CFG-1", "TRUE", [
+              driveEvidence("SHAFT", "TRUE"),
+              engineCountEvidence("2", "2", "TRUE"),
+            ]),
+            configurationEvidence("CFG-2", "FALSE", [
+              driveEvidence("SHAFT", "TRUE"),
+              engineCountEvidence("2", null, "FALSE"),
+            ]),
+          ],
+        ),
+      ),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+    },
+  );
 });
 
 test("validatePowerSearchResultBody: a design-linked combined match with full top-level and configuration criterion coverage is accepted", () => {
