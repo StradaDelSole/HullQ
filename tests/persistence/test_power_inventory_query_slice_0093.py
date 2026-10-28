@@ -1,0 +1,691 @@
+"""PostgreSQL-backed Power drive-configuration Search integration tests -- SLICE-0093.
+
+Proves the first Power hard technical criterion
+(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`) end to end
+through `hullq.application.power_inventory_query.evaluate_power_drive_requirement`:
+the mandatory minimum positive (a currently-public-eligible, design-unresolved
+POWER PhysicalBoat with a publisher-owned current POD claim), category
+isolation (SAIL/UNKNOWN never becomes a Power positive, another
+Organization's POWER claim never lends the publisher eligibility), the
+bounded v0.6 SHAFT/OUTBOARD design-linked bridge (and v0.6 `other` staying
+INSUFFICIENT_DATA, never guessed), and D29 current-public eligibility
+suppression.
+
+Each test runs against its own disposable PostgreSQL schema, mirroring
+`tests/persistence/test_native_inventory_query_vessel_category_slice_0091.py`'s
+isolation pattern (deliberately duplicated minimal seeding boilerplate rather
+than cross-importing between test modules -- established repo convention).
+"""
+
+from __future__ import annotations
+
+import json
+import uuid
+from collections.abc import Generator
+from datetime import UTC, datetime
+from decimal import Decimal
+from typing import Any
+from urllib.parse import quote, urlsplit, urlunsplit
+
+import psycopg
+import pytest
+
+from hullq.application.power_inventory_query import evaluate_power_drive_requirement
+from hullq.domain.market_identity import (
+    BoatDesignRef,
+    MarketEpisode,
+    MarketEpisodeId,
+    NativeListing,
+    NativeListingId,
+    PhysicalBoat,
+    PhysicalBoatId,
+)
+from hullq.domain.media_gallery import MediaSourceKind
+from hullq.domain.native_listing_offer import AskingPriceMode, NativeListingOfferSnapshot
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    BuildYearClaim,
+    PhysicalBoatClaimRevisionId,
+    PhysicalBoatClaimSnapshot,
+    PowerDriveConfiguration,
+    PowerDriveConfigurationClaim,
+    VesselCategory,
+    VesselCategoryClaim,
+)
+from hullq.domain.provenance import SubjectKind
+from hullq.domain.publishing_eligibility import (
+    AccountId,
+    MarketplaceOrganization,
+    MarketplaceOrganizationId,
+    MembershipRole,
+    MembershipState,
+    OrganizationMembership,
+    OrganizationMembershipId,
+    OrganizationPublishingEligibility,
+    ProfessionalCategory,
+)
+from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+from hullq.persistence.broker_identity import seed_marketplace_organization
+from hullq.persistence.market_episode import create_market_episode, fetch_market_episode
+from hullq.persistence.media_gallery import (
+    create_uploaded_image_placement,
+    insert_approved_media_asset,
+    set_cover,
+)
+from hullq.persistence.native_listing import create_native_listing, fetch_native_listing
+from hullq.persistence.native_listing_lifecycle import publish_native_listing
+from hullq.persistence.native_listing_offer import (
+    NativeListingOfferRevisionId,
+    write_native_listing_offer_revision,
+)
+from hullq.persistence.physical_boat import create_physical_boat
+from hullq.persistence.physical_boat_claims import (
+    fetch_current_physical_boat_claim,
+    write_physical_boat_claim_revision,
+)
+from hullq.search.power_drive_design_bridge import lookup_power_drive_canonical_value
+
+from ._field_resolution_support import admit_resolved_categorical_field
+
+VA = AssertionKind.VALUE_ASSERTION
+UNK = AssertionKind.UNKNOWN
+
+
+def _with_search_path(base_url: str, schema_name: str) -> str:
+    parts = urlsplit(base_url)
+    option = quote(f"-c search_path={schema_name}", safe="")
+    query = f"{parts.query}&options={option}" if parts.query else f"options={option}"
+    return urlunsplit(parts._replace(query=query))
+
+
+def _create_schema(base_url: str, schema_name: str) -> None:
+    conn = psycopg.connect(base_url, autocommit=True)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
+            cur.execute(f'CREATE SCHEMA "{schema_name}"')
+    finally:
+        conn.close()
+
+
+def _drop_schema(base_url: str, schema_name: str) -> None:
+    conn = psycopg.connect(base_url, autocommit=True)
+    try:
+        with conn.cursor() as cur:
+            cur.execute(f'DROP SCHEMA IF EXISTS "{schema_name}" CASCADE')
+    finally:
+        conn.close()
+
+
+@pytest.fixture()
+def pwr_url(db_url: str) -> Generator[str]:
+    schema_name = f"hullq_s0093pwr_{uuid.uuid4().hex[:16]}"
+    _create_schema(db_url, schema_name)
+    try:
+        url = _with_search_path(db_url, schema_name)
+        baseline = prepare_alembic_baseline(url)
+        assert baseline.accepted, baseline.reason
+        alembic_upgrade_head(url)
+        yield url
+    finally:
+        _drop_schema(db_url, schema_name)
+
+
+@pytest.fixture()
+def pwr_conn(pwr_url: str) -> Generator[Any]:
+    conn = psycopg.connect(pwr_url)
+    try:
+        yield conn
+    finally:
+        conn.close()
+
+
+def _as_of() -> datetime:
+    return datetime.now(UTC)
+
+
+def _org(value: str) -> MarketplaceOrganization:
+    return MarketplaceOrganization(
+        id=MarketplaceOrganizationId(value),
+        professional_category=ProfessionalCategory.BROKER,
+        publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+    )
+
+
+def _membership(
+    org: MarketplaceOrganization, account: AccountId, membership_id: str
+) -> OrganizationMembership:
+    return OrganizationMembership(
+        id=OrganizationMembershipId(membership_id),
+        account_id=account,
+        organization_id=org.id,
+        roles=frozenset({MembershipRole.PUBLISHER}),
+        state=MembershipState.ACTIVE,
+    )
+
+
+def _attach_ready_cover_image(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization, account: AccountId
+) -> None:
+    with conn.transaction():
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [account.value],
+            )
+        seed_marketplace_organization(conn, org)
+        asset = insert_approved_media_asset(
+            conn,
+            owner_organization_id=org.id,
+            uploaded_by_account_id=account,
+            rights_declared=True,
+            source_kind=MediaSourceKind.BROKER_UPLOAD,
+            source_reference=None,
+            original_object_key=f"original/{listing_id}",
+            derivative_object_key=f"derivative/{listing_id}",
+            content_hash=f"hash-{listing_id}",
+            mime_type="image/jpeg",
+            width=800,
+            height=600,
+            byte_size=12345,
+        )
+        placement_result = create_uploaded_image_placement(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_asset=asset,
+        )
+        assert placement_result.media_placement_id is not None
+        assert placement_result.gallery_version is not None
+        cover_result = set_cover(
+            conn,
+            native_listing_id=NativeListingId(listing_id),
+            owner_organization_id=org.id,
+            media_placement_id=placement_result.media_placement_id,
+            expected_version=placement_result.gallery_version,
+        )
+        assert cover_result.outcome.value == "SET", cover_result
+
+
+def _current_claim_revision_id(
+    conn: Any, *, listing_id: str, org: MarketplaceOrganization
+) -> PhysicalBoatClaimRevisionId | None:
+    listing_record = fetch_native_listing(conn, NativeListingId(listing_id))
+    assert listing_record is not None
+    assert listing_record.listing.market_episode_id is not None
+    episode_record = fetch_market_episode(conn, listing_record.listing.market_episode_id)
+    assert episode_record is not None
+    claim_record = fetch_current_physical_boat_claim(
+        conn, episode_record.market_episode.physical_boat_id, org.id
+    )
+    return claim_record.revision_id if claim_record is not None else None
+
+
+def _make_active_listing(
+    conn: Any,
+    *,
+    listing_id: str,
+    physical_boat_id: str,
+    market_episode_id: str,
+    boat_design_id: str | None,
+    vessel_category: VesselCategoryClaim | None,
+    power_drive_configuration: PowerDriveConfigurationClaim | None,
+) -> tuple[AccountId, MarketplaceOrganization, OrganizationMembership]:
+    account = AccountId(f"ACC-{listing_id}")
+    org = _org(f"ORG-{listing_id}")
+    membership = _membership(org, account, f"OM-{listing_id}")
+
+    create_physical_boat(
+        conn,
+        physical_boat=PhysicalBoat(
+            id=PhysicalBoatId(physical_boat_id),
+            boat_design_ref=BoatDesignRef(boat_design_id) if boat_design_id is not None else None,
+        ),
+    )
+    create_market_episode(
+        conn,
+        market_episode=MarketEpisode(
+            id=MarketEpisodeId(market_episode_id), physical_boat_id=PhysicalBoatId(physical_boat_id)
+        ),
+    )
+    create_native_listing(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=NativeListing(
+            id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(market_episode_id)
+        ),
+    )
+    write_native_listing_offer_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=NativeListingOfferRevisionId(f"REV-{listing_id}"),
+        expected_current_revision_id=None,
+        offer=NativeListingOfferSnapshot(
+            asking_price_mode=AskingPriceMode.AMOUNT,
+            location_country="FR",
+            broker_description="A well-maintained motor yacht.",
+            asking_price_amount=Decimal("250000.00"),
+            currency="EUR",
+        ),
+    )
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Swift Trawler 35",
+            build_year=BuildYearClaim(assertion_kind=VA, value=2020),
+            vessel_category=vessel_category,
+            power_drive_configuration=power_drive_configuration,
+        ),
+    )
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
+    publish_result = publish_native_listing(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+    )
+    assert publish_result.status.value == "transitioned", publish_result
+    return account, org, membership
+
+
+def _write_second_claim(
+    conn: Any,
+    *,
+    account: AccountId,
+    org: MarketplaceOrganization,
+    membership: OrganizationMembership,
+    listing_id: str,
+    revision_id: str,
+    vessel_category: VesselCategoryClaim | None,
+    power_drive_configuration: PowerDriveConfigurationClaim | None,
+) -> None:
+    expected_current_revision_id = _current_claim_revision_id(conn, listing_id=listing_id, org=org)
+    conn.commit()
+    result = write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(revision_id),
+        expected_current_revision_id=expected_current_revision_id,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Beneteau",
+            model_designation_claim="Swift Trawler 35",
+            build_year=BuildYearClaim(assertion_kind=VA, value=2020),
+            vessel_category=vessel_category,
+            power_drive_configuration=power_drive_configuration,
+        ),
+    )
+    assert result.status.value in ("created", "revised"), result
+    conn.commit()
+
+
+def _result_classes(conn: Any, *, power_drive: str) -> tuple[set[str], set[str], set[str]]:
+    outcome = evaluate_power_drive_requirement(conn, power_drive=power_drive, as_of=_as_of())
+    matches = {m.native_listing_id.value for m in outcome.claim_only_matches} | {
+        m.native_listing_id.value for m in outcome.design_linked_matches
+    }
+    non_matches = {m.native_listing_id.value for m in outcome.claim_only_non_matches} | {
+        m.native_listing_id.value for m in outcome.design_linked_non_matches
+    }
+    insufficient = {m.native_listing_id.value for m in outcome.claim_only_insufficient_data} | {
+        m.native_listing_id.value for m in outcome.design_linked_insufficient_data
+    }
+    return matches, non_matches, insufficient
+
+
+# ---------------------------------------------------------------------------
+# Mandatory minimum positive (contract "Objective"): design-unresolved POWER
+# boat, publisher-owned current POD claim.
+# ---------------------------------------------------------------------------
+
+
+def test_design_unresolved_power_pod_claim_is_confirmed_match(pwr_conn: Any) -> None:
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-POD",
+        physical_boat_id="PB-93-POD",
+        market_episode_id="ME-93-POD",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.POD
+        ),
+    )
+    matches, _, _ = _result_classes(pwr_conn, power_drive="POD")
+    assert "NL-93-POD" in matches
+
+    outcome = evaluate_power_drive_requirement(pwr_conn, power_drive="POD", as_of=_as_of())
+    match = next(m for m in outcome.claim_only_matches if m.native_listing_id.value == "NL-93-POD")
+    assert match.source_basis.value == "PUBLISHER_CLAIM"
+
+    # The corresponding wrong token is an evidenced nonmatch, not a positive.
+    wrong_matches, wrong_non_matches, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-POD" not in wrong_matches
+    assert "NL-93-POD" in wrong_non_matches
+
+
+@pytest.mark.parametrize(
+    "token", ["SHAFT", "STERNDRIVE", "POD", "WATERJET", "OUTBOARD"]
+)
+def test_every_public_token_becomes_exactly_one_positive(pwr_conn: Any, token: str) -> None:
+    listing_id = f"NL-93-TOK-{token}"
+    _make_active_listing(
+        pwr_conn,
+        listing_id=listing_id,
+        physical_boat_id=f"PB-93-TOK-{token}",
+        market_episode_id=f"ME-93-TOK-{token}",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration(token)
+        ),
+    )
+    matches, _, _ = _result_classes(pwr_conn, power_drive=token)
+    assert listing_id in matches
+
+
+# ---------------------------------------------------------------------------
+# Category isolation: explicit SAIL/UNKNOWN never becomes a Power positive.
+# ---------------------------------------------------------------------------
+
+
+def test_explicit_sail_category_never_becomes_power_positive(pwr_conn: Any) -> None:
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-SAIL",
+        physical_boat_id="PB-93-SAIL",
+        market_episode_id="ME-93-SAIL",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.POD
+        ),
+    )
+    matches, non_matches, _ = _result_classes(pwr_conn, power_drive="POD")
+    assert "NL-93-SAIL" not in matches
+    assert "NL-93-SAIL" in non_matches
+
+
+def test_missing_category_is_insufficient_not_confirmed_or_excluded(pwr_conn: Any) -> None:
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-UNK",
+        physical_boat_id="PB-93-UNK",
+        market_episode_id="ME-93-UNK",
+        boat_design_id=None,
+        vessel_category=None,
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.POD
+        ),
+    )
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="POD")
+    assert "NL-93-UNK" not in matches
+    assert "NL-93-UNK" not in non_matches
+    assert "NL-93-UNK" in insufficient
+
+
+def test_mixed_and_other_and_unknown_drive_never_confirm(pwr_conn: Any) -> None:
+    for token, claim in (
+        ("MIXED", PowerDriveConfigurationClaim(assertion_kind=VA, value=PowerDriveConfiguration.MIXED)),
+        ("OTHER", PowerDriveConfigurationClaim(assertion_kind=VA, value=PowerDriveConfiguration.OTHER)),
+        ("UNKNOWN", PowerDriveConfigurationClaim(assertion_kind=UNK)),
+    ):
+        listing_id = f"NL-93-{token}"
+        _make_active_listing(
+            pwr_conn,
+            listing_id=listing_id,
+            physical_boat_id=f"PB-93-{token}",
+            market_episode_id=f"ME-93-{token}",
+            boat_design_id=None,
+            vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+            power_drive_configuration=claim,
+        )
+    for token in ("SHAFT", "STERNDRIVE", "POD", "WATERJET", "OUTBOARD"):
+        matches, _, _ = _result_classes(pwr_conn, power_drive=token)
+        assert "NL-93-MIXED" not in matches
+        assert "NL-93-OTHER" not in matches
+        assert "NL-93-UNKNOWN" not in matches
+
+
+# ---------------------------------------------------------------------------
+# Another Organization's POWER claim cannot lend the publisher eligibility.
+# ---------------------------------------------------------------------------
+
+
+def test_other_organization_only_power_category_does_not_admit(pwr_conn: Any) -> None:
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-XORG",
+        physical_boat_id="PB-93-XORG",
+        market_episode_id="ME-93-XORG",
+        boat_design_id=None,
+        vessel_category=None,
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    # A different Organization asserts POWER about the same PhysicalBoat --
+    # never a real production path, but exercises the exact fail-closed
+    # cross-Organization-identity guard directly at the persistence layer.
+    other_org = _org("ORG-93-XORG-OTHER")
+    other_account = AccountId("ACC-93-XORG-OTHER")
+    with pwr_conn.transaction():
+        with pwr_conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [other_account.value],
+            )
+        seed_marketplace_organization(pwr_conn, other_org)
+    with pwr_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO physical_boat_claim_revisions ("
+            "claim_revision_id, physical_boat_id, claiming_organization_id, "
+            "recorded_by_account_id, marketed_brand_claim, model_designation_claim, "
+            "build_year_assertion_kind, build_year_value, vessel_category_assertion_kind, "
+            "vessel_category_value, previous_claim_revision_id, content_hash"
+            ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, %s)",
+            [
+                "PBCREV-93-XORG-OTHER",
+                "PB-93-XORG",
+                other_org.id.value,
+                other_account.value,
+                "Other Brand",
+                "Other Model",
+                "VALUE_ASSERTION",
+                2020,
+                "VALUE_ASSERTION",
+                "POWER",
+                "0" * 64,
+            ],
+        )
+        cur.execute(
+            "INSERT INTO physical_boat_claim_heads ("
+            "physical_boat_id, claiming_organization_id, current_claim_revision_id"
+            ") VALUES (%s, %s, %s)",
+            ["PB-93-XORG", other_org.id.value, "PBCREV-93-XORG-OTHER"],
+        )
+    pwr_conn.commit()
+
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-XORG" not in matches
+    assert "NL-93-XORG" not in non_matches
+    assert "NL-93-XORG" in insufficient
+
+
+# ---------------------------------------------------------------------------
+# Design-linked v0.6 bridge: shaft/outboard qualify, "other" never guessed.
+# ---------------------------------------------------------------------------
+
+
+def _insert_boat_design(conn: Any, design_id: str, model_id: str, *, drive_type: str) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) VALUES (%s, %s, %s)",
+            [model_id, f"Model {model_id}", "0" * 64],
+        )
+        baseline_json = json.dumps({"propulsion": {"drive_type": drive_type}})
+        cur.execute(
+            "INSERT INTO canonical_boat_designs "
+            "(id, boat_model_id, generation, designers, baseline, named_variants, "
+            " design_options, quality, content_hash) "
+            "VALUES (%s, %s, '{}'::jsonb, '[]'::jsonb, %s::jsonb, '[]'::jsonb, "
+            "'[]'::jsonb, '{}'::jsonb, %s)",
+            [design_id, model_id, baseline_json, "1" * 64],
+        )
+    conn.commit()
+
+
+def _admit_design_drive_type(conn: Any, design_id: str, *, value: str) -> None:
+    admit_resolved_categorical_field(
+        conn,
+        subject_kind=SubjectKind.BOAT_DESIGN,
+        subject_id=design_id,
+        field_pointer="/baseline/propulsion/drive_type",
+        value=value,
+        resolution_id=f"FR-PWRDRV-{design_id}",
+        fetch_canonical_value=lookup_power_drive_canonical_value,
+    )
+
+
+def test_design_linked_shaft_with_matching_concrete_claim_confirms(pwr_conn: Any) -> None:
+    _insert_boat_design(pwr_conn, "BD-93-SHAFT", "BM-93-SHAFT", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-SHAFT", value="shaft")
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DSHAFT",
+        physical_boat_id="PB-93-DSHAFT",
+        market_episode_id="ME-93-DSHAFT",
+        boat_design_id="BD-93-SHAFT",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    matches, _, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-DSHAFT" in matches
+
+
+def test_design_linked_other_drive_type_is_insufficient_never_guessed(pwr_conn: Any) -> None:
+    _insert_boat_design(pwr_conn, "BD-93-OTH", "BM-93-OTH", drive_type="other")
+    _admit_design_drive_type(pwr_conn, "BD-93-OTH", value="other")
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DOTH",
+        physical_boat_id="PB-93-DOTH",
+        market_episode_id="ME-93-DOTH",
+        boat_design_id="BD-93-OTH",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.STERNDRIVE
+        ),
+    )
+    for token in ("SHAFT", "STERNDRIVE", "POD", "WATERJET", "OUTBOARD"):
+        matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive=token)
+        assert "NL-93-DOTH" not in matches
+        assert "NL-93-DOTH" not in non_matches
+        assert "NL-93-DOTH" in insufficient
+
+
+def test_design_linked_sail_category_excludes_despite_shaft_mapping(pwr_conn: Any) -> None:
+    _insert_boat_design(pwr_conn, "BD-93-DSAIL", "BM-93-DSAIL", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-DSAIL", value="shaft")
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-DSAIL",
+        physical_boat_id="PB-93-DSAIL",
+        market_episode_id="ME-93-DSAIL",
+        boat_design_id="BD-93-DSAIL",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.SAIL),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    matches, non_matches, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-DSAIL" not in matches
+    assert "NL-93-DSAIL" in non_matches
+
+
+# ---------------------------------------------------------------------------
+# D29: a withdrawn/non-public listing is suppressed outright, never a match.
+# ---------------------------------------------------------------------------
+
+
+def test_withdrawn_listing_is_suppressed_from_every_result_surface(pwr_conn: Any) -> None:
+    from hullq.persistence.native_listing_lifecycle import withdraw_native_listing
+
+    account, org, membership = _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-WD",
+        physical_boat_id="PB-93-WD",
+        market_episode_id="ME-93-WD",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.WATERJET
+        ),
+    )
+    withdraw_result = withdraw_native_listing(
+        pwr_conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId("NL-93-WD"),
+    )
+    assert withdraw_result.status.value == "transitioned", withdraw_result
+    pwr_conn.commit()
+
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="WATERJET")
+    assert "NL-93-WD" not in matches
+    assert "NL-93-WD" not in non_matches
+    assert "NL-93-WD" not in insufficient
+
+
+# ---------------------------------------------------------------------------
+# Revision replacement: a later retraction removes the earlier match.
+# ---------------------------------------------------------------------------
+
+
+def test_retracting_current_drive_removes_earlier_match(pwr_conn: Any) -> None:
+    account, org, membership = _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-RETR",
+        physical_boat_id="PB-93-RETR",
+        market_episode_id="ME-93-RETR",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.OUTBOARD
+        ),
+    )
+    matches, _, _ = _result_classes(pwr_conn, power_drive="OUTBOARD")
+    assert "NL-93-RETR" in matches
+
+    _write_second_claim(
+        pwr_conn,
+        account=account,
+        org=org,
+        membership=membership,
+        listing_id="NL-93-RETR",
+        revision_id="PBCREV-93-RETR-2",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(assertion_kind=UNK),
+    )
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="OUTBOARD")
+    assert "NL-93-RETR" not in matches
+    assert "NL-93-RETR" not in non_matches
+    assert "NL-93-RETR" in insufficient

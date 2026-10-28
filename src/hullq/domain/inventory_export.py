@@ -162,6 +162,10 @@ ALLOWED_NAUTIX_SALE_CLASSES: frozenset[str] = frozenset(
     }
 )
 _ALLOWED_SALE_CLASSES = ALLOWED_NAUTIX_SALE_CLASSES
+#: SLICE-0093: `hullq.domain.physical_boat_claims.VesselCategory`'s own
+#: three-value vocabulary, mirrored here rather than imported so this pure
+#: export-domain module keeps no dependency on the claims module.
+_VESSEL_CATEGORY_VALUES = frozenset({"SAIL", "POWER", "MOTORSAILER"})
 
 
 class ExportWriteError(Exception):
@@ -239,6 +243,14 @@ class ExportRow:
     sale_class: str | None = None
     nautix_account_token: str | None = None
     nautix_office_id: str | None = None
+    #: SLICE-0093: the owning Organization's own current `vessel_category`
+    #: claim value (`"SAIL"`/`"POWER"`/`"MOTORSAILER"`), or `None` when
+    #: omitted/`UNKNOWN`/not yet read -- never inferred. `boat_type` below
+    #: remains the sole unconditional NautiX default only for a row whose
+    #: resolved category is `SAIL` or genuinely unestablished; an explicit
+    #: non-SAIL value fails the NautiX preflight closed instead (module
+    #: docstring NautiX representability gap, extended for Power).
+    vessel_category: str | None = None
 
     def __post_init__(self) -> None:
         if len(self.media_urls) != len(self.media_md5s) or len(self.media_urls) != len(
@@ -251,6 +263,10 @@ class ExportRow:
             raise ValueError(f"ExportRow.media_urls exceeds {MAX_EXPORT_MEDIA_PER_ROW} entries")
         if self.sale_class is not None and self.sale_class not in _ALLOWED_SALE_CLASSES:
             raise ValueError(f"ExportRow.sale_class must be one of {sorted(_ALLOWED_SALE_CLASSES)}")
+        if self.vessel_category is not None and self.vessel_category not in _VESSEL_CATEGORY_VALUES:
+            raise ValueError(
+                f"ExportRow.vessel_category must be one of {sorted(_VESSEL_CATEGORY_VALUES)}"
+            )
         for label, value in (
             ("broker_listing_reference", self.broker_listing_reference),
             ("marketed_brand_claim", self.marketed_brand_claim),
@@ -560,6 +576,18 @@ def _nautix_preflight(row: ExportRow) -> FormatPreflight:
         reasons.append(
             "media.images: no approved rights-cleared photo with a genuine NautiX-shaped MD5 "
             "checksum is available (never an invented checksum)"
+        )
+    # SLICE-0093 Required Behavior §7: the existing Sail-only `boat_type`
+    # default (`_NAUTIX_CATALOG_BOAT_TYPE`, below) must never be allowed to
+    # coerce an explicitly non-SAIL (POWER/MOTORSAILER) listing into the
+    # catalog-wide "sail-yacht" type. A `None` vessel_category (omitted/
+    # UNKNOWN/not yet read) preserves the existing default-SAIL assumption
+    # unchanged -- only an explicit non-SAIL resolution fails closed here.
+    if row.vessel_category is not None and row.vessel_category != "SAIL":
+        reasons.append(
+            "boat_types.boat_type: HullQ's sail-yacht NautiX catalog type cannot represent a "
+            f"listing whose current vessel category is explicitly {row.vessel_category} "
+            "(never coerced to sail-yacht)"
         )
 
     warnings: list[str] = []

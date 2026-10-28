@@ -1,0 +1,32 @@
+---
+// SLICE-0093: Spanish locale-prefixed Power-only Search surface. Mirrors
+// web/src/pages/en/power/search.astro exactly, only the locale differs.
+export const prerender = false;
+import PowerSearchPageBody from "../../../components/PowerSearchPageBody.astro";
+import { buildPowerSearchCanonicalPath, loadPowerSearchPageData } from "../../../lib/powerSearchPageData";
+
+const locale = "es" as const;
+const apiBaseUrl = process.env.HULLQ_API_BASE_URL ?? "http://127.0.0.1:8000";
+
+Astro.response.headers.set("X-Robots-Tag", "noindex");
+
+const queryString = Astro.url.search.replace(/^\?/, "");
+const data = await loadPowerSearchPageData(apiBaseUrl, locale, queryString);
+
+if (data.kind === "redirect") {
+  return Astro.redirect(data.location, 308);
+}
+if (data.kind === "invalid") {
+  Astro.response.status = 400;
+} else if (data.kind === "unavailable") {
+  Astro.response.status = 503;
+}
+
+const canonicalPath = buildPowerSearchCanonicalPath(
+  locale,
+  data.kind === "ok" ? data.activeRequirement : null,
+);
+const canonicalUrl = new URL(canonicalPath, Astro.url).toString();
+---
+
+<PowerSearchPageBody locale={locale} data={data} canonicalUrl={canonicalUrl} />

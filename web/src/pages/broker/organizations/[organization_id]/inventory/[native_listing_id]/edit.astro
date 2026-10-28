@@ -244,6 +244,14 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
     // claim snapshot without it -- erasing an already-saved category.
     const vesselCategory = assertionField(formData, "vessel_category");
     if (vesselCategory) body["physical_boat.vessel_category"] = vesselCategory;
+    // SLICE-0093: must be read from this real form exactly like every other
+    // optional claim field above, or an ordinary unrelated edit through this
+    // actual page would silently resubmit the claim snapshot without it --
+    // erasing an already-saved current drive-arrangement claim.
+    const powerDriveConfiguration = assertionField(formData, "power_drive_configuration");
+    if (powerDriveConfiguration) {
+      body["physical_boat.power_drive_configuration"] = powerDriveConfiguration;
+    }
     const boatName = assertionField(formData, "boat_name");
     if (boatName) body["physical_boat.boat_name"] = boatName;
 
@@ -625,6 +633,15 @@ const HULL_MATERIALS = [
 // select reuses `UNKNOWN_ONLY`. `CONFLICT`/the bare resolved-UNKNOWN state
 // are resolution-time outcomes, never a value a broker can assert here.
 const VESSEL_CATEGORIES = ["SAIL", "POWER", "MOTORSAILER"];
+const POWER_DRIVE_CONFIGURATIONS = [
+  "SHAFT",
+  "STERNDRIVE",
+  "POD",
+  "WATERJET",
+  "OUTBOARD",
+  "MIXED",
+  "OTHER",
+];
 const VAT_TAX_STATUS_VALUES = ["VAT_PAID", "VAT_NOT_PAID", "VAT_MARGIN_SCHEME", "OTHER"];
 
 function currentWire(
@@ -1207,6 +1224,48 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                         value={value}
                         selected={
                           currentWire(claim, "physical_boat.vessel_category")?.value === value
+                        }
+                      >
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Power drive configuration</legend>
+                  <label for="power_drive_configuration_kind">
+                    Power drive configuration assertion status
+                  </label>
+                  <select
+                    id="power_drive_configuration_kind"
+                    name="power_drive_configuration_kind"
+                  >
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.power_drive_configuration")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <label for="power_drive_configuration_value">
+                    Power drive configuration value
+                  </label>
+                  <select
+                    id="power_drive_configuration_value"
+                    name="power_drive_configuration_value"
+                  >
+                    {POWER_DRIVE_CONFIGURATIONS.map((value) => (
+                      <option
+                        value={value}
+                        selected={
+                          currentWire(claim, "physical_boat.power_drive_configuration")?.value ===
+                          value
                         }
                       >
                         {value}

@@ -33,6 +33,8 @@ from hullq.domain.physical_boat_claims import (
     LoaLengthClaim,
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
+    PowerDriveConfiguration,
+    PowerDriveConfigurationClaim,
     RudderConfiguration,
     RudderConfigurationClaim,
 )
@@ -70,6 +72,7 @@ def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name_and_sli
         "beam",
         "hull_material",
         "vessel_category",
+        "power_drive_configuration",
     }
 
 
@@ -628,3 +631,75 @@ def test_adding_beam_hull_material_kinds_does_not_loosen_other_fields() -> None:
         LoaLengthClaim(assertion_kind=AssertionKind.ABSENT)
     with pytest.raises(ValueError, match="assertion_kind"):
         HullConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0093: power_drive_configuration (identical two-state shape to
+# hull_material -- no ABSENT)
+# ---------------------------------------------------------------------------
+
+
+def test_power_drive_configuration_omitted_by_default() -> None:
+    assert _minimal_snapshot().power_drive_configuration is None
+
+
+def test_power_drive_configuration_value_assertion_round_trips() -> None:
+    snapshot = _minimal_snapshot(
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.POD
+        )
+    )
+    assert snapshot.power_drive_configuration.value is PowerDriveConfiguration.POD
+
+
+def test_power_drive_configuration_accepts_values_beyond_the_public_search_vocabulary() -> None:
+    """A broker may truthfully assert MIXED/OTHER even though neither is
+    ever a public Search filter token."""
+    for value in (PowerDriveConfiguration.MIXED, PowerDriveConfiguration.OTHER):
+        snapshot = _minimal_snapshot(
+            power_drive_configuration=PowerDriveConfigurationClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value=value
+            )
+        )
+        assert snapshot.power_drive_configuration.value is value
+
+
+def test_power_drive_configuration_explicit_unknown_is_distinct_from_omitted() -> None:
+    snapshot_omitted = _minimal_snapshot()
+    snapshot_unknown = _minimal_snapshot(
+        power_drive_configuration=PowerDriveConfigurationClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    assert snapshot_omitted.power_drive_configuration is None
+    assert snapshot_unknown.power_drive_configuration.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.power_drive_configuration.value is None
+
+
+def test_power_drive_configuration_rejects_absent() -> None:
+    with pytest.raises(ValueError, match="assertion_kind"):
+        PowerDriveConfigurationClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+def test_power_drive_configuration_rejects_unsupported_categorical_value() -> None:
+    with pytest.raises(ValueError):
+        PowerDriveConfiguration("DIESEL_ELECTRIC")  # not an accepted registry value
+
+
+def test_power_drive_configuration_rejects_keel_configuration_value_type() -> None:
+    with pytest.raises(TypeError, match="PowerDriveConfiguration"):
+        PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION,
+            value=KeelConfiguration.FIN,  # type: ignore[arg-type]
+        )
+
+
+def test_power_drive_configuration_is_independent_of_hull_material() -> None:
+    snapshot = _minimal_snapshot(
+        hull_material=HullMaterialClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=HullMaterial.ALUMINUM
+        ),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.OUTBOARD
+        ),
+    )
+    assert snapshot.hull_material.value is HullMaterial.ALUMINUM
+    assert snapshot.power_drive_configuration.value is PowerDriveConfiguration.OUTBOARD

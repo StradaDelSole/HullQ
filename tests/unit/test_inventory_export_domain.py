@@ -218,6 +218,45 @@ class TestPreflight:
         assert nautix.exportable is False
         assert any("media.images" in r for r in nautix.reasons)
 
+    # SLICE-0093 Required Behavior §7: the Sail-only NautiX "sail-yacht"
+    # catalog type must never coerce an explicitly non-SAIL listing.
+
+    def test_explicit_power_vessel_category_is_never_nautix_exportable(self) -> None:
+        row = _complete_row(vessel_category="POWER")
+        preflight = ie.build_row_preflight(row)
+        nautix = preflight.formats[ie.ExportFormat.NAUTIX]
+        assert nautix.exportable is False
+        assert any("boat_type" in r for r in nautix.reasons)
+
+    def test_explicit_motorsailer_vessel_category_is_never_nautix_exportable(self) -> None:
+        row = _complete_row(vessel_category="MOTORSAILER")
+        preflight = ie.build_row_preflight(row)
+        nautix = preflight.formats[ie.ExportFormat.NAUTIX]
+        assert nautix.exportable is False
+        assert any("boat_type" in r for r in nautix.reasons)
+
+    def test_explicit_sail_vessel_category_is_still_nautix_exportable(self) -> None:
+        preflight = ie.build_row_preflight(_complete_row(vessel_category="SAIL"))
+        assert preflight.formats[ie.ExportFormat.NAUTIX].exportable is True
+
+    def test_omitted_vessel_category_preserves_existing_default_sail_assumption(self) -> None:
+        """A `None` vessel_category (every pre-0093 row/caller) must keep
+        exporting exactly as before -- the seven accepted Sail output
+        formats remain unaffected."""
+        preflight = ie.build_row_preflight(_complete_row(vessel_category=None))
+        assert preflight.formats[ie.ExportFormat.NAUTIX].exportable is True
+
+    def test_power_category_does_not_affect_the_other_six_formats(self) -> None:
+        preflight = ie.build_row_preflight(_complete_row(vessel_category="POWER"))
+        for fmt in ie.ExportFormat:
+            if fmt is ie.ExportFormat.NAUTIX:
+                continue
+            assert preflight.formats[fmt].exportable is True
+
+    def test_invalid_vessel_category_is_rejected_at_construction(self) -> None:
+        with pytest.raises(ValueError, match="vessel_category"):
+            _complete_row(vessel_category="NOT_A_REAL_CATEGORY")
+
 
 class TestNautixWriterRoundtrip:
     def test_complete_row_passes_pinned_xsd_and_0083_reimport(self) -> None:

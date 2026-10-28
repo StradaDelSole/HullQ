@@ -336,6 +336,7 @@ def _claim_physical_boat_facts(
         "boat_name_unknown": False,
         "loa_meters": None,
         "loa_unknown": False,
+        "vessel_category": None,
     }
     if market_episode_id is None:
         return facts
@@ -366,6 +367,17 @@ def _claim_physical_boat_facts(
             facts["loa_meters"] = claims.loa_length.value
         else:
             facts["loa_unknown"] = True
+    # SLICE-0093: this owning Organization's own current vessel_category
+    # claim, read from the identical already-fetched claim_record -- never
+    # a second query. `None` for omitted/UNKNOWN (preserves the existing
+    # default-SAIL NautiX assumption); only an explicit SAIL/POWER/
+    # MOTORSAILER value is recorded.
+    if (
+        claims.vessel_category is not None
+        and claims.vessel_category.assertion_kind is AssertionKind.VALUE_ASSERTION
+        and claims.vessel_category.value is not None
+    ):
+        facts["vessel_category"] = claims.vessel_category.value.value
     return facts
 
 
@@ -467,6 +479,7 @@ def _promoted_to_export_row(
         boat_name_unknown=facts["boat_name_unknown"],
         loa_meters=facts["loa_meters"],
         loa_unknown=facts["loa_unknown"],
+        vessel_category=facts["vessel_category"],
         asking_price_mode=asking_price_mode,
         asking_price_amount=asking_price_amount,
         currency=currency,

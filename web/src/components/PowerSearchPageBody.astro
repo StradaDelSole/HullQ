@@ -1,0 +1,167 @@
+---
+// SLICE-0093: the one shared Power Search page presentation for every
+// supported locale. Purely presentational -- props in, HTML out. It never
+// fetches anything and never mutates `Astro.response`/`Astro.redirect`:
+// those calls happen in each top-level `web/src/pages/{locale}/power/
+// search.astro` route's own frontmatter (mirrors `SearchPageBody.astro`'s
+// identical rationale).
+import { SEARCH_POWER_DRIVE_VALUES } from "../lib/powerSearchApi";
+import type { PowerSearchPageData } from "../lib/powerSearchPageData";
+import { powerSearchText } from "../lib/powerSearchText";
+import type { SupportedLocale } from "../lib/searchText";
+
+type RenderablePowerSearchPageData = Exclude<PowerSearchPageData, { kind: "redirect" }>;
+
+interface Props {
+  locale: SupportedLocale;
+  data: RenderablePowerSearchPageData;
+  canonicalUrl: string;
+}
+
+const { locale, data, canonicalUrl } = Astro.props;
+const t = powerSearchText[locale];
+const isCanonical = data.kind === "ok";
+const activeRequirement = data.kind === "ok" ? data.activeRequirement : null;
+
+function driveLabel(value: string): string {
+  return (t.powerDriveLabels as Record<string, string>)[value] ?? value;
+}
+
+function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
+  if (truth === "TRUE") return t.truthTrueLabel;
+  if (truth === "FALSE") return t.truthFalseLabel;
+  return t.truthUnknownLabel;
+}
+---
+
+<html lang={locale}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    {isCanonical && <link rel="canonical" href={canonicalUrl} />}
+    <title>{t.title}</title>
+  </head>
+  <body>
+    {
+      data.kind === "invalid" ? (
+        <main>
+          <h1>{t.invalidTitle}</h1>
+          <p>{data.message ?? t.invalidFallback}</p>
+          <p>
+            <a href={`/${locale}/power/search`}>{t.startOver}</a>
+          </p>
+        </main>
+      ) : data.kind === "unavailable" ? (
+        <main>
+          <h1>{t.serviceUnavailableTitle}</h1>
+          <p>{t.serviceUnavailableMessage}</p>
+        </main>
+      ) : (
+        <main>
+          <h1>{t.title}</h1>
+          <p>{t.formInstructions}</p>
+          <form method="get" action={`/${locale}/power/search`}>
+            <label>
+              {t.powerDriveLabel}
+              <select name="power_drive">
+                <option value="" selected={activeRequirement === null}>
+                  {t.powerDriveAnyOption}
+                </option>
+                {SEARCH_POWER_DRIVE_VALUES.map((value) => (
+                  <option value={value} selected={activeRequirement?.power_drive === value}>
+                    {driveLabel(value)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit">{t.submit}</button>
+          </form>
+
+          {activeRequirement !== null && (
+            <section aria-label="power search results">
+              <p>{t.requirementSummary(driveLabel(activeRequirement.power_drive))}</p>
+
+              <h2>{t.designLinkedHeading(data.designLinkedMatchCount)}</h2>
+              {data.designLinkedMatchCount === 0 ? (
+                <p>
+                  {data.publisherClaimMatchCount > 0
+                    ? t.noDesignLinkedMatchesButPublisherClaimsExist(data.publisherClaimMatchCount)
+                    : t.noDesignLinkedMatches}
+                </p>
+              ) : (
+                <ul>
+                  {data.designLinkedMatches.map((match) => (
+                    <li>
+                      <a
+                        href={`/listings/${match.native_listing_id}?ds=${encodeURIComponent(match.discovery_token)}`}
+                      >
+                        {t.viewListing}: {match.native_listing_id}
+                      </a>
+                      {" — "}
+                      <span aria-label="freshness status">
+                        {match.freshness_status === "DUE_FOR_CONFIRMATION"
+                          ? t.freshnessDueLabel
+                          : t.freshnessConfirmedLabel}
+                      </span>
+                      {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
+                        <p aria-label="freshness due note">{t.freshnessDueNote}</p>
+                      )}
+                      {match.design_configuration_evidence.length > 0 && (
+                        <div aria-label="design configuration evidence">
+                          <p>{t.designEvidenceHeading}</p>
+                          <ul>
+                            {match.design_configuration_evidence.map((configEvidence) => (
+                              <li>
+                                {t.designEvidenceConfigurationLabel}{" "}
+                                <code>{configEvidence.configuration_id}</code>{" "}
+                                ({truthLabel(configEvidence.truth)})
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              {data.designLinkedInsufficientDataCount > 0 && (
+                <p aria-label="insufficient data">
+                  {t.insufficientDataText(data.designLinkedInsufficientDataCount)}
+                </p>
+              )}
+
+              {data.publisherClaimMatchCount > 0 && (
+                <section aria-label="publisher claim matches">
+                  <h2>{t.publisherClaimHeading(data.publisherClaimMatchCount)}</h2>
+                  <p>{t.publisherClaimDisclaimer}</p>
+                  <ul>
+                    {data.publisherClaimMatches.map((match) => (
+                      <li>
+                        <a
+                          href={`/listings/${match.native_listing_id}?ds=${encodeURIComponent(match.discovery_token)}`}
+                        >
+                          {t.viewListing}: {match.native_listing_id}
+                        </a>
+                        {" — "}
+                        <span aria-label="freshness status">
+                          {match.freshness_status === "DUE_FOR_CONFIRMATION"
+                            ? t.freshnessDueLabel
+                            : t.freshnessConfirmedLabel}
+                        </span>
+                        {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
+                          <p aria-label="freshness due note">{t.freshnessDueNote}</p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </section>
+          )}
+        </main>
+      )
+    }
+  </body>
+</html>

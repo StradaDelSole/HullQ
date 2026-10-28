@@ -47,6 +47,23 @@ hull_material_design_bridge.SEARCH_HULL_MATERIAL_VALUES`): a broker may
 truthfully assert `FERROCEMENT`/`CARBON_COMPOSITE`/`OTHER` even though none of
 those three is ever a public hard-filter value in this slice.
 
+SLICE-0093 adds the first Power-domain optional field, the bounded current
+drive-arrangement claim (`docs/slices/SLICE-0093-power-drive-configuration-
+ready.md`, `specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`):
+
+    physical_boat.power_drive_configuration
+
+`power_drive_configuration` mirrors `hull_material`'s identical shape: the
+full seven-value broker claim vocabulary (`SHAFT`/`STERNDRIVE`/`POD`/
+`WATERJET`/`OUTBOARD`/`MIXED`/`OTHER`) is broader than the five public
+Search filter tokens the companion contract authorizes
+(`hullq.search.power_criteria_registry.SEARCH_POWER_DRIVE_VALUES`) -- a
+broker may truthfully assert `MIXED`/`OTHER` even though neither is ever a
+public hard-filter value. This field is the *current, installed* drive
+arrangement, never engine count/make/model, energy source, fuel system or
+any other propulsion attribute; it is never populated from a vessel category
+claim and never implies a `POWER` category by itself.
+
 This module contains only pure, frozen value objects -- no persistence, ORM
 or network access. It does not represent any other `PHYSICAL_BOAT` field and
 does not implement a generic 38-field marketplace-fact framework: each
@@ -91,6 +108,8 @@ __all__ = [
     "LoaLengthClaim",
     "PhysicalBoatClaimRevisionId",
     "PhysicalBoatClaimSnapshot",
+    "PowerDriveConfiguration",
+    "PowerDriveConfigurationClaim",
     "RudderConfiguration",
     "RudderConfigurationClaim",
     "VesselCategory",
@@ -223,6 +242,29 @@ class HullMaterial(StrEnum):
     OTHER = "OTHER"
 
 
+class PowerDriveConfiguration(StrEnum):
+    """`physical_boat.power_drive_configuration` categorical values --
+    SLICE-0093 (`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`).
+
+    The mechanical arrangement transferring power into propulsive thrust --
+    never engine count/make/model, horsepower, energy source (diesel/
+    electric/hybrid), fuel system, hull running mode, speed, range or
+    maintenance history. `MIXED` (unlike drive types genuinely present
+    together) and `OTHER` (known-other) are ordinary VALUE_ASSERTION values
+    of this enum -- truthful broker claims, but never public Search filter
+    values (`hullq.search.power_criteria_registry.SEARCH_POWER_DRIVE_VALUES`
+    is the bounded five-token public whitelist: `SHAFT`/`STERNDRIVE`/`POD`/
+    `WATERJET`/`OUTBOARD`)."""
+
+    SHAFT = "SHAFT"
+    STERNDRIVE = "STERNDRIVE"
+    POD = "POD"
+    WATERJET = "WATERJET"
+    OUTBOARD = "OUTBOARD"
+    MIXED = "MIXED"
+    OTHER = "OTHER"
+
+
 class VesselCategory(StrEnum):
     """`physical_boat.vessel_category` categorical values -- SLICE-0091
     (`docs/slices/SLICE-0091-vessel-category-foundation.md` §A).
@@ -292,6 +334,13 @@ _HULL_MATERIAL_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind
 #: `hullq.domain.vessel_category.resolve_vessel_category`, never a publisher
 #: input (SLICE-0091 contract §A).
 _VESSEL_CATEGORY_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
+#: SLICE-0093: identical two-state shape to keel/rudder/hull_configuration/
+#: hull_material/vessel_category above -- no ABSENT. Every `PowerDriveConfiguration`
+#: member (including `MIXED`/`OTHER`) is an ordinary VALUE_ASSERTION value of
+#: its own enum, never a separate assertion_kind.
+_POWER_DRIVE_CONFIGURATION_ALLOWED = frozenset(
+    {AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN}
+)
 #: SLICE-0065: the only PhysicalBoat/LISTING_OFFER field that allows ABSENT
 #: (registry `physical_boat.boat_name`) -- every other field's own frozenset
 #: above is untouched, so adding ABSENT to the shared `AssertionKind`
@@ -531,11 +580,33 @@ class VesselCategoryClaim:
             _require_kind(self.value, VesselCategory, "VesselCategoryClaim.value")
 
 
+@dataclass(frozen=True)
+class PowerDriveConfigurationClaim:
+    """`physical_boat.power_drive_configuration`: VALUE_ASSERTION(PowerDriveConfiguration)
+    or explicit UNKNOWN -- SLICE-0093. `MIXED`/`OTHER` are ordinary
+    VALUE_ASSERTION values of their own enum, never a separate assertion_kind
+    and never silently remapped to a public Search token."""
+
+    assertion_kind: AssertionKind
+    value: PowerDriveConfiguration | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(
+            self.assertion_kind,
+            self.value,
+            _POWER_DRIVE_CONFIGURATION_ALLOWED,
+            "PowerDriveConfigurationClaim",
+        )
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            _require_kind(self.value, PowerDriveConfiguration, "PowerDriveConfigurationClaim.value")
+
+
 # ---------------------------------------------------------------------------
 # The bounded seven-field claim snapshot, plus the optional SLICE-0065
 # boat-name field, the optional SLICE-0086 hull_configuration/
-# cockpit_position/deck_saloon fields and the optional SLICE-0087
-# beam/hull_material fields
+# cockpit_position/deck_saloon fields, the optional SLICE-0087
+# beam/hull_material fields and the optional SLICE-0093
+# power_drive_configuration field
 # ---------------------------------------------------------------------------
 
 
@@ -564,6 +635,7 @@ class PhysicalBoatClaimSnapshot:
     beam: BeamClaim | None = None
     hull_material: HullMaterialClaim | None = None
     vessel_category: VesselCategoryClaim | None = None
+    power_drive_configuration: PowerDriveConfigurationClaim | None = None
 
     def __post_init__(self) -> None:
         _require_kind(
@@ -625,4 +697,10 @@ class PhysicalBoatClaimSnapshot:
                 self.vessel_category,
                 VesselCategoryClaim,
                 "PhysicalBoatClaimSnapshot.vessel_category",
+            )
+        if self.power_drive_configuration is not None:
+            _require_kind(
+                self.power_drive_configuration,
+                PowerDriveConfigurationClaim,
+                "PhysicalBoatClaimSnapshot.power_drive_configuration",
             )
