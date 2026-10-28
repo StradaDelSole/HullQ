@@ -78,6 +78,7 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimSnapshot,
     PowerDriveConfiguration,
     PowerDriveConfigurationClaim,
+    PowerEngineCountClaim,
     RudderConfiguration,
     RudderConfigurationClaim,
     VesselCategory,
@@ -256,8 +257,9 @@ INSERT INTO physical_boat_claim_revisions (
     hull_material_assertion_kind, hull_material_value,
     vessel_category_assertion_kind, vessel_category_value,
     power_drive_configuration_assertion_kind, power_drive_configuration_value,
+    power_engine_count_assertion_kind, power_engine_count_value,
     previous_claim_revision_id, content_hash
-) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 ON CONFLICT (claim_revision_id) DO NOTHING
 """
 
@@ -286,6 +288,7 @@ _REVISION_COLUMNS = """
     r.hull_material_assertion_kind, r.hull_material_value,
     r.vessel_category_assertion_kind, r.vessel_category_value,
     r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value,
+    r.power_engine_count_assertion_kind, r.power_engine_count_value,
     r.previous_claim_revision_id, r.recorded_at
 """
 
@@ -365,7 +368,8 @@ SELECT h.claiming_organization_id, r.claim_revision_id, r.recorded_by_account_id
        r.beam_assertion_kind, r.beam_value,
        r.hull_material_assertion_kind, r.hull_material_value,
        r.vessel_category_assertion_kind, r.vessel_category_value,
-       r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value
+       r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value,
+       r.power_engine_count_assertion_kind, r.power_engine_count_value
 FROM physical_boat_claim_heads h
 JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
 WHERE h.physical_boat_id = %s
@@ -390,7 +394,8 @@ SELECT h.physical_boat_id,
        r.beam_assertion_kind, r.beam_value,
        r.hull_material_assertion_kind, r.hull_material_value,
        r.vessel_category_assertion_kind, r.vessel_category_value,
-       r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value
+       r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value,
+       r.power_engine_count_assertion_kind, r.power_engine_count_value
 FROM physical_boat_claim_heads h
 JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
 WHERE h.physical_boat_id = ANY(%s)
@@ -445,6 +450,7 @@ def _optional_claim_dict(
     | HullMaterialClaim
     | VesselCategoryClaim
     | PowerDriveConfigurationClaim
+    | PowerEngineCountClaim
     | None,
 ) -> dict[str, Any] | None:
     if claim is None:
@@ -533,6 +539,12 @@ def _claim_envelope_dict(
         envelope["power_drive_configuration"] = _optional_claim_dict(
             claims.power_drive_configuration
         )
+    # SLICE-0094: identical "only add the key when actually present" rule as
+    # power_drive_configuration above, for the same exact pre-0094
+    # retry-fingerprint-stability reason -- a pre-0094 revision never had
+    # this key at all.
+    if claims.power_engine_count is not None:
+        envelope["power_engine_count"] = _optional_claim_dict(claims.power_engine_count)
     return envelope
 
 
@@ -575,6 +587,8 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
         vessel_category_value,
         power_drive_configuration_kind,
         power_drive_configuration_value,
+        power_engine_count_kind,
+        power_engine_count_value,
         previous_revision_id,
         recorded_at,
     ) = row
@@ -659,6 +673,12 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
             if power_drive_configuration_value is not None
             else None,
         )
+    power_engine_count: PowerEngineCountClaim | None = None
+    if power_engine_count_kind is not None:
+        power_engine_count = PowerEngineCountClaim(
+            assertion_kind=AssertionKind(power_engine_count_kind),
+            value=power_engine_count_value,
+        )
 
     claims = PhysicalBoatClaimSnapshot(
         marketed_brand_claim=marketed_brand_claim,
@@ -679,6 +699,7 @@ def _row_to_revision_record(row: tuple[Any, ...]) -> PhysicalBoatClaimRevisionRe
         hull_material=hull_material,
         vessel_category=vessel_category,
         power_drive_configuration=power_drive_configuration,
+        power_engine_count=power_engine_count,
     )
 
     return PhysicalBoatClaimRevisionRecord(
@@ -710,6 +731,7 @@ def _optional_claim_columns(
     | HullMaterialClaim
     | VesselCategoryClaim
     | PowerDriveConfigurationClaim
+    | PowerEngineCountClaim
     | None,
 ) -> tuple[str | None, Any]:
     if claim is None:
@@ -892,6 +914,9 @@ def write_physical_boat_claim_revision_row(
     power_drive_configuration_kind, power_drive_configuration_value = _optional_claim_columns(
         claims.power_drive_configuration
     )
+    power_engine_count_kind, power_engine_count_value = _optional_claim_columns(
+        claims.power_engine_count
+    )
 
     # ON CONFLICT DO NOTHING on claim_revision_id (a global PRIMARY KEY,
     # not scoped to (physical_boat_id, claiming_organization_id)) closes
@@ -933,6 +958,8 @@ def write_physical_boat_claim_revision_row(
             vessel_category_value,
             power_drive_configuration_kind,
             power_drive_configuration_value,
+            power_engine_count_kind,
+            power_engine_count_value,
             actual_current_id,
             content_hash,
         ),
@@ -1172,6 +1199,7 @@ class CurrentPhysicalBoatClaimObservation:
     hull_material: HullMaterialClaim | None
     vessel_category: VesselCategoryClaim | None
     power_drive_configuration: PowerDriveConfigurationClaim | None
+    power_engine_count: PowerEngineCountClaim | None
 
 
 def _decode_claim_observation_row(
@@ -1216,6 +1244,8 @@ def _decode_claim_observation_row(
         vessel_category_value,
         power_drive_configuration_kind,
         power_drive_configuration_value,
+        power_engine_count_kind,
+        power_engine_count_value,
     ) = row
     draft: DraftClaim | None = None
     if draft_kind is not None:
@@ -1291,6 +1321,12 @@ def _decode_claim_observation_row(
             if power_drive_configuration_value is not None
             else None,
         )
+    power_engine_count: PowerEngineCountClaim | None = None
+    if power_engine_count_kind is not None:
+        power_engine_count = PowerEngineCountClaim(
+            assertion_kind=AssertionKind(power_engine_count_kind),
+            value=power_engine_count_value,
+        )
     return CurrentPhysicalBoatClaimObservation(
         claiming_organization_id=MarketplaceOrganizationId(claiming_organization_id),
         revision_id=PhysicalBoatClaimRevisionId(revision_id),
@@ -1307,6 +1343,7 @@ def _decode_claim_observation_row(
         hull_material=hull_material,
         vessel_category=vessel_category,
         power_drive_configuration=power_drive_configuration,
+        power_engine_count=power_engine_count,
     )
 
 

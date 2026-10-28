@@ -1,9 +1,9 @@
-// SLICE-0093: the only module allowed to talk to the outside world for the
-// public Power-only Search surface. Mirrors `searchApi.ts`'s identical
-// discipline (`redirect: "manual"`, no PostgreSQL/Python-rule
-// reimplementation), but talks to the entirely separate
-// `/api/search/{locale}/power` route -- never the Sail `/api/search/{locale}`
-// route, and never shares a response shape with it.
+// SLICE-0093, extended SLICE-0094: the only module allowed to talk to the
+// outside world for the public Power-only Search surface. Mirrors
+// `searchApi.ts`'s identical discipline (`redirect: "manual"`, no
+// PostgreSQL/Python-rule reimplementation), but talks to the entirely
+// separate `/api/search/{locale}/power` route -- never the Sail
+// `/api/search/{locale}` route, and never shares a response shape with it.
 
 // The exact accepted public five-token exact whitelist
 // (`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md` "One field, one
@@ -21,13 +21,48 @@ export const SEARCH_POWER_DRIVE_VALUES = [
 
 export type SearchPowerDriveValue = (typeof SEARCH_POWER_DRIVE_VALUES)[number];
 
+// SLICE-0094: the exact accepted public eight-token exact whitelist
+// (`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md` "One field, one
+// meaning", `hullq.search.power_criteria_registry
+// .SEARCH_POWER_ENGINE_COUNT_VALUES`). A current publisher's durable claim
+// may truthfully assert 9-32, but 9 and above are never public Search
+// filter tokens in this slice.
+export const SEARCH_POWER_ENGINE_COUNT_VALUES = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+] as const;
+
+export type SearchPowerEngineCountValue = (typeof SEARCH_POWER_ENGINE_COUNT_VALUES)[number];
+
+// SLICE-0094: now sparse -- `power_drive` and/or `power_engine_count`,
+// never neither (mirrors `searchApi.ts`'s own `SearchActiveRequirement`
+// sparse-subset shape; FastAPI is the actual source of truth for "at least
+// one" -- TypeScript cannot mechanically enforce that any more cheaply than
+// at runtime).
 export interface PowerActiveRequirement {
-  power_drive: SearchPowerDriveValue;
+  power_drive?: SearchPowerDriveValue;
+  power_engine_count?: SearchPowerEngineCountValue;
 }
 
 // Mirrors `src/hullq/api/app.py::_serialize_leaf_criterion` -- shared shape
-// with the Sail surface's own `SearchLeafCriterion`.
-export type PowerLeafCriterion = { kind: "CATEGORICAL"; field: string; equals: string };
+// with the Sail surface's own `SearchLeafCriterion`. SLICE-0094 adds the
+// NUMERIC variant (`power_engine_count`'s own RANGE leaf with
+// threshold_min == threshold_max).
+export type PowerLeafCriterion =
+  | {
+      kind: "NUMERIC";
+      field: string;
+      comparison: "MINIMUM" | "MAXIMUM" | "RANGE";
+      threshold_min: string | null;
+      threshold_max: string | null;
+    }
+  | { kind: "CATEGORICAL"; field: string; equals: string };
 
 export interface PowerCriterionEvidence {
   criterion: PowerLeafCriterion;
@@ -132,12 +167,31 @@ function isSearchPowerDriveValue(value: unknown): value is SearchPowerDriveValue
   );
 }
 
+function isSearchPowerEngineCountValue(value: unknown): value is SearchPowerEngineCountValue {
+  return (
+    typeof value === "string" &&
+    (SEARCH_POWER_ENGINE_COUNT_VALUES as readonly string[]).includes(value)
+  );
+}
+
+// SLICE-0094: `active_requirement` is now sparse -- any non-empty subset of
+// `power_drive`/`power_engine_count`, never neither and never any other
+// key. Mirrors `searchApi.ts`'s own multi-key sparse validation.
+const _ACTIVE_REQUIREMENT_KEYS = new Set(["power_drive", "power_engine_count"]);
+
 function isValidActiveRequirement(value: unknown): value is PowerActiveRequirement | null {
   if (value === null) return true;
   if (typeof value !== "object") return false;
-  const keys = Object.keys(value as Record<string, unknown>);
-  if (keys.length !== 1 || keys[0] !== "power_drive") return false;
-  return isSearchPowerDriveValue((value as { power_drive: unknown }).power_drive);
+  const v = value as Record<string, unknown>;
+  const keys = Object.keys(v);
+  if (keys.length === 0 || keys.some((key) => !_ACTIVE_REQUIREMENT_KEYS.has(key))) {
+    return false;
+  }
+  if ("power_drive" in v && !isSearchPowerDriveValue(v.power_drive)) return false;
+  if ("power_engine_count" in v && !isSearchPowerEngineCountValue(v.power_engine_count)) {
+    return false;
+  }
+  return true;
 }
 
 // Review amendment Finding J (second pass): a nonnegative *integer* --
@@ -160,7 +214,18 @@ function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN
 function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  return v.kind === "CATEGORICAL" && typeof v.field === "string" && typeof v.equals === "string";
+  if (v.kind === "CATEGORICAL") {
+    return typeof v.field === "string" && typeof v.equals === "string";
+  }
+  if (v.kind === "NUMERIC") {
+    return (
+      typeof v.field === "string" &&
+      (v.comparison === "MINIMUM" || v.comparison === "MAXIMUM" || v.comparison === "RANGE") &&
+      (v.threshold_min === null || typeof v.threshold_min === "string") &&
+      (v.threshold_max === null || typeof v.threshold_max === "string")
+    );
+  }
+  return false;
 }
 
 // Review amendment Finding J (MEDIUM): deep-validate every nested evidence
@@ -255,14 +320,17 @@ function isValidClaimOnlyMatch(value: unknown): value is PowerClaimOnlyMatch {
  * Review amendment Finding J (MEDIUM): a syntactically well-formed body is
  * not enough -- a body that is internally consistent but answers a
  * *different* request (wrong locale, a filtered query silently served a
- * BASE/no-op response, or `active_requirement.power_drive` echoing back a
- * token other than the one actually requested) is just as misleading as a
- * malformed one, and must collapse to the same `502` service error rather
- * than being read as a genuine (if surprising) empty result. `expected`
- * carries exactly what the caller actually asked for -- the URL `locale`
- * path segment and the parsed `power_drive` query parameter (`null` when
- * absent) -- so this function can check the response actually answers
- * that request, not just that it is shaped like *some* valid response.
+ * BASE/no-op response, or `active_requirement.power_drive`/
+ * `active_requirement.power_engine_count` echoing back a token other than
+ * the one actually requested) is just as misleading as a malformed one,
+ * and must collapse to the same `502` service error rather than being read
+ * as a genuine (if surprising) empty result. `expected` carries exactly
+ * what the caller actually asked for -- the URL `locale` path segment and
+ * the parsed `power_drive`/`power_engine_count` query parameters (each
+ * `null` when absent; `powerEngineCount` may be omitted entirely for a
+ * drive-only caller) -- so this function can check the response actually
+ * answers that request, not just that it is shaped like *some* valid
+ * response.
  *
  * Returns `null` for anything malformed -- including a syntactically valid
  * but incomplete/truncated body (e.g.
@@ -279,8 +347,13 @@ function isValidClaimOnlyMatch(value: unknown): value is PowerClaimOnlyMatch {
  */
 export function validatePowerSearchResultBody(
   value: unknown,
-  expected: { locale: string; powerDrive: SearchPowerDriveValue | null },
+  expected: {
+    locale: string;
+    powerDrive: SearchPowerDriveValue | null;
+    powerEngineCount?: SearchPowerEngineCountValue | null;
+  },
 ): PowerSearchResultBody | null {
+  const expectedPowerEngineCount = expected.powerEngineCount ?? null;
   if (typeof value !== "object" || value === null) return null;
   const v = value as Record<string, unknown>;
   if (typeof v.locale !== "string" || v.locale !== expected.locale) return null;
@@ -289,16 +362,21 @@ export function validatePowerSearchResultBody(
   }
   const activeRequirement = v.active_requirement as PowerActiveRequirement | null;
 
-  if (expected.powerDrive === null) {
+  if (expected.powerDrive === null && expectedPowerEngineCount === null) {
     // An unfiltered request must never come back as an active RESULT --
-    // there is no requested token for it to have confirmed/excluded.
+    // there is no requested criterion for it to have confirmed/excluded.
     if (activeRequirement !== null) return null;
   } else {
     // A filtered request must never come back as a no-op BASE response,
-    // and must never echo back a drive token other than the one actually
-    // requested (wrong locale/drive dispatch, never silently accepted).
+    // and must never echo back a different criterion value than the one
+    // actually requested (wrong locale/criterion dispatch, never silently
+    // accepted) -- and must never silently drop a requested criterion
+    // (undefined) nor add one that was not requested at all.
     if (activeRequirement === null) return null;
-    if (activeRequirement.power_drive !== expected.powerDrive) return null;
+    const echoedPowerDrive = activeRequirement.power_drive ?? null;
+    const echoedPowerEngineCount = activeRequirement.power_engine_count ?? null;
+    if (echoedPowerDrive !== expected.powerDrive) return null;
+    if (echoedPowerEngineCount !== expectedPowerEngineCount) return null;
   }
 
   if (activeRequirement === null) {
@@ -358,11 +436,12 @@ export function validatePowerSearchResultBody(
 
 /**
  * A query string that unambiguously means either "no filter" (zero
- * recognized keys at all) or "exactly one `power_drive` filter, with
- * exactly one value, that is one of the five accepted tokens" --
- * `{ ok: false }` for every other shape: an invalid token value, duplicate
- * `power_drive` keys (even with identical values), or any unrecognized/
- * extra query key alongside or instead of `power_drive`.
+ * recognized keys at all) or "exactly one `power_drive` filter and/or
+ * exactly one `power_engine_count` filter, each with exactly one value
+ * that is one of its own accepted tokens" -- `{ ok: false }` for every
+ * other shape: an invalid token value, duplicate keys (even with identical
+ * values), or any unrecognized/extra query key alongside or instead of
+ * `power_drive`/`power_engine_count`.
  *
  * Review amendment Finding J (second pass): `URLSearchParams.get(...)`
  * alone cannot distinguish "the filter is genuinely absent" from "the
@@ -374,24 +453,43 @@ export function validatePowerSearchResultBody(
  */
 export function parseCanonicalPowerSearchQuery(
   queryString: string,
-): { ok: true; powerDrive: SearchPowerDriveValue | null } | { ok: false } {
+):
+  | {
+      ok: true;
+      powerDrive: SearchPowerDriveValue | null;
+      powerEngineCount: SearchPowerEngineCountValue | null;
+    }
+  | { ok: false } {
   const params = new URLSearchParams(queryString);
   const keys = new Set(params.keys());
   if (keys.size === 0) {
-    return { ok: true, powerDrive: null };
+    return { ok: true, powerDrive: null, powerEngineCount: null };
   }
-  if (keys.size !== 1 || !keys.has("power_drive")) {
-    return { ok: false };
+  for (const key of keys) {
+    if (key !== "power_drive" && key !== "power_engine_count") {
+      return { ok: false };
+    }
   }
-  const values = params.getAll("power_drive");
-  if (values.length !== 1) {
-    return { ok: false };
+
+  let powerDrive: SearchPowerDriveValue | null = null;
+  if (keys.has("power_drive")) {
+    const values = params.getAll("power_drive");
+    if (values.length !== 1 || !isSearchPowerDriveValue(values[0])) {
+      return { ok: false };
+    }
+    powerDrive = values[0];
   }
-  const [value] = values;
-  if (!isSearchPowerDriveValue(value)) {
-    return { ok: false };
+
+  let powerEngineCount: SearchPowerEngineCountValue | null = null;
+  if (keys.has("power_engine_count")) {
+    const values = params.getAll("power_engine_count");
+    if (values.length !== 1 || !isSearchPowerEngineCountValue(values[0])) {
+      return { ok: false };
+    }
+    powerEngineCount = values[0];
   }
-  return { ok: true, powerDrive: value };
+
+  return { ok: true, powerDrive, powerEngineCount };
 }
 
 /**
@@ -449,7 +547,11 @@ export async function fetchPowerSearch(
     } catch {
       parsed = null;
     }
-    const expected = { locale, powerDrive: canonicalQuery.powerDrive };
+    const expected = {
+      locale,
+      powerDrive: canonicalQuery.powerDrive,
+      powerEngineCount: canonicalQuery.powerEngineCount,
+    };
     const result = parsed === null ? null : validatePowerSearchResultBody(parsed, expected);
     if (result === null) {
       return { status: 502, location: null, result: null, invalid: null };

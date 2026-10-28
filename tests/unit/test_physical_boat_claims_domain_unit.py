@@ -35,6 +35,7 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimSnapshot,
     PowerDriveConfiguration,
     PowerDriveConfigurationClaim,
+    PowerEngineCountClaim,
     RudderConfiguration,
     RudderConfigurationClaim,
 )
@@ -73,6 +74,7 @@ def test_snapshot_has_exactly_the_seven_slice_0050_fields_plus_boat_name_and_sli
         "hull_material",
         "vessel_category",
         "power_drive_configuration",
+        "power_engine_count",
     }
 
 
@@ -703,3 +705,83 @@ def test_power_drive_configuration_is_independent_of_hull_material() -> None:
     )
     assert snapshot.hull_material.value is HullMaterial.ALUMINUM
     assert snapshot.power_drive_configuration.value is PowerDriveConfiguration.OUTBOARD
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0094: power_engine_count
+# ---------------------------------------------------------------------------
+
+
+def test_power_engine_count_value_assertion() -> None:
+    snapshot = _minimal_snapshot(
+        power_engine_count=PowerEngineCountClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=2
+        )
+    )
+    assert snapshot.power_engine_count.value == 2
+
+
+def test_power_engine_count_accepts_values_beyond_the_public_search_vocabulary() -> None:
+    """A broker may truthfully assert 9-32 even though none of those is
+    ever a public Search filter token (1-8)."""
+    for value in (9, 20, 32):
+        snapshot = _minimal_snapshot(
+            power_engine_count=PowerEngineCountClaim(
+                assertion_kind=AssertionKind.VALUE_ASSERTION, value=value
+            )
+        )
+        assert snapshot.power_engine_count.value == value
+
+
+def test_power_engine_count_explicit_unknown_is_distinct_from_omitted() -> None:
+    snapshot_omitted = _minimal_snapshot()
+    snapshot_unknown = _minimal_snapshot(
+        power_engine_count=PowerEngineCountClaim(assertion_kind=AssertionKind.UNKNOWN)
+    )
+    assert snapshot_omitted.power_engine_count is None
+    assert snapshot_unknown.power_engine_count.assertion_kind is AssertionKind.UNKNOWN
+    assert snapshot_unknown.power_engine_count.value is None
+
+
+def test_power_engine_count_rejects_absent() -> None:
+    with pytest.raises(ValueError, match="assertion_kind"):
+        PowerEngineCountClaim(assertion_kind=AssertionKind.ABSENT)
+
+
+@pytest.mark.parametrize("value", [0, -1, 33, 100])
+def test_power_engine_count_rejects_out_of_range(value: int) -> None:
+    with pytest.raises(ValueError, match="between 1 and 32"):
+        PowerEngineCountClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=value)
+
+
+def test_power_engine_count_rejects_bool() -> None:
+    with pytest.raises(TypeError, match=r"PowerEngineCountClaim\.value must be an int"):
+        PowerEngineCountClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=True)  # type: ignore[arg-type]
+
+
+def test_power_engine_count_rejects_float() -> None:
+    with pytest.raises(TypeError, match=r"PowerEngineCountClaim\.value must be an int"):
+        PowerEngineCountClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=2.0)  # type: ignore[arg-type]
+
+
+def test_power_engine_count_requires_value_when_asserted() -> None:
+    with pytest.raises(ValueError, match="value is required"):
+        PowerEngineCountClaim(assertion_kind=AssertionKind.VALUE_ASSERTION, value=None)
+
+
+def test_power_engine_count_rejects_value_alongside_unknown() -> None:
+    with pytest.raises(ValueError, match="value must be None"):
+        PowerEngineCountClaim(assertion_kind=AssertionKind.UNKNOWN, value=2)
+
+
+def test_power_engine_count_is_independent_of_power_drive_configuration() -> None:
+    snapshot = _minimal_snapshot(
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.SHAFT
+        ),
+        power_engine_count=PowerEngineCountClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=2
+        ),
+    )
+    assert snapshot.power_drive_configuration.value is PowerDriveConfiguration.SHAFT
+    assert snapshot.power_engine_count.value == 2

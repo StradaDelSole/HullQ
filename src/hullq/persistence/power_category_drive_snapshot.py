@@ -26,6 +26,15 @@ unchanged) and a `CurrentPhysicalBoatClaimObservation` tuple (for
 parameter) from that one read -- so category resolution and drive
 classification are always drawn from the identical PostgreSQL snapshot,
 never two separately-timed statements.
+
+SLICE-0094 extends this same single statement a second time to also project
+`power_engine_count_assertion_kind`/`power_engine_count_value` in the
+identical `concrete` CTE row -- the READY contract's own words: "Existing
+SLICE-0093 category-and-drive MVCC snapshot must be extended/coherently
+reused for category+drive+count, not followed by independent claim reads."
+Category, drive and count are therefore always read from exactly the same
+current claim revision per claiming Organization, never three separately
+timed statements.
 """
 
 from __future__ import annotations
@@ -38,6 +47,7 @@ from hullq.domain.physical_boat_claims import (
     AssertionKind,
     PowerDriveConfiguration,
     PowerDriveConfigurationClaim,
+    PowerEngineCountClaim,
     VesselCategory,
     VesselCategoryClaim,
 )
@@ -70,7 +80,8 @@ concrete AS (
     SELECT h.claiming_organization_id, r.claim_revision_id, r.recorded_by_account_id,
            r.recorded_at AS claim_recorded_at,
            r.vessel_category_assertion_kind, r.vessel_category_value,
-           r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value
+           r.power_drive_configuration_assertion_kind, r.power_drive_configuration_value,
+           r.power_engine_count_assertion_kind, r.power_engine_count_value
     FROM physical_boat_claim_heads h
     JOIN physical_boat_claim_revisions r ON r.claim_revision_id = h.current_claim_revision_id
     WHERE h.physical_boat_id = %(physical_boat_id)s
@@ -91,10 +102,11 @@ class PowerCategoryDriveSnapshot:
     PostgreSQL statement snapshot.
 
     *observations* carries only `claiming_organization_id` /
-    `vessel_category` / `power_drive_configuration` populated (every other
-    `CurrentPhysicalBoatClaimObservation` field is `None`) -- sufficient for
-    `classify_concrete_candidate`'s `active_definitions` being exactly
-    `(POWER_DRIVE_CONFIGURATION_DEFINITION,)`, and for
+    `vessel_category` / `power_drive_configuration` / `power_engine_count`
+    populated (every other `CurrentPhysicalBoatClaimObservation` field is
+    `None`) -- sufficient for `classify_concrete_candidate`'s
+    `active_definitions` being exactly `(POWER_DRIVE_CONFIGURATION_DEFINITION,)`,
+    `(POWER_ENGINE_COUNT_DEFINITION,)` or both, and for
     `_qualify_claims_against_definitions`'s same-PhysicalBoat
     cross-Organization check, which reads only the fields named by the
     active definitions it is given.
@@ -181,6 +193,15 @@ def _concrete_rows_from_json(
             if drive_kind is not None
             else None
         )
+
+        count_kind = row["power_engine_count_assertion_kind"]
+        count_value = row["power_engine_count_value"]
+        count_claim = (
+            PowerEngineCountClaim(assertion_kind=AssertionKind(count_kind), value=count_value)
+            if count_kind is not None
+            else None
+        )
+
         observations.append(
             CurrentPhysicalBoatClaimObservation(
                 claiming_organization_id=claiming_organization_id,
@@ -198,6 +219,7 @@ def _concrete_rows_from_json(
                 hull_material=None,
                 vessel_category=category_claim,
                 power_drive_configuration=drive_claim,
+                power_engine_count=count_claim,
             )
         )
     return tuple(category_evidence), tuple(observations)

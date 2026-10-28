@@ -256,6 +256,7 @@ from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import NumericLeafCriterion
 from hullq.search.draft_max_request import canonical_draft_max_str
 from hullq.search.loa_request import canonical_loa_str
+from hullq.search.power_engine_count_request import canonical_power_engine_count_str
 from hullq.search.query_mixed import MixedLeafCriterion
 from hullq.security.discovery_surface_signing import (
     mint_discovery_surface_token,
@@ -817,6 +818,23 @@ def _build_active_requirement(
         requirement["beam_max"] = canonical_beam_str(beam_max)
     if hull_material is not None:
         requirement["hull_material"] = hull_material
+    return requirement
+
+
+def _build_power_active_requirement(
+    *, power_drive: str | None, power_engine_count: Any = None
+) -> dict[str, str]:
+    """SLICE-0094: the sparse `active_requirement` body for the separate
+    Power-only Search route -- mirrors `_build_active_requirement`'s
+    identical "only the active criteria, each rendered through its own
+    canonicalization" rule, in the accepted canonical key order
+    (`hullq.search.power_criteria_registry.CANONICAL_POWER_PARAM_KEY_ORDER`:
+    `power_drive` then `power_engine_count`)."""
+    requirement: dict[str, str] = {}
+    if power_drive is not None:
+        requirement["power_drive"] = power_drive
+    if power_engine_count is not None:
+        requirement["power_engine_count"] = canonical_power_engine_count_str(power_engine_count)
     return requirement
 
 
@@ -1711,7 +1729,9 @@ def create_app(
         return JSONResponse(
             {
                 "locale": locale,
-                "active_requirement": {"power_drive": outcome.power_drive},
+                "active_requirement": _build_power_active_requirement(
+                    power_drive=outcome.power_drive, power_engine_count=outcome.power_engine_count
+                ),
                 "design_linked_matches": [
                     _serialize_power_design_linked_match(match, secret=resolved_secret)
                     for match in search_outcome.design_linked_matches

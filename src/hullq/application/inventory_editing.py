@@ -234,6 +234,8 @@ def _claims_to_wire_dict(claims: PhysicalBoatClaimSnapshot) -> dict[str, Any]:
         body["physical_boat.power_drive_configuration"] = _claim_wrapper_wire(
             claims.power_drive_configuration
         )
+    if claims.power_engine_count is not None:
+        body["physical_boat.power_engine_count"] = _claim_wrapper_wire(claims.power_engine_count)
     return body
 
 

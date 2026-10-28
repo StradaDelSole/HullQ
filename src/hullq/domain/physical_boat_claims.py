@@ -64,6 +64,27 @@ arrangement, never engine count/make/model, energy source, fuel system or
 any other propulsion attribute; it is never populated from a vessel category
 claim and never implies a `POWER` category by itself.
 
+SLICE-0094 adds the second Power-domain optional field, the bounded current
+installed principal-propulsion-engine-count claim (`docs/slices/
+SLICE-0094-power-engine-count-ready.md`,
+`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md`):
+
+    physical_boat.power_engine_count
+
+Unlike every categorical optional field above, `power_engine_count` has no
+enum vocabulary: it is a strictly typed positive integer (never a float/bool/
+string-coerced integer), the number of distinct installed principal
+propulsion engines/motors -- never propeller count, shaft count, drive type,
+cylinders, generator sets, thrusters or auxiliary motors. The first bounded
+current-claim storage/authoring envelope is **1-32**; the narrower public
+Search filter whitelist (`hullq.search.power_criteria_registry
+.SEARCH_POWER_ENGINE_COUNT_VALUES`, canonical tokens `1`-`8`) is enforced at
+the Search/request layer, never here -- a truthful current claim of 9-32 is
+valid and authorable even though it can never become an affirmative Search
+match in this slice. This field is never populated from `propulsion
+.engine_count` v0.6 design/factory data and never implies a `POWER` category
+by itself.
+
 This module contains only pure, frozen value objects -- no persistence, ORM
 or network access. It does not represent any other `PHYSICAL_BOAT` field and
 does not implement a generic 38-field marketplace-fact framework: each
@@ -110,6 +131,7 @@ __all__ = [
     "PhysicalBoatClaimSnapshot",
     "PowerDriveConfiguration",
     "PowerDriveConfigurationClaim",
+    "PowerEngineCountClaim",
     "RudderConfiguration",
     "RudderConfigurationClaim",
     "VesselCategory",
@@ -341,6 +363,10 @@ _VESSEL_CATEGORY_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKi
 _POWER_DRIVE_CONFIGURATION_ALLOWED = frozenset(
     {AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN}
 )
+#: SLICE-0094: identical two-state shape to power_drive_configuration above --
+#: no ABSENT. `power_engine_count` has no enum vocabulary of its own (see
+#: `PowerEngineCountClaim` below), but the assertion-kind shape is identical.
+_POWER_ENGINE_COUNT_ALLOWED = frozenset({AssertionKind.VALUE_ASSERTION, AssertionKind.UNKNOWN})
 #: SLICE-0065: the only PhysicalBoat/LISTING_OFFER field that allows ABSENT
 #: (registry `physical_boat.boat_name`) -- every other field's own frozenset
 #: above is untouched, so adding ABSENT to the shared `AssertionKind`
@@ -601,6 +627,53 @@ class PowerDriveConfigurationClaim:
             _require_kind(self.value, PowerDriveConfiguration, "PowerDriveConfigurationClaim.value")
 
 
+#: SLICE-0094: the first bounded current-claim storage/authoring envelope
+#: (`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md` "One field, one
+#: meaning") -- broader than the narrower public Search filter whitelist
+#: (`hullq.search.power_criteria_registry.SEARCH_POWER_ENGINE_COUNT_VALUES`,
+#: tokens 1-8). A truthful current claim of 9-32 is valid and authorable even
+#: though it can never become an affirmative Search match in this slice.
+_POWER_ENGINE_COUNT_MIN = 1
+_POWER_ENGINE_COUNT_MAX = 32
+
+
+@dataclass(frozen=True)
+class PowerEngineCountClaim:
+    """`physical_boat.power_engine_count`: VALUE_ASSERTION(positive int 1-32)
+    or explicit UNKNOWN -- SLICE-0094.
+
+    The number of distinct installed principal propulsion engines/motors --
+    never propeller count, shaft count, drive type, cylinders, generator
+    sets, bow/stern thrusters or auxiliary motors not part of principal
+    propulsion. Unlike every categorical claim above, this field has no enum
+    vocabulary: `value` is a strictly typed positive `int`, never a
+    `bool`/`float`/string-coerced integer, and outside 1-32 is rejected as
+    unsupported -- an initial input-support limit, not a factual claim that
+    larger vessels do not exist.
+    """
+
+    assertion_kind: AssertionKind
+    value: int | None = None
+
+    def __post_init__(self) -> None:
+        _validate_claim(
+            self.assertion_kind, self.value, _POWER_ENGINE_COUNT_ALLOWED, "PowerEngineCountClaim"
+        )
+        if self.assertion_kind is AssertionKind.VALUE_ASSERTION:
+            assert self.value is not None
+            # bool is a subclass of int in Python; reject it explicitly so a
+            # stray True/False can never masquerade as an engine count.
+            if isinstance(self.value, bool) or not isinstance(self.value, int):
+                raise TypeError(
+                    f"PowerEngineCountClaim.value must be an int, got {type(self.value).__name__}"
+                )
+            if not (_POWER_ENGINE_COUNT_MIN <= self.value <= _POWER_ENGINE_COUNT_MAX):
+                raise ValueError(
+                    f"PowerEngineCountClaim.value must be between {_POWER_ENGINE_COUNT_MIN} and "
+                    f"{_POWER_ENGINE_COUNT_MAX} inclusive, got {self.value!r}"
+                )
+
+
 # ---------------------------------------------------------------------------
 # The bounded seven-field claim snapshot, plus the optional SLICE-0065
 # boat-name field, the optional SLICE-0086 hull_configuration/
@@ -636,6 +709,7 @@ class PhysicalBoatClaimSnapshot:
     hull_material: HullMaterialClaim | None = None
     vessel_category: VesselCategoryClaim | None = None
     power_drive_configuration: PowerDriveConfigurationClaim | None = None
+    power_engine_count: PowerEngineCountClaim | None = None
 
     def __post_init__(self) -> None:
         _require_kind(
@@ -703,4 +777,10 @@ class PhysicalBoatClaimSnapshot:
                 self.power_drive_configuration,
                 PowerDriveConfigurationClaim,
                 "PhysicalBoatClaimSnapshot.power_drive_configuration",
+            )
+        if self.power_engine_count is not None:
+            _require_kind(
+                self.power_engine_count,
+                PowerEngineCountClaim,
+                "PhysicalBoatClaimSnapshot.power_engine_count",
             )

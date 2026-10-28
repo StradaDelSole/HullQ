@@ -217,14 +217,25 @@ assert tuple(sorted(SUPPORTED_PARAM_KEYS)) == CANONICAL_PARAM_KEY_ORDER, (
 
 
 class CriterionKind(StrEnum):
-    """The three accepted operator shapes -- never a generic/open-ended
+    """The four accepted operator shapes -- never a generic/open-ended
     operator vocabulary. `NUMERIC_MAXIMUM_ONLY` (draft_max) and
-    `NUMERIC_MIN_MAX` (loa) both project an exact `Decimal`; `CATEGORICAL`
-    (keel_configuration, rudder_configuration) projects an exact-match
-    string from `allowed_values`."""
+    `NUMERIC_MIN_MAX` (loa) both project an exact `Decimal` bound;
+    `NUMERIC_EXACT` (SLICE-0094 `power_engine_count`) projects an exact
+    `Decimal` equality value from one public parameter key (an existing
+    numeric `RANGE` comparison with `threshold_min == threshold_max`, never
+    a new scorer); `CATEGORICAL` (keel_configuration, rudder_configuration)
+    projects an exact-match string from `allowed_values`. Only
+    `is_categorical` (`self.kind is CriterionKind.CATEGORICAL`) is ever
+    consulted by generic application code
+    (`hullq.application.native_inventory_query
+    ._qualify_claims_against_definitions`) -- the numeric sub-kinds are
+    documentary/self-descriptive only; the actual `NumericComparisonKind`
+    (MINIMUM/MAXIMUM/RANGE) a caller builds is always decided explicitly at
+    its own query-construction call site, never dispatched from this enum."""
 
     NUMERIC_MAXIMUM_ONLY = "NUMERIC_MAXIMUM_ONLY"
     NUMERIC_MIN_MAX = "NUMERIC_MIN_MAX"
+    NUMERIC_EXACT = "NUMERIC_EXACT"
     CATEGORICAL = "CATEGORICAL"
 
 

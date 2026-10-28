@@ -128,3 +128,17 @@ test("buildPowerSearchCanonicalPath: one active token", () => {
     "/de/power/search?power_drive=OUTBOARD",
   );
 });
+
+test("buildPowerSearchCanonicalPath: SLICE-0094 count-only active token", () => {
+  assert.equal(
+    buildPowerSearchCanonicalPath("de", { power_engine_count: "2" }),
+    "/de/power/search?power_engine_count=2",
+  );
+});
+
+test("buildPowerSearchCanonicalPath: SLICE-0094 combined drive+count in canonical order", () => {
+  assert.equal(
+    buildPowerSearchCanonicalPath("de", { power_drive: "SHAFT", power_engine_count: "2" }),
+    "/de/power/search?power_drive=SHAFT&power_engine_count=2",
+  );
+});

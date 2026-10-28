@@ -3,6 +3,16 @@
 // names/values and Search semantics stay language-neutral; only this prose
 // is translated). German labels are the normative ones from
 // `specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`'s own table.
+//
+// SLICE-0094 adds `power_engine_count` (contract: "Current count:" ... the
+// second Power criterion). Mirrors `searchText.ts`'s own established
+// multi-criterion summary pattern: `requirementSummary` stays byte-for-byte
+// unchanged and is used only for the drive-only shape (non-regression);
+// a request involving `power_engine_count` (alone or combined) builds its
+// phrase(s) via `requirementPhraseDrive`/`requirementPhraseCount` and joins
+// them with `requirementSummaryListConjunction` through
+// `requirementSummaryGeneric` -- never a third, independently-worded
+// summary function per combination.
 
 import type { SupportedLocale } from "./searchText";
 
@@ -18,13 +28,22 @@ export interface PowerSearchText {
     WATERJET: string;
     OUTBOARD: string;
   };
+  /** SLICE-0094 candidate facet #2. */
+  powerEngineCountLabel: string;
+  powerEngineCountAnyOption: string;
   submit: string;
   invalidTitle: string;
   invalidFallback: string;
   startOver: string;
   serviceUnavailableTitle: string;
   serviceUnavailableMessage: string;
+  /** Drive-only active requirement (SLICE-0093, unchanged). */
   requirementSummary: (driveLabel: string) => string;
+  /** SLICE-0094: one criterion's own phrase, joined generically below. */
+  requirementPhraseDrive: (driveLabel: string) => string;
+  requirementPhraseCount: (count: string) => string;
+  requirementSummaryListConjunction: string;
+  requirementSummaryGeneric: (phrases: string) => string;
   designLinkedHeading: (count: number) => string;
   noDesignLinkedMatches: string;
   noDesignLinkedMatchesButPublisherClaimsExist: (count: number) => string;
@@ -55,6 +74,8 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       WATERJET: "Waterjet",
       OUTBOARD: "Outboard",
     },
+    powerEngineCountLabel: "Number of installed engines",
+    powerEngineCountAnyOption: "Choose a number of engines",
     submit: "Search",
     invalidTitle: "Invalid search",
     invalidFallback: "This search link isn't valid.",
@@ -62,6 +83,10 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     serviceUnavailableTitle: "Search temporarily unavailable",
     serviceUnavailableMessage: "Please try again shortly.",
     requirementSummary: (driveLabel) => `Current drive arrangement: ${driveLabel}`,
+    requirementPhraseDrive: (driveLabel) => `a current drive arrangement of ${driveLabel}`,
+    requirementPhraseCount: (count) => `${count} installed engine(s)`,
+    requirementSummaryListConjunction: "and",
+    requirementSummaryGeneric: (phrases) => `Showing boats confirmed to have ${phrases}.`,
     designLinkedHeading: (count) => `Design-confirmed matches (${count})`,
     noDesignLinkedMatches: "No design-confirmed matches for this drive arrangement.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
@@ -93,6 +118,8 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       WATERJET: "Wasserstrahlantrieb",
       OUTBOARD: "Außenborder",
     },
+    powerEngineCountLabel: "Anzahl der installierten Motoren",
+    powerEngineCountAnyOption: "Anzahl der Motoren wählen",
     submit: "Suchen",
     invalidTitle: "Ungültige Suche",
     invalidFallback: "Dieser Suchlink ist ungültig.",
@@ -100,6 +127,10 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     serviceUnavailableTitle: "Suche vorübergehend nicht verfügbar",
     serviceUnavailableMessage: "Bitte versuchen Sie es in Kürze erneut.",
     requirementSummary: (driveLabel) => `Aktuelle Antriebsart: ${driveLabel}`,
+    requirementPhraseDrive: (driveLabel) => `aktuelle Antriebsart: ${driveLabel}`,
+    requirementPhraseCount: (count) => `${count} installierte Motor(en)`,
+    requirementSummaryListConjunction: "und",
+    requirementSummaryGeneric: (phrases) => `Boote mit ${phrases} (bestätigt).`,
     designLinkedHeading: (count) => `Design-bestätigte Treffer (${count})`,
     noDesignLinkedMatches: "Keine design-bestätigten Treffer für diese Antriebsart.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
@@ -131,6 +162,8 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       WATERJET: "Hydrojet",
       OUTBOARD: "Hors-bord",
     },
+    powerEngineCountLabel: "Nombre de moteurs installés",
+    powerEngineCountAnyOption: "Choisir un nombre de moteurs",
     submit: "Rechercher",
     invalidTitle: "Recherche invalide",
     invalidFallback: "Ce lien de recherche n'est pas valide.",
@@ -138,6 +171,10 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     serviceUnavailableTitle: "Recherche temporairement indisponible",
     serviceUnavailableMessage: "Veuillez réessayer sous peu.",
     requirementSummary: (driveLabel) => `Configuration de propulsion actuelle : ${driveLabel}`,
+    requirementPhraseDrive: (driveLabel) => `une configuration de propulsion actuelle de ${driveLabel}`,
+    requirementPhraseCount: (count) => `${count} moteur(s) installé(s)`,
+    requirementSummaryListConjunction: "et",
+    requirementSummaryGeneric: (phrases) => `Bateaux confirmés avec ${phrases}.`,
     designLinkedHeading: (count) => `Résultats confirmés par le design (${count})`,
     noDesignLinkedMatches: "Aucun résultat confirmé par le design pour cette configuration.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
@@ -169,6 +206,8 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       WATERJET: "Hidrojato",
       OUTBOARD: "Motor de popa",
     },
+    powerEngineCountLabel: "Número de motores instalados",
+    powerEngineCountAnyOption: "Escolher um número de motores",
     submit: "Pesquisar",
     invalidTitle: "Pesquisa inválida",
     invalidFallback: "Esta ligação de pesquisa não é válida.",
@@ -176,6 +215,10 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     serviceUnavailableTitle: "Pesquisa temporariamente indisponível",
     serviceUnavailableMessage: "Tente novamente em breve.",
     requirementSummary: (driveLabel) => `Configuração de propulsão atual: ${driveLabel}`,
+    requirementPhraseDrive: (driveLabel) => `configuração de propulsão atual: ${driveLabel}`,
+    requirementPhraseCount: (count) => `${count} motor(es) instalado(s)`,
+    requirementSummaryListConjunction: "e",
+    requirementSummaryGeneric: (phrases) => `A mostrar barcos confirmados com ${phrases}.`,
     designLinkedHeading: (count) => `Resultados confirmados pelo design (${count})`,
     noDesignLinkedMatches: "Sem resultados confirmados pelo design para esta configuração.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
@@ -207,6 +250,8 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       WATERJET: "Hidrojet",
       OUTBOARD: "Fueraborda",
     },
+    powerEngineCountLabel: "Número de motores instalados",
+    powerEngineCountAnyOption: "Elegir un número de motores",
     submit: "Buscar",
     invalidTitle: "Búsqueda inválida",
     invalidFallback: "Este enlace de búsqueda no es válido.",
@@ -214,6 +259,10 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     serviceUnavailableTitle: "Búsqueda temporalmente no disponible",
     serviceUnavailableMessage: "Inténtelo de nuevo en breve.",
     requirementSummary: (driveLabel) => `Configuración de propulsión actual: ${driveLabel}`,
+    requirementPhraseDrive: (driveLabel) => `configuración de propulsión actual: ${driveLabel}`,
+    requirementPhraseCount: (count) => `${count} motor(es) instalado(s)`,
+    requirementSummaryListConjunction: "y",
+    requirementSummaryGeneric: (phrases) => `Mostrando barcos confirmados con ${phrases}.`,
     designLinkedHeading: (count) => `Resultados confirmados por diseño (${count})`,
     noDesignLinkedMatches: "No hay resultados confirmados por diseño para esta configuración.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>

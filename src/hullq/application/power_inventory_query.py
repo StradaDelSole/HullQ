@@ -1,11 +1,14 @@
-"""Power-domain Requirements -> Native Inventory Search vertical — SLICE-0093.
+"""Power-domain Requirements -> Native Inventory Search vertical — SLICE-0093,
+extended SLICE-0094.
 
-The first Power hard technical criterion, `power_drive_configuration`
-(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`). This module is
-the Power-domain counterpart of `hullq.application.native_inventory_query`,
-reusing its genuinely category-neutral shared kernel directly rather than
-re-implementing it (Trigger Gates "Second-criterion bridge comparison" /
-"Third-copy abstraction guard": COMMON STRUCTURE GENERALIZED / REUSED):
+The two accepted Power hard technical criteria, `power_drive_configuration`
+(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`) and
+`power_engine_count` (`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md`).
+This module is the Power-domain counterpart of
+`hullq.application.native_inventory_query`, reusing its genuinely
+category-neutral shared kernel directly rather than re-implementing it
+(Trigger Gates "Second-criterion bridge comparison" / "Third-copy
+abstraction guard": COMMON STRUCTURE GENERALIZED / REUSED):
 
     `classify_concrete_candidate` / `classify_claim_only_candidate` --
         already generic over any `Sequence[CriterionDefinition]` and any
@@ -15,10 +18,14 @@ re-implementing it (Trigger Gates "Second-criterion bridge comparison" /
     `PublisherClaimSourceBasis` / `PublisherClaimSourceEvidence` --
         the same `PUBLISHER_CLAIM` source-basis discriminator and internal
         provenance shape;
-    `hullq.search.boat_design_field_bridge.run_boat_design_configuration_query` --
+    `hullq.application.native_inventory_query
+    .run_mixed_boat_design_configuration_query` (SLICE-0094; itself a thin
+    per-`CriterionDefinition.design_set_builder` + merge wrapper over
+    `hullq.search.boat_design_field_bridge.run_boat_design_configuration_query`) --
         the identical shared BoatDesign/NamedVariant evaluation bridge, fed
-        this criterion's own `FieldProjectionSpec`
-        (`hullq.search.power_drive_design_bridge`);
+        each active criterion's own `FieldProjectionSpec`
+        (`hullq.search.power_drive_design_bridge`,
+        `hullq.search.power_engine_count_design_bridge`);
     `hullq.persistence.inventory_search.list_active_design_linked_listings` /
     `list_active_design_unresolved_listings`,
     `hullq.application.current_public_eligibility
@@ -39,11 +46,21 @@ POWER/MOTORSAILER/CONFLICT only -- the exact *opposite* explicit-exclusion
 set a Power admission needs, SAIL/MOTORSAILER/CONFLICT, so it cannot be
 reused as-is without weakening its own invariant).
 
+SLICE-0094 adds `power_engine_count` as a genuine second Power criterion,
+combinable with `power_drive_configuration` as MUST-AND on the same
+publisher current claim revision/resolved configuration
+(`build_power_query`, `evaluate_power_requirement`). The unmodified
+SLICE-0093 `evaluate_power_drive_requirement`/`build_power_drive_query`/
+`_ACTIVE_POWER_DEFINITIONS` remain byte-for-byte unchanged and are the exact
+code path a pure `power_drive`-only request still uses -- never a second,
+independently-timed equivalent for that case.
+
 Existing Sail funnels (`evaluate_native_inventory_requirements`,
 `evaluate_draft_max_requirement`, `evaluate_claim_only_candidates`) are never
-called, imported-and-mutated or altered by this module. No `power_drive`
-query key is ever accepted by the Sail parser, and no Sail key is ever
-accepted here (`hullq.application.power_search_read` owns that boundary).
+called, imported-and-mutated or altered by this module. No `power_drive`/
+`power_engine_count` query key is ever accepted by the Sail parser, and no
+Sail key is ever accepted here (`hullq.application.power_search_read` owns
+that boundary).
 """
 
 from __future__ import annotations
@@ -51,6 +68,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Final
 
 from hullq.application.current_public_eligibility import (
@@ -64,6 +82,7 @@ from hullq.application.native_inventory_query import (
     build_configuration_evidence,
     classify_claim_only_candidate,
     classify_concrete_candidate,
+    run_mixed_boat_design_configuration_query,
 )
 from hullq.application.native_listing_freshness import CurrentFreshness
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
@@ -90,19 +109,21 @@ from hullq.persistence.physical_boat_claims import (
     list_current_physical_boat_claim_observations_for_many,
 )
 from hullq.persistence.power_category_drive_snapshot import fetch_power_category_drive_snapshot
-from hullq.search.boat_design_field_bridge import run_boat_design_configuration_query
 from hullq.search.configuration_engine import DesignQueryEvaluation
-from hullq.search.criteria import CategoricalLeafCriterion, CriterionEvaluation
+from hullq.search.criteria import (
+    CategoricalLeafCriterion,
+    CriterionEvaluation,
+    NumericLeafCriterion,
+)
 from hullq.search.criteria_registry import CriterionDefinition
 from hullq.search.power_criteria_registry import (
     POWER_DRIVE_CONFIGURATION_DEFINITION,
+    POWER_ENGINE_COUNT_DEFINITION,
     SEARCH_POWER_DRIVE_VALUES,
 )
-from hullq.search.power_drive_design_bridge import (
-    POWER_DRIVE_CONFIGURATION_FIELD_PROJECTION_SPEC,
-)
+from hullq.search.query import and_reduce, result_class_for
 from hullq.search.query_mixed import MixedAndQuery
-from hullq.search.types import ReasonCode, ResultClass, TruthState
+from hullq.search.types import NumericComparisonKind, ReasonCode, ResultClass, TruthState
 
 __all__ = [
     "PowerCategoryExclusionEvidence",
@@ -110,10 +131,21 @@ __all__ = [
     "PowerDesignLinkedMatch",
     "PowerSearchOutcome",
     "build_power_drive_query",
+    "build_power_query",
     "evaluate_power_drive_requirement",
+    "evaluate_power_requirement",
 ]
 
 #: Exactly one active Power `CriterionDefinition` -- Power domain ordinal 1.
+#: SLICE-0094: this fixed one-definition tuple remains the exact default for
+#: `evaluate_power_claim_only_candidates`/`evaluate_power_design_linked_candidates`
+#: below, so the unmodified `evaluate_power_drive_requirement` entrypoint
+#: (SLICE-0093, byte-for-byte unchanged) keeps calling them with the
+#: identical active-definition set and therefore produces identical results
+#: (contract acceptance criterion: "old 0093 drive-only Search returns
+#: identical results"). A request involving `power_engine_count` passes its
+#: own wider `active_definitions` tuple explicitly (see `build_power_query`/
+#: `evaluate_power_requirement`).
 _ACTIVE_POWER_DEFINITIONS: Final[tuple[CriterionDefinition, ...]] = (
     POWER_DRIVE_CONFIGURATION_DEFINITION,
 )
@@ -148,6 +180,68 @@ def build_power_drive_query(power_drive: str) -> MixedAndQuery:
             ),
         )
     )
+
+
+def build_power_query(
+    *, power_drive: str | None, power_engine_count: Decimal | None
+) -> tuple[MixedAndQuery, tuple[CriterionDefinition, ...]]:
+    """Validate and build the bounded two-criterion Power `MixedAndQuery` +
+    the exact active `CriterionDefinition`s it uses -- SLICE-0094.
+
+    Mirrors `hullq.application.native_inventory_query
+    .build_mixed_requirement_query`'s identical division of labor: at least
+    one of *power_drive*/*power_engine_count* must be supplied, each value
+    is already parsed/validated for public syntax by its own accepted
+    parser (`hullq.application.power_search_read`), and this function only
+    re-checks membership/shape as a defensive invariant, never re-parses.
+    `power_engine_count` builds one exact numeric `RANGE` leaf with
+    `threshold_min == threshold_max` -- the contract's own words: "The count
+    filter uses an exact numeric RANGE with threshold_min=threshold_max, so
+    the common kernel is reused ... without another count scorer".
+
+    Returned `active_definitions` is exactly the ordered tuple of
+    definitions this query's leaves need -- a request for `power_drive`
+    alone builds the identical one-element tuple
+    `evaluate_power_drive_requirement`'s own `_ACTIVE_POWER_DEFINITIONS`
+    constant already uses, so a caller combining both entrypoints never
+    observes two different "active definitions for drive-only" values.
+    """
+    if power_drive is None and power_engine_count is None:
+        raise ValueError("at least one of power_drive/power_engine_count must be supplied")
+    if power_drive is not None and power_drive not in SEARCH_POWER_DRIVE_VALUES:
+        raise ValueError(
+            f"power_drive must be one of {sorted(SEARCH_POWER_DRIVE_VALUES)}; got {power_drive!r}"
+        )
+    if power_engine_count is not None and (
+        not isinstance(power_engine_count, Decimal)
+        or not power_engine_count.is_finite()
+        or power_engine_count != power_engine_count.to_integral_value()
+        or not (1 <= power_engine_count <= 8)
+    ):
+        raise ValueError(
+            f"power_engine_count must be an exact integer Decimal 1-8; got {power_engine_count!r}"
+        )
+
+    criteria: list[CategoricalLeafCriterion | NumericLeafCriterion] = []
+    active_definitions: list[CriterionDefinition] = []
+    if power_drive is not None:
+        criteria.append(
+            CategoricalLeafCriterion(
+                field=POWER_DRIVE_CONFIGURATION_DEFINITION.projection_field, equals=power_drive
+            )
+        )
+        active_definitions.append(POWER_DRIVE_CONFIGURATION_DEFINITION)
+    if power_engine_count is not None:
+        criteria.append(
+            NumericLeafCriterion(
+                field=POWER_ENGINE_COUNT_DEFINITION.projection_field,
+                comparison=NumericComparisonKind.RANGE,
+                threshold_min=power_engine_count,
+                threshold_max=power_engine_count,
+            )
+        )
+        active_definitions.append(POWER_ENGINE_COUNT_DEFINITION)
+    return MixedAndQuery(criteria=tuple(criteria)), tuple(active_definitions)
 
 
 @dataclass(frozen=True, slots=True)
@@ -222,13 +316,19 @@ class PowerClaimOnlyMatch:
 
 @dataclass(frozen=True, slots=True)
 class PowerSearchOutcome:
-    """Separated result surfaces for one Power `power_drive` evaluation --
+    """Separated result surfaces for one Power requirement evaluation --
     mirrors `hullq.application.native_inventory_query.NativeInventorySearchOutcome`'s
     separation of design-linked vs. claim-only result surfaces, entirely
     independent of (and structurally distinct from) the Sail outcome type.
+
+    SLICE-0094: `power_drive`/`power_engine_count` are each independently
+    optional (never both `None` -- `build_power_query` already enforces at
+    least one is supplied), reflecting that a request may supply either
+    criterion alone or both combined as MUST-AND.
     """
 
-    power_drive: str
+    power_drive: str | None
+    power_engine_count: Decimal | None
     query: MixedAndQuery
     design_linked_matches: tuple[PowerDesignLinkedMatch, ...]
     design_linked_non_matches: tuple[PowerDesignLinkedMatch, ...]
@@ -358,29 +458,59 @@ def _downgrade_mixed_non_match_to_insufficient_data(
     qualification step, never reaching this function with `"MIXED"` at all.
     `OTHER` and every other single-token value are untouched: this function
     only ever rewrites the one `"MIXED"` case.
+
+    SLICE-0094 generalization: with a second active criterion
+    (`power_engine_count`), `criterion_evidence` may now carry two entries.
+    Only the drive leaf (matched by `criterion.field`, never by position) is
+    ever eligible for rewriting -- a genuinely non-matching `power_engine_count`
+    leaf must still confirm exclusion regardless of an uninformative MIXED
+    drive leaf alongside it. After rewriting the drive leaf's truth to
+    UNKNOWN, the aggregate result is recomputed via the identical
+    `and_reduce`/`result_class_for` MUST-AND reduction every other combined
+    query already uses -- never a bespoke two-criterion special case: if
+    another leaf is still a genuine confirmed FALSE, the aggregate correctly
+    remains `CONFIRMED_NON_MATCH` (MIXED never rescues an independently
+    confirmed non-match); if no leaf is FALSE, the aggregate becomes
+    `INSUFFICIENT_DATA`. A single drive-only request (SLICE-0093's own
+    unmodified call site) behaves identically to before: exactly one
+    evidence entry, `and_reduce((UNKNOWN,)) == UNKNOWN`,
+    `result_class_for(UNKNOWN) == INSUFFICIENT_DATA`.
     """
-    if result_class is not ResultClass.CONFIRMED_NON_MATCH or len(criterion_evidence) != 1:
+    if result_class is not ResultClass.CONFIRMED_NON_MATCH:
         return result_class, criterion_evidence
-    evidence = criterion_evidence[0]
-    if evidence.observed_value != PowerDriveConfiguration.MIXED.value:
+    drive_field = POWER_DRIVE_CONFIGURATION_DEFINITION.projection_field
+    rewritten = False
+    updated_evidence: list[SearchCriterionEvidence] = []
+    for evidence in criterion_evidence:
+        if (
+            evidence.criterion.field == drive_field
+            and evidence.evaluation.truth is TruthState.FALSE
+            and evidence.observed_value == PowerDriveConfiguration.MIXED.value
+        ):
+            rewritten = True
+            updated_evidence.append(
+                SearchCriterionEvidence(
+                    criterion=evidence.criterion,
+                    evaluation=CriterionEvaluation(
+                        field=evidence.evaluation.field,
+                        truth=TruthState.UNKNOWN,
+                        reason=ReasonCode.VALUE_MISSING,
+                        explanation=(
+                            f"{evidence.evaluation.field}: current claim is MIXED, which never "
+                            f"proves the absence of any single accepted drive type (even if the "
+                            f"vessel uses one of the types) -- insufficient data, not a confirmed "
+                            f"exclusion"
+                        ),
+                    ),
+                    observed_value=None,
+                )
+            )
+        else:
+            updated_evidence.append(evidence)
+    if not rewritten:
         return result_class, criterion_evidence
-    downgraded_evidence = (
-        SearchCriterionEvidence(
-            criterion=evidence.criterion,
-            evaluation=CriterionEvaluation(
-                field=evidence.evaluation.field,
-                truth=TruthState.UNKNOWN,
-                reason=ReasonCode.VALUE_MISSING,
-                explanation=(
-                    f"{evidence.evaluation.field}: current claim is MIXED, which never proves "
-                    f"the absence of any single accepted drive type (even if the vessel uses "
-                    f"one of the types) -- insufficient data, not a confirmed exclusion"
-                ),
-            ),
-            observed_value=None,
-        ),
-    )
-    return ResultClass.INSUFFICIENT_DATA, downgraded_evidence
+    aggregate = and_reduce(tuple(e.evaluation.truth for e in updated_evidence))
+    return result_class_for(aggregate), tuple(updated_evidence)
 
 
 def evaluate_power_claim_only_candidates(
@@ -388,6 +518,7 @@ def evaluate_power_claim_only_candidates(
     *,
     query: MixedAndQuery,
     as_of: datetime,
+    active_definitions: Sequence[CriterionDefinition] = _ACTIVE_POWER_DEFINITIONS,
 ) -> tuple[
     tuple[PowerClaimOnlyMatch, ...],
     tuple[PowerClaimOnlyMatch, ...],
@@ -399,6 +530,12 @@ def evaluate_power_claim_only_candidates(
     reusing its identical batched D29/observation-read strategy (amendment
     review PR #387 Finding D) and its generic `classify_claim_only_candidate`
     directly, rather than a new Power scorer.
+
+    SLICE-0094: *active_definitions* defaults to the unmodified SLICE-0093
+    one-element `_ACTIVE_POWER_DEFINITIONS` tuple, so the unmodified
+    `evaluate_power_drive_requirement` call site (which never passes this
+    parameter) is byte-for-byte unaffected. A request involving
+    `power_engine_count` passes the wider tuple `build_power_query` returns.
     """
     all_candidates = list_active_design_unresolved_listings(conn)
     if not all_candidates:
@@ -465,7 +602,7 @@ def evaluate_power_claim_only_candidates(
                 observations,
                 publishing_organization_id=candidate.publishing_organization_id,
                 query=query,
-                active_definitions=_ACTIVE_POWER_DEFINITIONS,
+                active_definitions=active_definitions,
             )
             result_class, criterion_evidence = _downgrade_mixed_non_match_to_insufficient_data(
                 result_class, criterion_evidence
@@ -505,6 +642,7 @@ def evaluate_power_design_linked_candidates(
     *,
     query: MixedAndQuery,
     as_of: datetime,
+    active_definitions: Sequence[CriterionDefinition] = _ACTIVE_POWER_DEFINITIONS,
 ) -> tuple[
     tuple[PowerDesignLinkedMatch, ...],
     tuple[PowerDesignLinkedMatch, ...],
@@ -520,6 +658,21 @@ def evaluate_power_design_linked_candidates(
     requires the current PhysicalBoat's own concrete claim to independently
     confirm the same field (`classify_concrete_candidate`, reused unchanged)
     -- design truth never silently becomes concrete truth.
+
+    SLICE-0094: *active_definitions* defaults to the unmodified SLICE-0093
+    one-element `_ACTIVE_POWER_DEFINITIONS` tuple (same rationale as
+    `evaluate_power_claim_only_candidates`). The design-side configuration
+    set is now built via the shared
+    `hullq.application.native_inventory_query
+    .run_mixed_boat_design_configuration_query` -- the identical generalized
+    per-definition `design_set_builder` + merge kernel the Sail funnel
+    already established -- rather than a Power-specific call to
+    `run_boat_design_configuration_query` with a single hardcoded
+    `FieldProjectionSpec`. For the unmodified one-definition default this
+    produces byte-identical results (a single-element merge is a no-op,
+    `hullq.application.native_inventory_query._merge_configuration_sets`'s
+    own docstring), so this is pure reuse, not a behavior change for the
+    drive-only path.
     """
     all_candidates = list_active_design_linked_listings(conn)
     if not all_candidates:
@@ -547,8 +700,8 @@ def evaluate_power_design_linked_candidates(
         if raw_design is not None:
             boat_designs.append(raw_design)
 
-    design_result = run_boat_design_configuration_query(
-        conn, query, boat_designs, (POWER_DRIVE_CONFIGURATION_FIELD_PROJECTION_SPEC,)
+    design_result = run_mixed_boat_design_configuration_query(
+        conn, query, boat_designs, active_definitions
     )
     design_evaluation_by_id: dict[str, DesignQueryEvaluation] = {
         evaluation.design_id: evaluation
@@ -624,7 +777,7 @@ def evaluate_power_design_linked_candidates(
                     physical_boat_id=candidate.physical_boat_id,
                     boat_design_id=candidate.boat_design_ref.value,
                     query=query,
-                    active_definitions=_ACTIVE_POWER_DEFINITIONS,
+                    active_definitions=active_definitions,
                     observations=snapshot.observations,
                 )
                 result_class, concrete_evidence = _downgrade_mixed_non_match_to_insufficient_data(
@@ -691,6 +844,57 @@ def evaluate_power_drive_requirement(
     )
     return PowerSearchOutcome(
         power_drive=power_drive,
+        power_engine_count=None,
+        query=query,
+        design_linked_matches=design_linked_matches,
+        design_linked_non_matches=design_linked_non_matches,
+        design_linked_insufficient_data=design_linked_insufficient_data,
+        claim_only_matches=claim_only_matches,
+        claim_only_non_matches=claim_only_non_matches,
+        claim_only_insufficient_data=claim_only_insufficient_data,
+    )
+
+
+def evaluate_power_requirement(
+    conn: Any, *, power_drive: str | None, power_engine_count: Decimal | None, as_of: datetime
+) -> PowerSearchOutcome:
+    """Evaluate one already-canonical Power requirement -- `power_drive`
+    and/or `power_engine_count` -- SLICE-0094 entrypoint
+    `hullq.application.power_search_read` dispatches to.
+
+    A pure `power_drive`-only requirement (`power_engine_count is None`)
+    keeps calling the byte-for-byte unmodified SLICE-0093
+    `evaluate_power_drive_requirement` -- the contract's own acceptance
+    criterion ("old 0093 drive-only Search returns identical results") is
+    satisfied by literal reuse of that exact code path, never a second
+    independently-timed equivalent. A request involving `power_engine_count`
+    (alone or combined with `power_drive`) builds the combined MUST-AND
+    query via `build_power_query` and reuses the identical
+    `evaluate_power_claim_only_candidates`/
+    `evaluate_power_design_linked_candidates` kernels, parameterized over
+    the exact active definitions this request needs -- never a union of
+    separately evaluated per-criterion candidate sets.
+    """
+    if power_engine_count is None:
+        assert power_drive is not None  # build_power_query already enforced this upstream
+        return evaluate_power_drive_requirement(conn, power_drive=power_drive, as_of=as_of)
+
+    query, active_definitions = build_power_query(
+        power_drive=power_drive, power_engine_count=power_engine_count
+    )
+    claim_only_matches, claim_only_non_matches, claim_only_insufficient_data = (
+        evaluate_power_claim_only_candidates(
+            conn, query=query, as_of=as_of, active_definitions=active_definitions
+        )
+    )
+    design_linked_matches, design_linked_non_matches, design_linked_insufficient_data = (
+        evaluate_power_design_linked_candidates(
+            conn, query=query, as_of=as_of, active_definitions=active_definitions
+        )
+    )
+    return PowerSearchOutcome(
+        power_drive=power_drive,
+        power_engine_count=power_engine_count,
         query=query,
         design_linked_matches=design_linked_matches,
         design_linked_non_matches=design_linked_non_matches,

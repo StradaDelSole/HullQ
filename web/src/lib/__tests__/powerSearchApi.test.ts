@@ -475,13 +475,18 @@ test("validatePowerSearchResultBody: a genuine empty RESULT with integer-typed z
 // ---------------------------------------------------------------------------
 
 test("parseCanonicalPowerSearchQuery: a truly empty query string is canonical (no filter)", () => {
-  assert.deepEqual(parseCanonicalPowerSearchQuery(""), { ok: true, powerDrive: null });
+  assert.deepEqual(parseCanonicalPowerSearchQuery(""), {
+    ok: true,
+    powerDrive: null,
+    powerEngineCount: null,
+  });
 });
 
 test("parseCanonicalPowerSearchQuery: exactly one valid power_drive token is canonical", () => {
   assert.deepEqual(parseCanonicalPowerSearchQuery("power_drive=POD"), {
     ok: true,
     powerDrive: "POD",
+    powerEngineCount: null,
   });
 });
 
@@ -819,6 +824,171 @@ test("fetchPowerSearch: a malformed (non-JSON) 200 body collapses to 502", async
     async (baseUrl) => {
       const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
       assert.equal(response.status, 502);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SLICE-0094: power_engine_count -- count-only and combined drive+count.
+// ---------------------------------------------------------------------------
+
+const _COUNT_EXPECTED = { locale: "en", powerDrive: null, powerEngineCount: "2" } as const;
+const _COMBINED_EXPECTED = { locale: "en", powerDrive: "SHAFT", powerEngineCount: "2" } as const;
+
+test("validatePowerSearchResultBody: a count-only active_requirement is valid", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_engine_count: "2" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _COUNT_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: a combined drive+count active_requirement is valid", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _COMBINED_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: an invalid power_engine_count token is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_engine_count: "9" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _COUNT_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a combined request silently missing the count leaf in the echo is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "SHAFT" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+    },
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: active_requirement with an empty object (neither criterion) is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    { locale: "en", active_requirement: {} },
+    _BASE_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("parseCanonicalPowerSearchQuery: exactly one valid power_engine_count token is canonical", () => {
+  assert.deepEqual(parseCanonicalPowerSearchQuery("power_engine_count=2"), {
+    ok: true,
+    powerDrive: null,
+    powerEngineCount: "2",
+  });
+});
+
+test("parseCanonicalPowerSearchQuery: combined power_drive and power_engine_count is canonical", () => {
+  assert.deepEqual(parseCanonicalPowerSearchQuery("power_drive=SHAFT&power_engine_count=2"), {
+    ok: true,
+    powerDrive: "SHAFT",
+    powerEngineCount: "2",
+  });
+});
+
+test("parseCanonicalPowerSearchQuery: power_engine_count=9 is rejected, never read as absent", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("power_engine_count=9").ok, false);
+});
+
+test("parseCanonicalPowerSearchQuery: power_engine_count=0 is rejected", () => {
+  assert.equal(parseCanonicalPowerSearchQuery("power_engine_count=0").ok, false);
+});
+
+test("parseCanonicalPowerSearchQuery: duplicate power_engine_count keys are rejected", () => {
+  assert.equal(
+    parseCanonicalPowerSearchQuery("power_engine_count=2&power_engine_count=2").ok,
+    false,
+  );
+});
+
+test("fetchPowerSearch: a genuine count-only 200 result is surfaced as result", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_engine_count: "2" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=2");
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a genuine combined drive+count 200 result is surfaced as result", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: an invalid power_engine_count request value collapses to 502, never a false BASE", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, { locale: "en", active_requirement: null }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=9");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
     },
   );
 });
