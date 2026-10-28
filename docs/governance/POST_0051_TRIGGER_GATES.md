@@ -5,7 +5,7 @@
 **Scope:** post-SLICE-0051 reassessment, slice readiness, production-data/pilot readiness, Search abstraction and process governance
 
 <!-- POST_0051_ARCHITECTURE_RECONCILIATION: PASS -->
-<!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 9 -->
+<!-- TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT: 10 -->
 <!-- WORKFLOW_REASSESSMENT_DUE_AFTER_SLICE: 0056 -->
 <!-- WORKFLOW_REASSESSMENT_STATUS: PASS -->
 <!-- BUYER_CONTACT_EMAIL_VERIFICATION_STATUS: PENDING -->
@@ -96,6 +96,7 @@ Current accepted buyer-facing hard technical native-inventory Search criteria:
 7 — deck_saloon
 8 — beam (beam_min / beam_max count once)
 9 — hull_material (GRP_FIBERGLASS, STEEL, ALUMINUM, WOOD)
+10 — power_drive_configuration (POWER ONLY; SHAFT, STERNDRIVE, POD, WATERJET, OUTBOARD; first Power criterion)
 ```
 
 The first criterion proved the concrete end-to-end path. SLICE-0055 then satisfied the accepted second-criterion comparison obligation and generalized the genuinely shared design/configuration production mechanics while retaining criterion-specific decoding/mapping behind bounded adapters.
@@ -131,6 +132,8 @@ If neither can be proved, readiness is not PASS.
 The repository validator checks the machine-readable readiness evidence. Independent readiness review remains responsible for deciding whether the claimed comparison/distinction is substantively true.
 
 The `TECHNICAL_NATIVE_SEARCH_CRITERIA_COUNT` marker records the number already owner-accepted on canonical main. SLICE-0085 added exactly **two** hard public technical dimensions (LOA range counted once and qualified rudder counted once), changing the count **2 → 4**. Owner-accepted SLICE-0086 adds exactly **three** further orthogonal qualified structural hard dimensions — `hull_configuration`, `cockpit_position`, `deck_saloon` — changing it **4 → 7** in the separate formal 0086 acceptance closure (`docs/slices/SLICE-0086-acceptance-closure.md`), not in readiness or implementation. Eight technical query keys are seven criteria because `loa_min` and `loa_max` count as one LOA dimension. `OTHER` hull/cockpit and `NONE` deck are concrete claim-only, never additional public filters/dimensions; buyer evidence requires generation/NamedVariant qualified BoatDesign facts **and** independent current nonconflicting PhysicalBoat publisher assertions. Imported platform tags cannot be promoted by inference. The existing keel six-value public vocabulary remains unchanged; `LONG_KEEL` stays unsupported and adds no separate dimension without future independently decided taxonomy/claim mapping. The common static typed `CriterionDefinition`/FieldResolution/configuration/qualified concrete-claim kernel must be reused without an arbitrary schema resolver or a third structural copy. Buyer sensitivity for any LOA/rudder/structural criterion remains deliberately unavailable rather than silently omitting constraints; old-only draft/keel sensitivity is preserved. Owner-accepted SLICE-0087 adds Beam overall width min/max (one semantic dimension) and the conservative GRP_FIBERGLASS/STEEL/ALUMINUM/WOOD Hull Material hard filter (one), advancing the accepted Gate 3 count 7 → 9 only in the formal separate closure. Eleven public technical query keys are nine dimensions because LOA and Beam min/max are each one. Broader concrete PhysicalBoat material values FERROCEMENT/CARBON_COMPOSITE/OTHER remain claim-only; design wood_composite/carbon are not mapped by inference. The common FieldResolution/NamedVariant/PhysicalBoat same-configuration AND evaluation, UNKNOWN/conflict guards and impartial organic Search remain unchanged. Count advances only after reviewed Owner-accepted implementation closure; production readiness and owner-direct gates remain separate.
+
+**SLICE-0093 Owner-accepted addition (2026-10-28):** Global technical native Search criterion count advances **9 → 10** only in the separate reviewed SLICE-0093 docs-only Owner acceptance closure, after implementation PR #390 was independently reviewed, explicitly Owner-accepted and squash-merged as `c38a60d821a6e9a88fba023a0008a36a3dcd51e1`. The per-domain split is **SAIL 9 / POWER 1**. This first Power dimension is the exact five-token current drive arrangement, a distinct category-isolated request route reusing the existing categorical configuration/qualified-current-claim kernel rather than a third evaluator. It requires the publishing Organization's own positive POWER category and specific current drive in one revision, with D29 and fail-closed design/factory-vs-installation provenance. Existing Sail nine criteria and source truth stay unchanged. **No new Power criterion, category-agnostic browse, full Power parity, real external broker data/pilot or public release** is authorized; #355 hosted Search scaling and pre-real-data STOP, #366 joint release and #372 remaining Power duties stay OPEN. The launch pack remains NOT_STARTED and Production Readiness remains IN_PROGRESS.
 
 ### Commercial Search independence
 
