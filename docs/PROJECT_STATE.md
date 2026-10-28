@@ -1,10 +1,10 @@
 # HullQ — Current Project State
 
-<!-- PROJECT_STATE_ACCEPTED_SLICE: 0092 -->
-<!-- PROJECT_STATE_QUEUE_SLICE: 0093 -->
+<!-- PROJECT_STATE_ACCEPTED_SLICE: 0093 -->
+<!-- PROJECT_STATE_QUEUE_SLICE: 0094 -->
 <!-- PRODUCTION_LAUNCH_PACK_PHASE: NOT_STARTED -->
 
-**Updated:** 2026-10-27  
+**Updated:** 2026-10-28  
 **Latest Owner-accepted slice:** SLICE-0092 — IMPLEMENTATION (design-unresolved publisher-claim Sail Search; Owner-local FINISH SUCCESS, local main synchronized)  
 **Current queue:** SLICE-0093 — IMPLEMENTATION complete, awaiting independent review/CI and explicit Owner acceptance before merge (never `DONE` by the implementing agent). Contract: `docs/slices/SLICE-0093-power-drive-configuration-ready.md`, companion `specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`. Current accepted Sail count stays 9; the first Power domain criterion becomes global #10 **only in the separate Owner-accepted docs-only closure**, never on this implementation branch. SLICE-0092 is Owner-accepted/locally FINISHED successfully (implementation PR #387, closure PR #388, canonical main `ff6673641db169b22c6152a83c3fb004f5113c93`). Implementation now exists on `slice/0093-power-drive-configuration-ready`: the bounded `power_drive_configuration` claim field, the five-token whitelist (`SHAFT`/`STERNDRIVE`/`POD`/`WATERJET`/`OUTBOARD`), a design-unresolved publisher-claim Power path (reusing the SLICE-0092 batched D29/claim kernel) and a bounded v0.6 `shaft`/`outboard` design-linked bridge (`STERNDRIVE`/`POD`/`WATERJET` remain `INSUFFICIENT_DATA` at the design level by construction), a separate `/api/search/{locale}/power` route and five noindex Astro pages, and a narrow NautiX export guard excluding an explicitly non-SAIL row from the `sail-yacht` catalog type. #355 real-data/pilot/runtime and CR-05 hosted scale, #366 joint Sail+Power release and #372 remaining Power technical obligations remain OPEN; Production Readiness IN_PROGRESS, Launch Pack NOT_STARTED. No additional future slice or external release selected.
 
