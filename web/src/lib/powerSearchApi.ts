@@ -144,6 +144,65 @@ function isFreshnessStatus(value: unknown): value is "CONFIRMED" | "DUE_FOR_CONF
   return value === "CONFIRMED" || value === "DUE_FOR_CONFIRMATION";
 }
 
+function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN" {
+  return value === "TRUE" || value === "FALSE" || value === "UNKNOWN";
+}
+
+function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return v.kind === "CATEGORICAL" && typeof v.field === "string" && typeof v.equals === "string";
+}
+
+// Review amendment Finding J (MEDIUM): deep-validate every nested evidence
+// object, never only its enclosing array's shape (`Array.isArray(...)`
+// alone proves nothing about what is actually inside it).
+function isValidCriterionEvidence(value: unknown): value is PowerCriterionEvidence {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    isValidLeafCriterion(v.criterion) &&
+    typeof v.field === "string" &&
+    isValidTruthState(v.truth) &&
+    (v.reason === null || typeof v.reason === "string") &&
+    typeof v.explanation === "string" &&
+    (v.observed_value === null || typeof v.observed_value === "string")
+  );
+}
+
+function isValidConfigurationEvidence(value: unknown): value is PowerConfigurationEvidence {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.configuration_id === "string" &&
+    typeof v.boat_design_id === "string" &&
+    (v.named_variant_id === null || typeof v.named_variant_id === "string") &&
+    isValidTruthState(v.truth) &&
+    Array.isArray(v.criterion_evidence) &&
+    v.criterion_evidence.every(isValidCriterionEvidence)
+  );
+}
+
+function isValidResultClass(
+  value: unknown,
+): value is "CONFIRMED_MATCH" | "CONFIRMED_NON_MATCH" | "INSUFFICIENT_DATA" {
+  return (
+    value === "CONFIRMED_MATCH" || value === "CONFIRMED_NON_MATCH" || value === "INSUFFICIENT_DATA"
+  );
+}
+
+function isValidDesignEvaluation(value: unknown): value is PowerDesignEvaluation {
+  if (typeof value !== "object" || value === null) return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.design_id === "string" &&
+    isValidResultClass(v.result_class) &&
+    Array.isArray(v.matching_configuration_ids) &&
+    v.matching_configuration_ids.every((id) => typeof id === "string") &&
+    (v.reason === null || typeof v.reason === "string")
+  );
+}
+
 function isValidDesignLinkedMatch(value: unknown): value is PowerDesignLinkedMatch {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
@@ -154,9 +213,10 @@ function isValidDesignLinkedMatch(value: unknown): value is PowerDesignLinkedMat
     (v.last_confirmed_at === null || typeof v.last_confirmed_at === "string") &&
     typeof v.discovery_token === "string" &&
     Array.isArray(v.criterion_evidence) &&
+    v.criterion_evidence.every(isValidCriterionEvidence) &&
     Array.isArray(v.design_configuration_evidence) &&
-    typeof v.design_evaluation === "object" &&
-    v.design_evaluation !== null
+    v.design_configuration_evidence.every(isValidConfigurationEvidence) &&
+    isValidDesignEvaluation(v.design_evaluation)
   );
 }
 
@@ -173,32 +233,77 @@ function isValidClaimOnlyMatch(value: unknown): value is PowerClaimOnlyMatch {
     // backend's own typed discriminator says otherwise.
     v.source_basis === "PUBLISHER_CLAIM" &&
     typeof v.discovery_token === "string" &&
-    Array.isArray(v.criterion_evidence)
+    Array.isArray(v.criterion_evidence) &&
+    v.criterion_evidence.every(isValidCriterionEvidence)
   );
 }
 
 /**
  * Strictly validate a parsed JSON value as a well-formed, internally
- * consistent `PowerSearchResultBody`. Returns `null` for anything
- * malformed -- including a syntactically valid but incomplete/truncated
- * body (e.g. `{"locale":"en","active_requirement":{"power_drive":"POD"}}`
- * with every result-surface field missing), a non-array where an array is
- * required, a count that does not match its own array's length, or an
- * unrecognized `source_basis`. Exported for direct unit testing.
+ * consistent `PowerSearchResultBody` that actually answers *expected*'s
+ * request.
+ *
+ * Review amendment Finding J (MEDIUM): a syntactically well-formed body is
+ * not enough -- a body that is internally consistent but answers a
+ * *different* request (wrong locale, a filtered query silently served a
+ * BASE/no-op response, or `active_requirement.power_drive` echoing back a
+ * token other than the one actually requested) is just as misleading as a
+ * malformed one, and must collapse to the same `502` service error rather
+ * than being read as a genuine (if surprising) empty result. `expected`
+ * carries exactly what the caller actually asked for -- the URL `locale`
+ * path segment and the parsed `power_drive` query parameter (`null` when
+ * absent) -- so this function can check the response actually answers
+ * that request, not just that it is shaped like *some* valid response.
+ *
+ * Returns `null` for anything malformed -- including a syntactically valid
+ * but incomplete/truncated body (e.g.
+ * `{"locale":"en","active_requirement":{"power_drive":"POD"}}` with every
+ * result-surface field missing), a non-array where an array is required, a
+ * count that does not match its own array's length, a contradictory BASE
+ * payload (`active_requirement: null` alongside non-empty/non-zero
+ * result-surface fields), an unrecognized `source_basis`, or any
+ * malformed nested evidence object. Exported for direct unit testing.
  */
-export function validatePowerSearchResultBody(value: unknown): PowerSearchResultBody | null {
+export function validatePowerSearchResultBody(
+  value: unknown,
+  expected: { locale: string; powerDrive: SearchPowerDriveValue | null },
+): PowerSearchResultBody | null {
   if (typeof value !== "object" || value === null) return null;
   const v = value as Record<string, unknown>;
-  if (typeof v.locale !== "string") return null;
+  if (typeof v.locale !== "string" || v.locale !== expected.locale) return null;
   if (!("active_requirement" in v) || !isValidActiveRequirement(v.active_requirement)) {
     return null;
   }
   const activeRequirement = v.active_requirement as PowerActiveRequirement | null;
 
+  if (expected.powerDrive === null) {
+    // An unfiltered request must never come back as an active RESULT --
+    // there is no requested token for it to have confirmed/excluded.
+    if (activeRequirement !== null) return null;
+  } else {
+    // A filtered request must never come back as a no-op BASE response,
+    // and must never echo back a drive token other than the one actually
+    // requested (wrong locale/drive dispatch, never silently accepted).
+    if (activeRequirement === null) return null;
+    if (activeRequirement.power_drive !== expected.powerDrive) return null;
+  }
+
   if (activeRequirement === null) {
-    // BASE state: no result surface is required (and none is read by any
-    // caller for this state) -- a backend that nonetheless includes stray
-    // extra fields here is not itself treated as a contract violation.
+    // BASE state: every result-surface field must be either absent or
+    // genuinely empty/zero -- a BASE body that nonetheless carries
+    // non-empty match arrays or positive counts is self-contradictory,
+    // never treated as a valid empty result.
+    const hasContradictoryMatches =
+      (Array.isArray(v.design_linked_matches) && v.design_linked_matches.length > 0) ||
+      (Array.isArray(v.publisher_claim_matches) && v.publisher_claim_matches.length > 0);
+    const hasContradictoryCount = (
+      [
+        v.design_linked_match_count,
+        v.design_linked_insufficient_data_count,
+        v.publisher_claim_match_count,
+      ] as unknown[]
+    ).some((count) => typeof count === "number" && count > 0);
+    if (hasContradictoryMatches || hasContradictoryCount) return null;
     return { locale: v.locale, active_requirement: null };
   }
 
@@ -290,7 +395,17 @@ export async function fetchPowerSearch(
     } catch {
       parsed = null;
     }
-    const result = parsed === null ? null : validatePowerSearchResultBody(parsed);
+    // Review amendment Finding J: what was actually requested, so the
+    // validator can reject a response that answers a different request
+    // (wrong locale/drive, or a filtered query silently served BASE)
+    // rather than merely checking the body is shaped like *some* valid
+    // response.
+    const requestedPowerDrive = new URLSearchParams(queryString).get("power_drive");
+    const expected = {
+      locale,
+      powerDrive: isSearchPowerDriveValue(requestedPowerDrive) ? requestedPowerDrive : null,
+    };
+    const result = parsed === null ? null : validatePowerSearchResultBody(parsed, expected);
     if (result === null) {
       return { status: 502, location: null, result: null, invalid: null };
     }

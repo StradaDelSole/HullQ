@@ -88,6 +88,39 @@ _HTTP_PROBE_TRANSIENT_ERRORS = (urllib.error.URLError, ConnectionError, TimeoutE
 _ORG_A_ID = "ORG-0093-EDITOR-A"
 _LOCALES = ("en", "de", "fr", "pt", "es")
 
+#: Review amendment Finding I (HIGH): the exact
+#: `t.publisherClaimDisclaimer` string per locale
+#: (`web/src/lib/powerSearchText.ts`) -- verified by real substring
+#: presence in each built Astro SSR locale's rendered HTML, never only in
+#: `en`.
+#: Astro's built SSR text-node escaping renders `'` as the `&#39;` HTML
+#: entity (confirmed against the real built output) -- the `en` string is
+#: the only one of the five with an apostrophe, so it is the only one
+#: spelled with the escaped entity here; matching the raw `'` character
+#: against escaped HTML output would always miss.
+_PUBLISHER_CLAIM_DISCLAIMER_BY_LOCALE = {
+    "en": (
+        "These listings are shown on the publishing broker&#39;s own current statement, "
+        "not independently verified."
+    ),
+    "de": (
+        "Diese Angebote beruhen auf der aktuellen Angabe des anbietenden Maklers, "
+        "nicht auf unabhängiger Prüfung."
+    ),
+    "fr": (
+        "Ces annonces reposent sur la déclaration actuelle du courtier vendeur, "
+        "non vérifiée indépendamment."
+    ),
+    "pt": (
+        "Estes anúncios baseiam-se na declaração atual do corretor "
+        "anunciante, não verificada de forma independente."
+    ),
+    "es": (
+        "Estos anuncios se basan en la declaración actual del corredor anunciante, "
+        "no verificada de forma independiente."
+    ),
+}
+
 
 def _base_db_url() -> str:
     url = os.environ.get("HULLQ_TEST_DATABASE_URL", "").strip()
@@ -231,6 +264,31 @@ def _hidden_field_value(form_html: str, field_name: str) -> str:
     match = pattern.search(form_html)
     assert match is not None, f"hidden field {field_name!r} not found in form block"
     return match.group(1)
+
+
+def _select_block(form_html: str, select_name: str) -> str:
+    """Review amendment Finding I (HIGH): the exact `<select name=...>
+    ... </select>` element, scoped to *select_name* -- never the whole
+    form block. The form has several `<select>` elements whose *other*
+    options also render the bare word "selected" (e.g. assertion-kind
+    dropdowns) -- checking for the substring "selected" anywhere in the
+    whole form block proves nothing about this specific field."""
+    pattern = re.compile(r'<select\b[^>]*\bname="' + re.escape(select_name) + r'"[\s\S]*?</select>')
+    match = pattern.search(form_html)
+    assert match is not None, f"<select name={select_name!r}> not found in form block"
+    return match.group(0)
+
+
+def _option_is_selected(select_html: str, value: str) -> bool:
+    """Whether `<option value={value} ...>` inside *select_html* carries the
+    `selected` boolean attribute -- Astro omits the attribute entirely for
+    a falsy boolean, so its bare presence on the one matching `<option>`
+    tag (not merely anywhere in the surrounding `<select>`) is the correct,
+    specific proof this exact value is the one currently selected."""
+    pattern = re.compile(r'<option\b[^>]*\bvalue="' + re.escape(value) + r'"([^>]*)>')
+    match = pattern.search(select_html)
+    assert match is not None, f'<option value="{value}"> not found in select block'
+    return "selected" in match.group(1)
 
 
 def _seed(conn: Any) -> None:
@@ -698,17 +756,22 @@ def main() -> int:
                 f"{web_base}/{locale}/power/search?power_drive=POD"
             )
             page_text = page_body.decode("utf-8")
+            noindex_ok = 'name="robots" content="noindex"' in page_text
+            disclaimer_ok = _PUBLISHER_CLAIM_DISCLAIMER_BY_LOCALE[locale] in page_text
             locale_ok = (
                 page_status == 200
                 and "NL-0093-INSP-CLAIM" in page_text
                 and "NL-0093-INSP-SAIL" not in page_text
                 and "NL-0093-INSP-LINKED" not in page_text
+                and noindex_ok
+                and disclaimer_ok
             )
             ok &= locale_ok
             print(
                 f"6.[{locale}] GET /{locale}/power/search?power_drive=POD (built Astro SSR): "
-                f"claim-only match renders, SAIL/other-token listings absent -> "
-                f"{'OK' if locale_ok else 'FAIL'}"
+                f"claim-only match renders, SAIL/other-token listings absent, noindex="
+                f"{'OK' if noindex_ok else 'FAIL'}, publisher-claim disclaimer="
+                f"{'OK' if disclaimer_ok else 'FAIL'} -> {'OK' if locale_ok else 'FAIL'}"
             )
         print()
 
@@ -941,7 +1004,11 @@ def main() -> int:
         status, _, body = session_a.get(f"{web_base}{_edit_page_path(_ORG_A_ID, 'NL-0093-EDITOR')}")
         page_text = body.decode("utf-8")
         claim_form = _form_block(page_text, '<h2 id="claim-editor">PhysicalBoat claim</h2>')
-        prefilled_ok = 'value="POD"' in claim_form and "selected" in claim_form
+        drive_select = _select_block(claim_form, "power_drive_configuration_value")
+        prefilled_ok = _option_is_selected(drive_select, "POD") and not any(
+            _option_is_selected(drive_select, other)
+            for other in ("SHAFT", "STERNDRIVE", "WATERJET", "OUTBOARD", "MIXED", "OTHER")
+        )
         revision_id_2 = _hidden_field_value(claim_form, "revision_id")
         expected_2 = _hidden_field_value(claim_form, "expected_current_revision_id")
         assert expected_2 == claim_after_set.revision_id.value
@@ -980,9 +1047,10 @@ def main() -> int:
             and claim_after_unrelated.claims.boat_name is not None
             and claim_after_unrelated.claims.boat_name.value == "Sea Fox"
         )
-        ok &= unrelated_saved_ok and preserved_ok
+        ok &= unrelated_saved_ok and preserved_ok and prefilled_ok
         print(
-            f"13. the real editor pre-fills the drive field from the current claim -> "
+            "13. the real editor pre-fills the power_drive_configuration_value select's POD "
+            f"option specifically as selected (never another option) -> "
             f"{'OK' if prefilled_ok else 'FAIL'}"
         )
         print(

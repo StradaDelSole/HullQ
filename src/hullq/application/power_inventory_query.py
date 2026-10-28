@@ -66,11 +66,10 @@ from hullq.application.native_inventory_query import (
     classify_concrete_candidate,
 )
 from hullq.application.native_listing_freshness import CurrentFreshness
-from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.current_public_eligibility import CurrentPublicEligibilityStatus
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_freshness import FreshnessStatus
-from hullq.domain.physical_boat_claims import AssertionKind, VesselCategory
+from hullq.domain.physical_boat_claims import AssertionKind, PowerDriveConfiguration, VesselCategory
 from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.domain.vessel_category import (
     ConcreteVesselCategoryEvidence,
@@ -90,9 +89,10 @@ from hullq.persistence.physical_boat_claims import (
     CurrentPhysicalBoatClaimObservation,
     list_current_physical_boat_claim_observations_for_many,
 )
+from hullq.persistence.power_category_drive_snapshot import fetch_power_category_drive_snapshot
 from hullq.search.boat_design_field_bridge import run_boat_design_configuration_query
 from hullq.search.configuration_engine import DesignQueryEvaluation
-from hullq.search.criteria import CategoricalLeafCriterion
+from hullq.search.criteria import CategoricalLeafCriterion, CriterionEvaluation
 from hullq.search.criteria_registry import CriterionDefinition
 from hullq.search.power_criteria_registry import (
     POWER_DRIVE_CONFIGURATION_DEFINITION,
@@ -102,7 +102,7 @@ from hullq.search.power_drive_design_bridge import (
     POWER_DRIVE_CONFIGURATION_FIELD_PROJECTION_SPEC,
 )
 from hullq.search.query_mixed import MixedAndQuery
-from hullq.search.types import ResultClass
+from hullq.search.types import ReasonCode, ResultClass, TruthState
 
 __all__ = [
     "PowerCategoryExclusionEvidence",
@@ -318,6 +318,60 @@ def _resolve_power_claim_only_admission(
     return publisher_owns_power, exclusion
 
 
+def _downgrade_mixed_non_match_to_insufficient_data(
+    result_class: ResultClass,
+    criterion_evidence: tuple[SearchCriterionEvidence, ...],
+) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
+    """Review amendment Finding H: a current `VALUE_ASSERTION(MIXED)` drive
+    claim never proves the absence of any single accepted drive type (the
+    normative contract's own words are "even if the vessel uses one of the
+    types") -- so it must never surface as a confirmed exclusion.
+
+    Applied strictly AFTER `classify_claim_only_candidate`/
+    `classify_concrete_candidate` has already run the ordinary, unmodified
+    fail-closed qualification (`hullq.application.native_inventory_query
+    ._qualify_claim_field`) -- including its same-PhysicalBoat
+    cross-Organization contradiction guard -- against the TRUE, unmasked
+    claim values (`hullq.search.power_criteria_registry
+    ._read_power_drive_configuration_claim` is a plain passthrough; see
+    that function's docstring for why an earlier revision's claim-read-level
+    masking silently hid genuine cross-Organization `MIXED` contradictions,
+    Finding H).
+
+    Because this runs after qualification, `observed_value == "MIXED"` on a
+    `CONFIRMED_NON_MATCH` outcome can only mean the publisher's own current
+    claim, uncontested by any other current claiming Organization, IS
+    `MIXED` -- a cross-Organization contradiction (publisher SHAFT vs.
+    another Organization MIXED, or vice versa) already yields `MISSING` ->
+    `INSUFFICIENT_DATA` with `observed_value is None` from the ordinary
+    qualification step, never reaching this function with `"MIXED"` at all.
+    `OTHER` and every other single-token value are untouched: this function
+    only ever rewrites the one `"MIXED"` case.
+    """
+    if result_class is not ResultClass.CONFIRMED_NON_MATCH or len(criterion_evidence) != 1:
+        return result_class, criterion_evidence
+    evidence = criterion_evidence[0]
+    if evidence.observed_value != PowerDriveConfiguration.MIXED.value:
+        return result_class, criterion_evidence
+    downgraded_evidence = (
+        SearchCriterionEvidence(
+            criterion=evidence.criterion,
+            evaluation=CriterionEvaluation(
+                field=evidence.evaluation.field,
+                truth=TruthState.UNKNOWN,
+                reason=ReasonCode.VALUE_MISSING,
+                explanation=(
+                    f"{evidence.evaluation.field}: current claim is MIXED, which never proves "
+                    f"the absence of any single accepted drive type (even if the vessel uses "
+                    f"one of the types) -- insufficient data, not a confirmed exclusion"
+                ),
+            ),
+            observed_value=None,
+        ),
+    )
+    return ResultClass.INSUFFICIENT_DATA, downgraded_evidence
+
+
 def evaluate_power_claim_only_candidates(
     conn: Any,
     *,
@@ -401,6 +455,9 @@ def evaluate_power_claim_only_candidates(
                 publishing_organization_id=candidate.publishing_organization_id,
                 query=query,
                 active_definitions=_ACTIVE_POWER_DEFINITIONS,
+            )
+            result_class, criterion_evidence = _downgrade_mixed_non_match_to_insufficient_data(
+                result_class, criterion_evidence
             )
 
         evaluation = PowerClaimOnlyMatch(
@@ -513,10 +570,23 @@ def evaluate_power_design_linked_candidates(
 
         concrete_evidence: tuple[SearchCriterionEvidence, ...]
         if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
-            category_resolution = resolve_physical_boat_vessel_category(
+            # Review amendment Finding G: category admission and drive
+            # classification MUST be read from the same PostgreSQL
+            # statement/snapshot -- a two-statement sequence here (resolve
+            # category, then separately re-read claims to classify drive)
+            # reopens exactly the MVCC tear window SLICE-0091 amendment
+            # Finding F closed for category-alone. One combined snapshot
+            # read, then the pure `resolve_vessel_category` combination
+            # function plus `classify_concrete_candidate` fed that same
+            # snapshot's observations -- never a second claims read.
+            snapshot = fetch_power_category_drive_snapshot(
                 conn,
                 physical_boat_id=candidate.physical_boat_id,
-                boat_design_ref=candidate.boat_design_ref,
+                boat_design_id=candidate.boat_design_ref.value,
+            )
+            category_resolution = resolve_vessel_category(
+                design_evidence=snapshot.design_evidence,
+                concrete_evidence=snapshot.concrete_evidence,
             )
             if category_resolution.resolution is VesselCategoryResolution.POWER:
                 result_class, concrete_evidence = classify_concrete_candidate(
@@ -527,6 +597,10 @@ def evaluate_power_design_linked_candidates(
                     boat_design_id=candidate.boat_design_ref.value,
                     query=query,
                     active_definitions=_ACTIVE_POWER_DEFINITIONS,
+                    observations=snapshot.observations,
+                )
+                result_class, concrete_evidence = _downgrade_mixed_non_match_to_insufficient_data(
+                    result_class, concrete_evidence
                 )
                 category_exclusion = None
             elif category_resolution.resolution in _EXPLICITLY_NON_POWER:

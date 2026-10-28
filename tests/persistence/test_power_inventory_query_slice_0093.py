@@ -685,6 +685,187 @@ def test_cross_organization_conflicting_current_drive_fails_closed(pwr_conn: Any
         assert "NL-93-XDRV" in insufficient
 
 
+def _seed_other_org_power_claim(
+    conn: Any,
+    *,
+    physical_boat_id: str,
+    org_suffix: str,
+    category_value: str,
+    drive_value: str,
+) -> None:
+    """Raw-insert a second claiming Organization's current claim for an
+    already-seeded PhysicalBoat -- the same pattern
+    `test_cross_organization_conflicting_current_drive_fails_closed` already
+    uses, factored out so Finding H's MIXED-specific cross-Organization
+    cases don't duplicate it a third/fourth time."""
+    other_org = _org(f"ORG-{org_suffix}")
+    other_account = AccountId(f"ACC-{org_suffix}")
+    with conn.transaction():
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO accounts (account_id) VALUES (%s) ON CONFLICT DO NOTHING",
+                [other_account.value],
+            )
+        seed_marketplace_organization(conn, other_org)
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO physical_boat_claim_revisions ("
+            "claim_revision_id, physical_boat_id, claiming_organization_id, "
+            "recorded_by_account_id, marketed_brand_claim, model_designation_claim, "
+            "build_year_assertion_kind, build_year_value, vessel_category_assertion_kind, "
+            "vessel_category_value, power_drive_configuration_assertion_kind, "
+            "power_drive_configuration_value, previous_claim_revision_id, content_hash"
+            ") VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NULL, %s)",
+            [
+                f"PBCREV-{org_suffix}",
+                physical_boat_id,
+                other_org.id.value,
+                other_account.value,
+                "Other Brand",
+                "Other Model",
+                "VALUE_ASSERTION",
+                2020,
+                "VALUE_ASSERTION",
+                category_value,
+                "VALUE_ASSERTION",
+                drive_value,
+                "0" * 64,
+            ],
+        )
+        cur.execute(
+            "INSERT INTO physical_boat_claim_heads ("
+            "physical_boat_id, claiming_organization_id, current_claim_revision_id"
+            ") VALUES (%s, %s, %s)",
+            [physical_boat_id, other_org.id.value, f"PBCREV-{org_suffix}"],
+        )
+    conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# Review amendment Finding H (BLOCKER): another Organization's current
+# MIXED drive claim is genuine contradicting source evidence when the
+# publisher asserts a single drive type -- it must never be silently
+# disregarded/masked. Both directions (publisher single-token vs. other-org
+# MIXED, and the reverse) must fail closed to INSUFFICIENT_DATA for every
+# disputed token; a publisher-only MIXED claim with no other Organization at
+# all keeps the ordinary Finding A "not a confirmed exclusion" treatment.
+# ---------------------------------------------------------------------------
+
+
+def test_publisher_shaft_versus_other_organization_mixed_fails_closed(pwr_conn: Any) -> None:
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-HMIX1",
+        physical_boat_id="PB-93-HMIX1",
+        market_episode_id="ME-93-HMIX1",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    _seed_other_org_power_claim(
+        pwr_conn,
+        physical_boat_id="PB-93-HMIX1",
+        org_suffix="93-HMIX1-OTHER",
+        category_value="POWER",
+        drive_value="MIXED",
+    )
+    # A single-token publisher claim contested by another Organization's
+    # current MIXED claim is a genuine same-PhysicalBoat contradiction on
+    # the technical field: SHAFT may not be confirmed (the other
+    # Organization's current evidence does not agree it is purely SHAFT).
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-HMIX1" not in matches, (
+        "another Organization's current MIXED claim must not be silently disregarded when "
+        "the publisher asserts a single drive type"
+    )
+    assert "NL-93-HMIX1" not in non_matches
+    assert "NL-93-HMIX1" in insufficient
+
+
+def test_publisher_mixed_versus_other_organization_shaft_fails_closed(pwr_conn: Any) -> None:
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-HMIX2",
+        physical_boat_id="PB-93-HMIX2",
+        market_episode_id="ME-93-HMIX2",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.MIXED
+        ),
+    )
+    _seed_other_org_power_claim(
+        pwr_conn,
+        physical_boat_id="PB-93-HMIX2",
+        org_suffix="93-HMIX2-OTHER",
+        category_value="POWER",
+        drive_value="SHAFT",
+    )
+    # Reverse combination: the publisher's own claim is MIXED, but another
+    # Organization currently claims a single token (SHAFT) for the same
+    # PhysicalBoat -- still a genuine cross-Organization contradiction, not
+    # the publisher-only-MIXED case Finding A's downgrade covers.
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-HMIX2" not in matches
+    assert "NL-93-HMIX2" not in non_matches
+    assert "NL-93-HMIX2" in insufficient
+
+
+def test_publisher_mixed_with_no_other_organization_is_still_insufficient_not_excluded(
+    pwr_conn: Any,
+) -> None:
+    """Nonconflicting control: a publisher-only current MIXED claim, with no
+    other Organization claiming this PhysicalBoat at all, keeps the
+    ordinary Finding A result-level downgrade (INSUFFICIENT_DATA, never a
+    false CONFIRMED_NON_MATCH) -- Finding H's cross-Organization guard fix
+    must not regress this already-accepted single-claimant case."""
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-HMIX3",
+        physical_boat_id="PB-93-HMIX3",
+        market_episode_id="ME-93-HMIX3",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.MIXED
+        ),
+    )
+    matches, non_matches, insufficient = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-HMIX3" not in matches
+    assert "NL-93-HMIX3" not in non_matches
+    assert "NL-93-HMIX3" in insufficient
+
+
+def test_publisher_shaft_versus_other_organization_shaft_is_a_nonconflicting_confirmed_match(
+    pwr_conn: Any,
+) -> None:
+    """Nonconflicting control: two Organizations agreeing on the identical
+    single token must still confirm -- Finding H's fix must not turn
+    ordinary agreement into a false contradiction."""
+    _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-HMIX4",
+        physical_boat_id="PB-93-HMIX4",
+        market_episode_id="ME-93-HMIX4",
+        boat_design_id=None,
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    _seed_other_org_power_claim(
+        pwr_conn,
+        physical_boat_id="PB-93-HMIX4",
+        org_suffix="93-HMIX4-OTHER",
+        category_value="POWER",
+        drive_value="SHAFT",
+    )
+    matches, _, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-HMIX4" in matches
+
+
 # ---------------------------------------------------------------------------
 # Review amendment Finding D: a true two-connection concurrent revision --
 # a writer changing both category and drive together in one new revision,
@@ -856,6 +1037,97 @@ def test_design_linked_sail_category_excludes_despite_shaft_mapping(pwr_conn: An
     matches, non_matches, _ = _result_classes(pwr_conn, power_drive="SHAFT")
     assert "NL-93-DSAIL" not in matches
     assert "NL-93-DSAIL" in non_matches
+
+
+# ---------------------------------------------------------------------------
+# Review amendment Finding G (BLOCKER): the design-linked plane's category
+# admission and drive classification must be drawn from one coherent
+# PostgreSQL snapshot -- a two-statement sequence (resolve category, then
+# separately re-read claims to classify drive) could otherwise combine a
+# pre-commit category with a post-commit drive (or vice versa) across a
+# concurrent revision, producing a false CONFIRMED_MATCH the current
+# committed state never actually supports.
+# ---------------------------------------------------------------------------
+
+
+def test_design_linked_two_connection_concurrent_revision_never_sees_hybrid_state(
+    pwr_url: str, pwr_conn: Any
+) -> None:
+    _insert_boat_design(pwr_conn, "BD-93-GCONC", "BM-93-GCONC", drive_type="shaft")
+    _admit_design_drive_type(pwr_conn, "BD-93-GCONC", value="shaft")
+    account, org, _membership = _make_active_listing(
+        pwr_conn,
+        listing_id="NL-93-GCONC",
+        physical_boat_id="PB-93-GCONC",
+        market_episode_id="ME-93-GCONC",
+        boat_design_id="BD-93-GCONC",
+        vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+        power_drive_configuration=PowerDriveConfigurationClaim(
+            assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+        ),
+    )
+    current_revision_id = _current_claim_revision_id(pwr_conn, listing_id="NL-93-GCONC", org=org)
+    pwr_conn.commit()
+    assert current_revision_id is not None
+
+    matches_before, _, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-GCONC" in matches_before
+
+    writer_conn = psycopg.connect(pwr_url)
+    try:
+        with writer_conn.transaction(), writer_conn.cursor() as cur:
+            write_physical_boat_claim_revision_row(
+                cur,
+                account_id=account,
+                candidate_organization=org,
+                native_listing_id=NativeListingId("NL-93-GCONC"),
+                revision_id=PhysicalBoatClaimRevisionId("PBCREV-93-GCONC-2"),
+                expected_current_revision_id=current_revision_id,
+                claims=PhysicalBoatClaimSnapshot(
+                    marketed_brand_claim="Unbranded",
+                    model_designation_claim="Unmatched Model",
+                    build_year=BuildYearClaim(assertion_kind=VA, value=2015),
+                    vessel_category=VesselCategoryClaim(
+                        assertion_kind=VA, value=VesselCategory.SAIL
+                    ),
+                    power_drive_configuration=PowerDriveConfigurationClaim(
+                        assertion_kind=VA, value=PowerDriveConfiguration.POD
+                    ),
+                ),
+            )
+
+            # Reader: a SEPARATE real connection, while the writer's
+            # transaction above (new revision: SAIL category + POD drive)
+            # is still open/uncommitted. The design-linked evaluator must
+            # read category admission and drive classification from one
+            # single combined snapshot (`fetch_power_category_drive_snapshot`)
+            # -- under READ COMMITTED it sees only the OLD, fully committed
+            # revision (POWER category + SHAFT drive) for *both* fields,
+            # never a torn combination of the new drive with the old
+            # category or vice versa.
+            reader_conn = psycopg.connect(pwr_url)
+            try:
+                matches_during, non_matches_during, _ = _result_classes(
+                    reader_conn, power_drive="SHAFT"
+                )
+                assert "NL-93-GCONC" in matches_during
+                assert "NL-93-GCONC" not in non_matches_during
+                matches_during_pod, _, _ = _result_classes(reader_conn, power_drive="POD")
+                assert "NL-93-GCONC" not in matches_during_pod
+            finally:
+                reader_conn.close()
+        # `with writer_conn.transaction():` commits here on clean exit.
+    finally:
+        writer_conn.close()
+
+    # After commit, the fully new revision (SAIL + POD) is visible
+    # atomically: SAIL category now excludes the listing from Power
+    # entirely, regardless of the design-side shaft mapping.
+    matches_after, non_matches_after, _ = _result_classes(pwr_conn, power_drive="SHAFT")
+    assert "NL-93-GCONC" not in matches_after
+    assert "NL-93-GCONC" in non_matches_after
+    matches_after_pod, _, _ = _result_classes(pwr_conn, power_drive="POD")
+    assert "NL-93-GCONC" not in matches_after_pod
 
 
 # ---------------------------------------------------------------------------

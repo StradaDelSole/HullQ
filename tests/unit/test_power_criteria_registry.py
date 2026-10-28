@@ -114,20 +114,30 @@ def _observation(
 
 
 # ---------------------------------------------------------------------------
-# Review amendment Finding A: MIXED reads as UNKNOWN (never a confirmed
-# categorical scalar); OTHER and single-drive values read as their own
-# ordinary confirmed value, unmodified.
+# Review amendment Finding H (BLOCKER): `read_claim` is a plain passthrough
+# for every value, including MIXED -- it must report exactly what the
+# current claim asserts so the shared cross-Organization contradiction
+# guard in `_qualify_claims_against_definitions` can see a genuine MIXED
+# disagreement from another Organization, never silently masked at this
+# boundary. "MIXED is not a confirmed exclusion" is applied as a
+# result-level downgrade in
+# `hullq.application.power_inventory_query
+# ._downgrade_mixed_non_match_to_insufficient_data`, strictly after
+# ordinary qualification -- see
+# `tests/persistence/test_power_inventory_query_slice_0093.py` for the
+# PostgreSQL-backed proof of that result-level behavior, including the
+# cross-Organization contradiction cases this passthrough makes possible.
 # ---------------------------------------------------------------------------
 
 
-def test_read_claim_mixed_is_reinterpreted_as_unknown() -> None:
+def test_read_claim_mixed_is_a_plain_passthrough_not_reinterpreted() -> None:
     observation = _observation(
         PowerDriveConfigurationClaim(
             assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.MIXED
         )
     )
     result = POWER_DRIVE_CONFIGURATION_DEFINITION.read_claim(observation)
-    assert result == (AssertionKind.UNKNOWN, None)
+    assert result == (AssertionKind.VALUE_ASSERTION, "MIXED")
 
 
 def test_read_claim_other_is_an_ordinary_confirmed_value_not_reinterpreted() -> None:

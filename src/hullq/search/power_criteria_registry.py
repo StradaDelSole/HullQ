@@ -27,7 +27,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final
 
-from hullq.domain.physical_boat_claims import AssertionKind, PowerDriveConfiguration
+from hullq.domain.physical_boat_claims import AssertionKind
 from hullq.persistence.physical_boat_claims import CurrentPhysicalBoatClaimObservation
 from hullq.search.criteria_registry import (
     ClaimReadResult,
@@ -69,42 +69,42 @@ SEARCH_POWER_DRIVE_VALUES: Final[frozenset[str]] = frozenset(
 def _read_power_drive_configuration_claim(
     observation: CurrentPhysicalBoatClaimObservation,
 ) -> ClaimReadResult:
-    """Review amendment Finding A: a current `VALUE_ASSERTION(MIXED)` claim
-    does not prove the absence of any single accepted drive type -- the
-    normative contract's own words are "even if the vessel uses one of the
-    types". Reading it as a confirmed categorical scalar `"MIXED"` would let
-    the shared `evaluate_categorical_leaf` string-compare it against every
-    one of the five public tokens and produce a false `CONFIRMED_NON_MATCH`
-    via ordinary `!=` inequality -- exactly the unsupported confirmed
-    negative the review identified. Reading it instead as `UNKNOWN` (never
-    persisted this way, only read this way for Search classification) makes
-    the shared fail-closed qualification (`_qualify_claim_field`) treat
-    every one of the five tokens as `MISSING` -> `INSUFFICIENT_DATA`,
-    identical bounded treatment to an explicit `UNKNOWN` claim -- never a
-    proven exclusion.
+    """Plain passthrough read of the current `power_drive_configuration`
+    claim -- identical shape to every other Sail `_read_*_claim` accessor
+    (e.g. `hullq.search.criteria_registry._read_keel_claim`): reports
+    exactly what the current claim asserts (including `VALUE_ASSERTION`
+    `MIXED`/`OTHER`), with no Power-specific reinterpretation.
 
-    `OTHER` is deliberately NOT special-cased here: it denotes a confirmed,
-    single (if uncatalogued) drive -- the publisher would have used the
-    real token if the boat had one of the five, so `OTHER` genuinely is not
-    any of them. Ordinary categorical equality already yields the correct
-    `CONFIRMED_NON_MATCH` for every one of the five tokens, identical
-    treatment to `HullMaterial.OTHER`/`KeelConfiguration.OTHER` elsewhere in
-    this codebase -- no override needed or wanted.
+    Review amendment Finding H (BLOCKER): an earlier revision reinterpreted
+    every `VALUE_ASSERTION(MIXED)` claim as `UNKNOWN` *here*, at the shared
+    per-observation read boundary used uniformly for the publisher's own
+    claim **and** every other current claiming Organization's claim
+    (`hullq.application.native_inventory_query._qualify_claims_against_definitions`
+    builds its `cross_organization_values` set from this same accessor).
+    That silently erased another Organization's current contradictory
+    `MIXED` claim from the cross-Organization contradiction check, so a
+    publisher asserting a single drive type (e.g. `SHAFT`) while a
+    different Organization currently claims `MIXED` for the same
+    PhysicalBoat was treated as agreeing evidence instead of the fail-closed
+    contradiction it actually is.
 
-    This Power-specific accessor is the only place this interpretation
-    applies; it does not touch `hullq.search.criteria_registry`'s generic
-    `_qualify_claim_field`/`evaluate_categorical_leaf` or any accepted Sail
-    categorical field, which keep their own unmodified fail-closed equality
-    semantics.
+    "A current `MIXED` claim never proves the absence of any single accepted
+    drive type" (contract: "even if the vessel uses one of the types") is a
+    *result-level* semantic, not a claim-read-level one -- it is now applied
+    only to the publisher's own already-qualified `CONFIRMED_NON_MATCH`
+    outcome, in `hullq.application.power_inventory_query
+    ._downgrade_mixed_non_match_to_insufficient_data`, strictly after
+    `_qualify_claims_against_definitions` has already run its ordinary
+    cross-Organization contradiction guard against the true, unmasked claim
+    values. `OTHER` is unaffected either way: it denotes a confirmed,
+    single (if uncatalogued) drive, so ordinary categorical equality already
+    yields the correct `CONFIRMED_NON_MATCH`, identical treatment to
+    `HullMaterial.OTHER`/`KeelConfiguration.OTHER` elsewhere in this
+    codebase.
     """
     claim = observation.power_drive_configuration
     if claim is None:
         return None
-    if (
-        claim.assertion_kind is AssertionKind.VALUE_ASSERTION
-        and claim.value is PowerDriveConfiguration.MIXED
-    ):
-        return (AssertionKind.UNKNOWN, None)
     value = (
         claim.value.value
         if claim.assertion_kind is AssertionKind.VALUE_ASSERTION and claim.value is not None
