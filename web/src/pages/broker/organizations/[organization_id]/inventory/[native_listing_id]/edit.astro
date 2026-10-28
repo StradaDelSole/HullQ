@@ -33,6 +33,10 @@ import {
   type LeafCriterion,
   type SearchFitResult,
 } from "../../../../../../lib/brokerSearchFitApi";
+import {
+  fetchPowerSearchFit,
+  type PowerSearchFitResult,
+} from "../../../../../../lib/brokerPowerSearchFitApi";
 import { AUTH0_MFA_STEP_UP_ACR_VALUE } from "../../../../../../lib/authConstants";
 
 // Independent review Finding B: the recorded generation identity is what
@@ -493,6 +497,59 @@ const searchFitResult: SearchFitResult | null =
         cookieHeader,
       )
     : null;
+
+// SLICE-0095: the authorized single-target hypothetical DRAFT Power
+// Search-fit preview, requested via its own GET form fields -- distinct
+// `psf_*` page-local param names from both the FastAPI `power_drive`/
+// `power_engine_count` query the client lib sends AND the Sail preview's
+// own `sf_*` params above, so a submission of one form never bleeds into
+// the other (contract "Browser contract and isolation"). `getAll`-then-
+// reject-duplicates discipline mirrors the Sail preview's identical
+// independent review Finding C fix above.
+const powerSearchFitDriveValues = Astro.url.searchParams.getAll("psf_power_drive");
+const powerSearchFitCountValues = Astro.url.searchParams.getAll("psf_power_engine_count");
+const powerSearchFitDriveRaw = powerSearchFitDriveValues[0] ?? "";
+const powerSearchFitCountRaw = powerSearchFitCountValues[0] ?? "";
+const powerSearchFitHasAmbiguousParams =
+  powerSearchFitDriveValues.length > 1 || powerSearchFitCountValues.length > 1;
+const powerSearchFitRequested =
+  powerSearchFitDriveValues.length > 0 || powerSearchFitCountValues.length > 0;
+const powerSearchFitResult: PowerSearchFitResult | null =
+  result.kind === "ok" &&
+  organizationId &&
+  nativeListingId &&
+  powerSearchFitRequested &&
+  !powerSearchFitHasAmbiguousParams
+    ? await fetchPowerSearchFit(
+        apiBaseUrl,
+        organizationId,
+        nativeListingId,
+        {
+          powerDrive: powerSearchFitDriveRaw || undefined,
+          powerEngineCount: powerSearchFitCountRaw || undefined,
+        },
+        cookieHeader,
+      )
+    : null;
+// `hullq.search.power_criteria_registry.SEARCH_POWER_DRIVE_VALUES` -- the
+// accepted public five-token exact whitelist; `MIXED`/`OTHER` remain valid
+// PhysicalBoat claim values but are not accepted public Search-fit
+// scenario values.
+const SEARCH_FIT_POWER_DRIVE_VALUES = ["SHAFT", "STERNDRIVE", "POD", "WATERJET", "OUTBOARD"];
+// `hullq.search.power_criteria_registry.SEARCH_POWER_ENGINE_COUNT_VALUES` --
+// the accepted public eight-token exact whitelist; a current claim of 9-32
+// remains valid PhysicalBoat claim vocabulary but is never a public Search
+// filter token in this slice.
+const SEARCH_FIT_POWER_ENGINE_COUNT_VALUES = ["1", "2", "3", "4", "5", "6", "7", "8"];
+const powerSearchFitBlockerText: Record<string, string> = {
+  BOATDESIGN_CONFIGURATION_UNRESOLVED:
+    "This design's own technical data isn't fully resolved -- confirm the correct canonical model/variant",
+  POWER_CATEGORY_UNCONFIRMED:
+    "This boat's current POWER category isn't confirmed by this Organization (or is disputed)",
+  POWER_DRIVE_UNCONFIRMED: "This boat's actual drive arrangement isn't confirmed (or is disputed)",
+  POWER_ENGINE_COUNT_UNCONFIRMED:
+    "This boat's actual installed engine count isn't confirmed (or is disputed)",
+};
 // `hullq.search.keel_design_bridge.SEARCH_KEEL_CONFIGURATION_VALUES` --
 // deliberately narrower than this page's own `KEEL_CONFIGURATIONS` claim
 // vocabulary above: `LONG_KEEL`/`OTHER` remain valid PhysicalBoat claim
@@ -1721,6 +1778,177 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                       <p>This boat's own current PhysicalBoat claim evidence:</p>
                       <ul>
                         {searchFitResult.data.criterion_evidence.map((evidence) => (
+                          <li>
+                            {describeCriterion(evidence.criterion)}: {evidence.truth}
+                            {evidence.observed_value !== null && (
+                              <> -- this boat's current claim: {evidence.observed_value}</>
+                            )}
+                            {evidence.reason && <> ({evidence.reason})</>}
+                            {" -- "}
+                            {evidence.explanation}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </>
+              )
+            }
+
+            <h2>Power Search-fit preview</h2>
+            <p>
+              <em>Illustrative only / not actual buyer demand.</em> Enter a representative current
+              drive arrangement and/or installed principal engine count to see whether this
+              listing would technically satisfy it, using the exact same truth the public Power
+              technical Search uses. A missing canonical design link never blocks this preview --
+              a design-unresolved match is shown as this Organization's own current claim,
+              clearly marked as publisher-claimed and not independently verified. This never
+              publishes anything, changes any stored evidence, or asserts this listing is
+              ready/eligible to publish.
+            </p>
+            <form method="GET">
+              <p>
+                <label>
+                  Current drive arrangement:
+                  <select name="psf_power_drive">
+                    <option value="" selected={powerSearchFitDriveRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_POWER_DRIVE_VALUES.map((value) => (
+                      <option value={value} selected={powerSearchFitDriveRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
+              <p>
+                <label>
+                  Installed principal engine count:
+                  <select name="psf_power_engine_count">
+                    <option value="" selected={powerSearchFitCountRaw === ""}>
+                      (not specified)
+                    </option>
+                    {SEARCH_FIT_POWER_ENGINE_COUNT_VALUES.map((value) => (
+                      <option value={value} selected={powerSearchFitCountRaw === value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </p>
+              <button type="submit">Run Power Search-fit preview</button>
+            </form>
+            {
+              powerSearchFitHasAmbiguousParams ? (
+                <p>
+                  That scenario isn't valid (a duplicate/ambiguous parameter was submitted).
+                  Choose at most one value for each of drive arrangement and engine count.
+                </p>
+              ) : powerSearchFitResult === null ? null : powerSearchFitResult.kind ===
+                "unauthenticated" ? (
+                <p>Please log in to run this preview.</p>
+              ) : powerSearchFitResult.kind === "not_found" ? (
+                <p>This listing isn't available here.</p>
+              ) : powerSearchFitResult.kind === "mfa_required" ? (
+                <p>Additional verification is required before you can run this preview.</p>
+              ) : powerSearchFitResult.kind === "publisher_role_required" ? (
+                <p>Only a Publisher on this Organization can run this preview.</p>
+              ) : powerSearchFitResult.kind === "invalid_scenario" ? (
+                <p>
+                  That scenario isn't valid. Choose one supported current drive arrangement
+                  and/or one supported installed engine count from the lists above.
+                </p>
+              ) : powerSearchFitResult.kind === "not_previewable" ? (
+                <p>
+                  This listing is no longer lifecycle-DRAFT (or just changed) -- it can't be
+                  previewed as a hypothetical draft anymore. Reload the page to see its current
+                  state.
+                </p>
+              ) : powerSearchFitResult.kind === "chain_integrity_fault" ? (
+                <p>
+                  Something went wrong resolving this listing's underlying boat/design records.
+                  Please try again.
+                </p>
+              ) : powerSearchFitResult.kind === "service_error" ? (
+                <p>Something went wrong running this preview. Please try again.</p>
+              ) : (
+                <>
+                  <p>
+                    Result: <strong>{powerSearchFitResult.data.result_class}</strong>
+                    {powerSearchFitResult.data.source_basis === "PUBLISHER_CLAIM" && (
+                      <>
+                        {" "}
+                        -- <em>publisher-claimed, not independently verified</em>
+                      </>
+                    )}
+                  </p>
+                  {powerSearchFitResult.data.vessel_category_exclusion && (
+                    <p>
+                      Excluded: this boat's resolved vessel category is{" "}
+                      <strong>{powerSearchFitResult.data.vessel_category_exclusion.resolution}</strong>{" "}
+                      ({powerSearchFitResult.data.vessel_category_exclusion.reason}), not POWER.
+                    </p>
+                  )}
+                  {powerSearchFitResult.data.blockers.length > 0 && (
+                    <ul>
+                      {powerSearchFitResult.data.blockers.map((blocker) => (
+                        <li>
+                          {powerSearchFitBlockerText[blocker] ?? blocker}
+                          {" -- see "}
+                          {blocker === "BOATDESIGN_CONFIGURATION_UNRESOLVED" ? (
+                            <a href="#design-editor">Canonical design</a>
+                          ) : (
+                            <a href="#claim-editor">PhysicalBoat claim</a>
+                          )}
+                          {" above."}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {
+                    powerSearchFitResult.data.design_evaluation && (
+                      <>
+                        <p>
+                          Canonical design result:{" "}
+                          <strong>{powerSearchFitResult.data.design_evaluation.result_class}</strong>
+                          {powerSearchFitResult.data.design_evaluation.reason && (
+                            <> ({powerSearchFitResult.data.design_evaluation.reason})</>
+                          )}
+                        </p>
+                        {powerSearchFitResult.data.design_configuration_evidence.length > 0 && (
+                          <ul>
+                            {powerSearchFitResult.data.design_configuration_evidence.map(
+                              (configEvidence) => (
+                                <li>
+                                  Configuration <code>{configEvidence.configuration_id}</code>{" "}
+                                  ({configEvidence.truth})
+                                  <ul>
+                                    {configEvidence.criterion_evidence.map((evidence) => (
+                                      <li>
+                                        {describeCriterion(evidence.criterion)}: {evidence.truth}
+                                        {evidence.observed_value !== null && (
+                                          <> -- design value: {evidence.observed_value}</>
+                                        )}
+                                        {evidence.reason && <> ({evidence.reason})</>}
+                                        {" -- "}
+                                        {evidence.explanation}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </li>
+                              ),
+                            )}
+                          </ul>
+                        )}
+                      </>
+                    )
+                  }
+                  {powerSearchFitResult.data.criterion_evidence.length > 0 && (
+                    <>
+                      <p>This boat's own current PhysicalBoat claim evidence:</p>
+                      <ul>
+                        {powerSearchFitResult.data.criterion_evidence.map((evidence) => (
                           <li>
                             {describeCriterion(evidence.criterion)}: {evidence.truth}
                             {evidence.observed_value !== null && (

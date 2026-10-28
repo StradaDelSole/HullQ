@@ -81,9 +81,10 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
-from hullq.application.broker_workspace_read import (
-    OrganizationWorkspaceOutcome,
-    get_organization_workspace_result,
+from hullq.application.broker_search_fit_support import (
+    BrokerActorAuthorizationOutcome,
+    evaluate_broker_actor_authorization,
+    parse_single_valued_scenario_param,
 )
 from hullq.application.native_inventory_query import (
     ConfigurationEvidence,
@@ -96,7 +97,7 @@ from hullq.application.native_inventory_query import (
 from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.market_identity import NativeListingId
 from hullq.domain.native_listing_lifecycle import NativeListingLifecycleState
-from hullq.domain.publishing_eligibility import MarketplaceOrganizationId, MembershipRole
+from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
 from hullq.domain.vessel_category import VesselCategoryExclusionEvidence
 from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.persistence.market_episode import fetch_market_episode
@@ -192,16 +193,9 @@ def _parse_single_valued(
     (duplicate, even of an identical value, or a non-canonical spelling)
     fails closed directly, never silently normalized.
     """
-    if parsed is None:
-        raise InvalidSearchFitScenarioError(f"{label} is not a supported/valid value")
-    value, is_single_canonical = parsed
-    if value is None:
-        return None
-    if len(raw_values) > 1:
-        raise InvalidSearchFitScenarioError(f"{label} must be supplied exactly once")
-    if not is_single_canonical:
-        raise InvalidSearchFitScenarioError(f"{label} {raw_values[0]!r} is not in canonical form")
-    return value
+    return parse_single_valued_scenario_param(
+        label, raw_values, parsed, error_type=InvalidSearchFitScenarioError
+    )
 
 
 def parse_search_fit_scenario(query_params: Mapping[str, Sequence[str]]) -> SearchFitScenario:
@@ -500,18 +494,12 @@ def _authorize_actor(
     second call to inject a real concurrent mutation -- share the identical
     authorization logic.
     """
-    workspace_result = get_organization_workspace_result(conn, session, organization_id)
-    if workspace_result.outcome is OrganizationWorkspaceOutcome.NOT_FOUND_OR_DENIED:
+    outcome = evaluate_broker_actor_authorization(conn, session, organization_id)
+    if outcome is BrokerActorAuthorizationOutcome.ORG_NOT_FOUND_OR_DENIED:
         return SearchFitResult(outcome=SearchFitOutcome.ORG_NOT_FOUND_OR_DENIED)
-    if workspace_result.outcome is OrganizationWorkspaceOutcome.MFA_REQUIRED:
+    if outcome is BrokerActorAuthorizationOutcome.MFA_REQUIRED:
         return SearchFitResult(outcome=SearchFitOutcome.MFA_REQUIRED)
-    assert workspace_result.context is not None
-
-    # `evaluate_organization_workspace_authorization` already guarantees an
-    # AUTHORIZED outcome's membership is current and ACTIVE -- only the
-    # PUBLISHER-role requirement this preview's own contract adds (Required
-    # Behavior §C) still needs checking, from the same authorized read.
-    if MembershipRole.PUBLISHER.value not in workspace_result.context.roles:
+    if outcome is BrokerActorAuthorizationOutcome.PUBLISHER_ROLE_REQUIRED:
         return SearchFitResult(outcome=SearchFitOutcome.PUBLISHER_ROLE_REQUIRED)
     return None
 
