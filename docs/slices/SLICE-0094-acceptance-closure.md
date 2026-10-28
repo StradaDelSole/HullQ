@@ -1,6 +1,6 @@
 # SLICE-0094 — Owner Acceptance Closure
 
-**Status:** OWNER_ACCEPTED — IMPLEMENTATION; separate docs-only closure pending independent review and merge; Owner-local FINISH pending  
+**Status:** OWNER_ACCEPTED — IMPLEMENTATION; separate docs-only closure pending ChatGPT project-master exact-HEAD review/CI and merge; Owner-local FINISH pending  
 **Type:** IMPLEMENTATION  
 **Capability:** Current installed principal propulsion engine count and genuine Power drive + count MUST/AND technical Search  
 **Controlling READY:** `docs/slices/SLICE-0094-power-engine-count-ready.md` (independently reviewed and previously merged READY PR #392)  
@@ -78,4 +78,4 @@ PRODUCTION_PILOT_STATUS: NOT_STARTED
 PUBLIC_PRODUCTION_LAUNCH_STATUS: NOT_STARTED
 ```
 
-This is a **separate docs-only Owner acceptance closure**, not another primary implementation slice. It must itself receive independent exact-HEAD docs review and its **own** six-job GitHub CI, manufacturer reproducibility and applicable Deploy workflow success, followed by squash merge to `main`. **Only after this closure is independently verified and merged** does the Project Owner run the unchanged local `FINISH_SLICE.bat`, entering **0094**. This document does not claim Owner-local FINISH before the Owner reports its result. No SLICE-0095 work is selected or started automatically.
+This is a **separate docs-only Owner acceptance closure**, not another primary implementation slice. Per the Owner's binding 2026-10-28 workflow assignment, **ChatGPT project master/reviewer itself** must inspect and verify this docs-only closure on the exact HEAD (disclosing that its own authored docs receive a source-based self-review), check its **own** six-job GitHub CI, manufacturer reproducibility and applicable Deploy workflow to successful completion, correct any findings, and squash-merge the closure PR to `main`. **Do not delegate this review to Claude.** **Only after this closure is independently verified and merged** does the Project Owner run the unchanged local `FINISH_SLICE.bat`, entering **0094**. This document does not claim Owner-local FINISH before the Owner reports its result. No SLICE-0095 work is selected or started automatically.
