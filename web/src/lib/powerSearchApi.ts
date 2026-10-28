@@ -263,9 +263,37 @@ function criterionMatchesActiveRequirement(
   return expectedPowerEngineCount !== null && criterion.threshold_min === expectedPowerEngineCount;
 }
 
+// SLICE-0094 independent-review amendment Round 2, Finding F2: the backend
+// never fabricates an `observed_value` for a leaf it did not actually
+// resolve to the requested canonical value -- `TRUE` is only ever produced
+// by `evaluate_numeric_leaf`/`evaluate_categorical_leaf`
+// (`hullq.search.criteria`) when the observed concrete value equals the
+// requested one exactly (RANGE with threshold_min==threshold_max for
+// NUMERIC, strict `==` for CATEGORICAL). A `TRUE` leaf whose own
+// `observed_value` differs from its own requested value is never genuine.
+function observedValueMatchesRequestedValue(
+  criterion: PowerLeafCriterion,
+  observedValue: string,
+): boolean {
+  if (criterion.kind === "CATEGORICAL") return observedValue === criterion.equals;
+  return observedValue === criterion.threshold_min;
+}
+
 // Review amendment Finding J (MEDIUM): deep-validate every nested evidence
 // object, never only its enclosing array's shape (`Array.isArray(...)`
 // alone proves nothing about what is actually inside it).
+//
+// Round 2 Finding F2: also enforce (a) the evidence's own top-level `field`
+// names the exact same field as its nested `criterion` -- the backend's
+// `CriterionEvaluation.field` is always `criterion.field` by construction,
+// so a mismatch is never genuine -- and (b) `truth`/`observed_value`
+// consistency: the backend's `SearchCriterionEvidence` invariant is that
+// `observed_value` is `None` whenever `truth` is not derived from a
+// `CONFIRMED` qualified value (never present alongside `UNKNOWN`), and
+// `TRUE` is only ever produced when the observed value equals the exact
+// requested one. `FALSE` legitimately carries either a differing concrete
+// observed value or `null` (e.g. a `NOT_APPLICABLE` confirmed exclusion
+// never compares a concrete value) -- never suppressed here.
 function isValidCriterionEvidence(
   value: unknown,
   expectedPowerDrive: string | null,
@@ -273,15 +301,61 @@ function isValidCriterionEvidence(
 ): value is PowerCriterionEvidence {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
-  return (
-    isValidLeafCriterion(v.criterion) &&
-    criterionMatchesActiveRequirement(v.criterion, expectedPowerDrive, expectedPowerEngineCount) &&
-    typeof v.field === "string" &&
-    isValidTruthState(v.truth) &&
-    (v.reason === null || typeof v.reason === "string") &&
-    typeof v.explanation === "string" &&
-    (v.observed_value === null || typeof v.observed_value === "string")
-  );
+  if (!isValidLeafCriterion(v.criterion)) return false;
+  const criterion = v.criterion;
+  if (!criterionMatchesActiveRequirement(criterion, expectedPowerDrive, expectedPowerEngineCount)) {
+    return false;
+  }
+  if (v.field !== criterion.field) return false;
+  if (!isValidTruthState(v.truth)) return false;
+  if (!(v.reason === null || typeof v.reason === "string")) return false;
+  if (typeof v.explanation !== "string") return false;
+  if (!(v.observed_value === null || typeof v.observed_value === "string")) return false;
+  const observedValue = v.observed_value;
+  if (v.truth === "UNKNOWN" && observedValue !== null) return false;
+  if (v.truth === "TRUE") {
+    if (observedValue === null || !observedValueMatchesRequestedValue(criterion, observedValue)) {
+      return false;
+    }
+  }
+  if (
+    v.truth === "FALSE" &&
+    observedValue !== null &&
+    observedValueMatchesRequestedValue(criterion, observedValue)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+// SLICE-0094 independent-review amendment Round 2, Finding F2: the backend
+// always zips the full active-criteria tuple against one evaluation per
+// criterion with `strict=True`
+// (`hullq.application.native_inventory_query.classify_concrete_candidate`/
+// `classify_claim_only_candidate`/`build_configuration_evidence`), so a
+// genuine evidence array -- on a match's top-level `criterion_evidence` or
+// on a per-configuration `criterion_evidence` -- always contains EXACTLY
+// one entry per currently active criterion: never missing one (an empty
+// array or a drive-only leaf set on a combined drive+count request is
+// never genuine), never an extra/unrequested field, never a duplicate.
+// This does not constrain each leaf's own `truth` -- a non-matching or
+// `UNKNOWN` configuration's evidence still legitimately covers every
+// active criterion, just not all `TRUE`.
+function hasExactActiveCriterionCoverage(
+  evidence: readonly PowerCriterionEvidence[],
+  expectedPowerDrive: string | null,
+  expectedPowerEngineCount: string | null,
+): boolean {
+  const expectedFields = new Set<string>();
+  if (expectedPowerDrive !== null) expectedFields.add("power_drive_configuration");
+  if (expectedPowerEngineCount !== null) expectedFields.add("power_engine_count");
+  if (evidence.length !== expectedFields.size) return false;
+  const seenFields = new Set<string>();
+  for (const item of evidence) {
+    if (!expectedFields.has(item.field) || seenFields.has(item.field)) return false;
+    seenFields.add(item.field);
+  }
+  return true;
 }
 
 function isValidConfigurationEvidence(
@@ -299,6 +373,11 @@ function isValidConfigurationEvidence(
     Array.isArray(v.criterion_evidence) &&
     v.criterion_evidence.every((evidence: unknown) =>
       isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+    ) &&
+    hasExactActiveCriterionCoverage(
+      v.criterion_evidence as PowerCriterionEvidence[],
+      expectedPowerDrive,
+      expectedPowerEngineCount,
     )
   );
 }
@@ -340,6 +419,11 @@ function isValidDesignLinkedMatch(
     v.criterion_evidence.every((evidence: unknown) =>
       isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
     ) &&
+    hasExactActiveCriterionCoverage(
+      v.criterion_evidence as PowerCriterionEvidence[],
+      expectedPowerDrive,
+      expectedPowerEngineCount,
+    ) &&
     Array.isArray(v.design_configuration_evidence) &&
     v.design_configuration_evidence.every((evidence: unknown) =>
       isValidConfigurationEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
@@ -368,6 +452,11 @@ function isValidClaimOnlyMatch(
     Array.isArray(v.criterion_evidence) &&
     v.criterion_evidence.every((evidence: unknown) =>
       isValidCriterionEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
+    ) &&
+    hasExactActiveCriterionCoverage(
+      v.criterion_evidence as PowerCriterionEvidence[],
+      expectedPowerDrive,
+      expectedPowerEngineCount,
     )
   );
 }

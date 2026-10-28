@@ -80,7 +80,22 @@ test("loadPowerSearchPageData: a 200 result carries design_linked_matches and pu
               freshness_status: "CONFIRMED",
               last_confirmed_at: null,
               source_basis: "PUBLISHER_CLAIM",
-              criterion_evidence: [],
+              // Round 2 Finding F2: a genuine positive match always
+              // carries exactly one real leaf per active criterion.
+              criterion_evidence: [
+                {
+                  criterion: {
+                    kind: "CATEGORICAL",
+                    field: "power_drive_configuration",
+                    equals: "POD",
+                  },
+                  field: "power_drive_configuration",
+                  truth: "TRUE",
+                  reason: null,
+                  explanation: "power_drive_configuration='POD' equals required value 'POD'",
+                  observed_value: "POD",
+                },
+              ],
               discovery_token: "token-1",
             },
           ],

@@ -58,6 +58,16 @@ function criterionRequestedValueLabel(criterion: PowerLeafCriterion): string {
   return criterion.threshold_min ?? criterion.threshold_max ?? "?";
 }
 
+// SLICE-0094 independent-review amendment Round 2, Finding D2: render the
+// per-leaf `evidence.reason` the backend's `ReasonCode` carries whenever
+// non-null (an UNKNOWN truth never omits one) -- localized via
+// `t.reasonLabels`, falling back to the raw code for forward-compatibility
+// with a reason code this page's translations have not yet caught up to,
+// rather than silently dropping it.
+function criterionReasonLabel(reason: string): string {
+  return (t.reasonLabels as Record<string, string>)[reason] ?? reason;
+}
+
 // SLICE-0094: the active requirement is now sparse (`power_drive` and/or
 // `power_engine_count`). A pure drive-only requirement keeps the
 // byte-for-byte unchanged `requirementSummary` sentence (non-regression);
@@ -233,6 +243,14 @@ const requirementSummary = requirementSummaryText();
                                           <span aria-label="explanation">
                                             {evidence.explanation}
                                           </span>
+                                          {evidence.reason !== null && (
+                                            <span aria-label="reason">
+                                              {" — "}
+                                              {t.criterionReasonLabel(
+                                                criterionReasonLabel(evidence.reason),
+                                              )}
+                                            </span>
+                                          )}
                                         </li>
                                       ),
                                     )}
@@ -259,6 +277,12 @@ const requirementSummary = requirementSummaryText();
                                 {t.sourcePublisherClaimLabel}
                                 {") "}
                                 <span aria-label="explanation">{evidence.explanation}</span>
+                                {evidence.reason !== null && (
+                                  <span aria-label="reason">
+                                    {" — "}
+                                    {t.criterionReasonLabel(criterionReasonLabel(evidence.reason))}
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -312,6 +336,12 @@ const requirementSummary = requirementSummaryText();
                                   {t.sourcePublisherClaimLabel}
                                   {") "}
                                   <span aria-label="explanation">{evidence.explanation}</span>
+                                  {evidence.reason !== null && (
+                                    <span aria-label="reason">
+                                      {" — "}
+                                      {t.criterionReasonLabel(criterionReasonLabel(evidence.reason))}
+                                    </span>
+                                  )}
                                 </li>
                               ))}
                             </ul>

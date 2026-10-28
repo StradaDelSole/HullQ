@@ -187,7 +187,19 @@ test("validatePowerSearchResultBody: a valid non-empty result with a genuine PUB
           freshness_status: "CONFIRMED",
           last_confirmed_at: null,
           source_basis: "PUBLISHER_CLAIM",
-          criterion_evidence: [],
+          // Round 2 Finding F2: a genuine positive match always carries
+          // exactly one real leaf per active criterion -- never an empty
+          // array, even for a single-criterion drive-only request.
+          criterion_evidence: [
+            {
+              criterion: { kind: "CATEGORICAL", field: "power_drive_configuration", equals: "POD" },
+              field: "power_drive_configuration",
+              truth: "TRUE",
+              reason: null,
+              explanation: "power_drive_configuration='POD' equals required value 'POD'",
+              observed_value: "POD",
+            },
+          ],
           discovery_token: "tok",
         },
       ],
@@ -1156,6 +1168,303 @@ test("validatePowerSearchResultBody: a power_engine_count evidence leaf appearin
 test("fetchPowerSearch: a malformed NUMERIC evidence shape in an otherwise-valid 200 body collapses to 502", async () => {
   await withServer(
     (_req, res) => respondJson(res, countOnlyBody(engineCountEvidence("3", "3", "FALSE"))),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=2");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SLICE-0094 independent-review amendment Round 2, Finding F2: a positive
+// result surface (a match, or an applicable configuration's evidence) must
+// carry EXACTLY one correct leaf per currently active criterion -- never
+// missing one, never an extra/duplicate, never a leaf whose own `field`
+// disagrees with its nested `criterion`, and never a `truth` paired with an
+// `observed_value` the backend could never actually have produced for it.
+// Legitimate non-matching/UNKNOWN evidence on an OTHER configuration must
+// never be suppressed, as long as its own coverage is still complete.
+// ---------------------------------------------------------------------------
+
+function driveEvidence(observedValue: string | null, truth: string, requestedValue = "SHAFT") {
+  return {
+    criterion: { kind: "CATEGORICAL", field: "power_drive_configuration", equals: requestedValue },
+    field: "power_drive_configuration",
+    truth,
+    reason: null,
+    explanation: "test explanation",
+    observed_value: observedValue,
+  };
+}
+
+function combinedBody(evidenceList: unknown[]) {
+  return {
+    locale: "en",
+    active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+    design_linked_matches: [],
+    design_linked_match_count: 0,
+    design_linked_insufficient_data_count: 0,
+    publisher_claim_matches: [
+      {
+        native_listing_id: "NL-1",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        source_basis: "PUBLISHER_CLAIM",
+        criterion_evidence: evidenceList,
+        discovery_token: "tok",
+      },
+    ],
+    publisher_claim_match_count: 1,
+  };
+}
+
+function designLinkedMatchBody(criterionEvidence: unknown[], configEvidence: unknown[]) {
+  return {
+    locale: "en",
+    active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+    design_linked_matches: [
+      {
+        native_listing_id: "NL-1",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        discovery_token: "tok",
+        criterion_evidence: criterionEvidence,
+        design_configuration_evidence: configEvidence,
+        design_evaluation: {
+          design_id: "BD-1",
+          result_class: "CONFIRMED_MATCH",
+          matching_configuration_ids: ["CFG-1"],
+          reason: null,
+        },
+      },
+    ],
+    design_linked_match_count: 1,
+    design_linked_insufficient_data_count: 0,
+    publisher_claim_matches: [],
+    publisher_claim_match_count: 0,
+  };
+}
+
+function configurationEvidence(id: string, truth: string, evidenceList: unknown[]) {
+  return {
+    configuration_id: id,
+    boat_design_id: "BD-1",
+    named_variant_id: null,
+    truth,
+    criterion_evidence: evidenceList,
+  };
+}
+
+test("validatePowerSearchResultBody: a combined-request match with exactly one correct leaf per active criterion is accepted", () => {
+  const result = validatePowerSearchResultBody(
+    combinedBody([driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")]),
+    _COMBINED_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: a combined-request match missing the count leaf is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    combinedBody([driveEvidence("SHAFT", "TRUE")]),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a combined-request match with an empty criterion_evidence array is rejected", () => {
+  const result = validatePowerSearchResultBody(combinedBody([]), _COMBINED_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a combined-request match with a duplicated drive leaf (missing count) is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    combinedBody([driveEvidence("SHAFT", "TRUE"), driveEvidence("SHAFT", "TRUE")]),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: an evidence leaf whose top-level field does not name its own nested criterion is rejected", () => {
+  const evidence = engineCountEvidence("2", "2", "TRUE");
+  evidence.field = "power_drive_configuration";
+  const result = validatePowerSearchResultBody(countOnlyBody(evidence), _COUNT_EXPECTED);
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a TRUE leaf whose observed_value differs from the requested value is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("2", "3", "TRUE")),
+    _COUNT_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a TRUE leaf with a null observed_value is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("2", null, "TRUE")),
+    _COUNT_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: an UNKNOWN leaf carrying a non-null observed_value is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("2", "2", "UNKNOWN")),
+    _COUNT_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a FALSE leaf whose observed_value equals the requested value is rejected (contradiction)", () => {
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("2", "2", "FALSE")),
+    _COUNT_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a FALSE leaf with a null observed_value (confirmed-exclusion shape) is still accepted, never suppressed", () => {
+  const result = validatePowerSearchResultBody(
+    countOnlyBody(engineCountEvidence("2", null, "FALSE")),
+    _COUNT_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked combined match with full top-level and configuration criterion coverage is accepted", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked combined match missing the top-level count leaf is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked match whose configuration evidence is missing a leaf is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+      [configurationEvidence("CFG-1", "TRUE", [driveEvidence("SHAFT", "TRUE")])],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a design-linked match retains a legitimate non-matching OTHER configuration's full-coverage UNKNOWN evidence, never suppressed", () => {
+  const result = validatePowerSearchResultBody(
+    designLinkedMatchBody(
+      [driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")],
+      [
+        configurationEvidence("CFG-1", "TRUE", [
+          driveEvidence("SHAFT", "TRUE"),
+          engineCountEvidence("2", "2", "TRUE"),
+        ]),
+        configurationEvidence("CFG-2", "UNKNOWN", [
+          driveEvidence(null, "UNKNOWN"),
+          engineCountEvidence("2", null, "UNKNOWN"),
+        ]),
+      ],
+    ),
+    _COMBINED_EXPECTED,
+  );
+  assert.notEqual(result, null);
+});
+
+test("fetchPowerSearch: a genuine combined-request match with full leaf coverage is accepted", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(
+        res,
+        combinedBody([driveEvidence("SHAFT", "TRUE"), engineCountEvidence("2", "2", "TRUE")]),
+      ),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a combined-request match missing a leaf collapses to 502", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, combinedBody([driveEvidence("SHAFT", "TRUE")])),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a match with an empty criterion_evidence array collapses to 502", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, combinedBody([])),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a match with a duplicated leaf collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, combinedBody([driveEvidence("SHAFT", "TRUE"), driveEvidence("SHAFT", "TRUE")])),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=SHAFT&power_engine_count=2",
+      );
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: a TRUE leaf with an incompatible observed_value collapses to 502", async () => {
+  await withServer(
+    (_req, res) => respondJson(res, countOnlyBody(engineCountEvidence("2", "3", "TRUE"))),
     async (baseUrl) => {
       const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=2");
       assert.equal(response.status, 502);

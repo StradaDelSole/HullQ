@@ -70,6 +70,22 @@ export interface PowerSearchText {
   criterionObservedLabel: (truthLabel: string) => string;
   sourcePublisherClaimLabel: string;
   sourceDesignQualifiedLabel: string;
+  /**
+   * Round 2 Finding D2: the per-leaf `evidence.reason` the backend's
+   * `hullq.search.types.ReasonCode` can carry (never `null` for an
+   * `UNKNOWN`/fail-closed truth) was previously parsed only from free-text
+   * `explanation` prose, never rendered as its own labeled, localized
+   * reason. `CONFIGURATION_AMBIGUOUS` is design-evaluation-level only
+   * (never a per-criterion leaf reason) and is deliberately absent here.
+   */
+  criterionReasonLabel: (reasonLabel: string) => string;
+  reasonLabels: {
+    VALUE_MISSING: string;
+    UNRESOLVED_CONFLICT: string;
+    PROVISIONAL_VALUE: string;
+    APPLICABILITY_UNKNOWN: string;
+    NOT_APPLICABLE: string;
+  };
 }
 
 export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
@@ -122,6 +138,14 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     criterionObservedLabel: (truthLabel) => `Observed: ${truthLabel}`,
     sourcePublisherClaimLabel: "publisher-asserted, not independently verified",
     sourceDesignQualifiedLabel: "design-qualified (BoatDesign/FieldResolution)",
+    criterionReasonLabel: (reasonLabel) => `Reason: ${reasonLabel}`,
+    reasonLabels: {
+      VALUE_MISSING: "value missing",
+      UNRESOLVED_CONFLICT: "unresolved conflicting evidence",
+      PROVISIONAL_VALUE: "provisional (unverified) value",
+      APPLICABILITY_UNKNOWN: "applicability unknown",
+      NOT_APPLICABLE: "not applicable (confirmed exclusion)",
+    },
   },
   de: {
     title: "Antriebsart-Suche (intern)",
@@ -172,6 +196,14 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     criterionObservedLabel: (truthLabel) => `Beobachtet: ${truthLabel}`,
     sourcePublisherClaimLabel: "Angabe des Anbieters, nicht unabhängig geprüft",
     sourceDesignQualifiedLabel: "design-qualifiziert (BoatDesign/FieldResolution)",
+    criterionReasonLabel: (reasonLabel) => `Grund: ${reasonLabel}`,
+    reasonLabels: {
+      VALUE_MISSING: "Wert fehlt",
+      UNRESOLVED_CONFLICT: "ungelöster Widerspruch in den Nachweisen",
+      PROVISIONAL_VALUE: "vorläufiger (ungeprüfter) Wert",
+      APPLICABILITY_UNKNOWN: "Anwendbarkeit unbekannt",
+      NOT_APPLICABLE: "nicht anwendbar (bestätigter Ausschluss)",
+    },
   },
   fr: {
     title: "Recherche de configuration de propulsion (interne)",
@@ -222,6 +254,14 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     criterionObservedLabel: (truthLabel) => `Observé : ${truthLabel}`,
     sourcePublisherClaimLabel: "déclaration du vendeur, non vérifiée de manière indépendante",
     sourceDesignQualifiedLabel: "qualifié par le design (BoatDesign/FieldResolution)",
+    criterionReasonLabel: (reasonLabel) => `Raison : ${reasonLabel}`,
+    reasonLabels: {
+      VALUE_MISSING: "valeur manquante",
+      UNRESOLVED_CONFLICT: "conflit de preuves non résolu",
+      PROVISIONAL_VALUE: "valeur provisoire (non vérifiée)",
+      APPLICABILITY_UNKNOWN: "applicabilité inconnue",
+      NOT_APPLICABLE: "non applicable (exclusion confirmée)",
+    },
   },
   pt: {
     title: "Pesquisa de configuração de propulsão (interna)",
@@ -272,6 +312,14 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     criterionObservedLabel: (truthLabel) => `Observado: ${truthLabel}`,
     sourcePublisherClaimLabel: "declaração do vendedor, não verificada de forma independente",
     sourceDesignQualifiedLabel: "qualificado pelo design (BoatDesign/FieldResolution)",
+    criterionReasonLabel: (reasonLabel) => `Motivo: ${reasonLabel}`,
+    reasonLabels: {
+      VALUE_MISSING: "valor em falta",
+      UNRESOLVED_CONFLICT: "conflito de evidências não resolvido",
+      PROVISIONAL_VALUE: "valor provisório (não verificado)",
+      APPLICABILITY_UNKNOWN: "aplicabilidade desconhecida",
+      NOT_APPLICABLE: "não aplicável (exclusão confirmada)",
+    },
   },
   es: {
     title: "Búsqueda de configuración de propulsión (interna)",
@@ -322,5 +370,13 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     criterionObservedLabel: (truthLabel) => `Observado: ${truthLabel}`,
     sourcePublisherClaimLabel: "declaración del vendedor, no verificada de forma independiente",
     sourceDesignQualifiedLabel: "calificado por el diseño (BoatDesign/FieldResolution)",
+    criterionReasonLabel: (reasonLabel) => `Motivo: ${reasonLabel}`,
+    reasonLabels: {
+      VALUE_MISSING: "valor faltante",
+      UNRESOLVED_CONFLICT: "conflicto de evidencias sin resolver",
+      PROVISIONAL_VALUE: "valor provisional (no verificado)",
+      APPLICABILITY_UNKNOWN: "aplicabilidad desconocida",
+      NOT_APPLICABLE: "no aplicable (exclusión confirmada)",
+    },
   },
 };

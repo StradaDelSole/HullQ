@@ -34,6 +34,19 @@ making a 200-candidate population prohibitively slow to seed for this
 bounded internal synthetic proof. The pre-real-data/pilot production-scale
 STOP (issue #355) remains explicitly OPEN regardless of either measurement.
 
+Amendment Round 2, Finding C2: the controlling
+`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md` "Executable acceptance
+proof" section requires "Real 0/40/200 mixed Sail+Power synthetic
+inventory and PostgreSQL EXPLAIN/statement count evidence" -- Round 1's
+file already seeded a genuinely mixed Sail+Power population
+(`_seed_claim_only_population`'s POWER-match/POWER-non-match/SAIL split)
+but only ever ran the combined query against it. This round adds a direct
+count-only/drive-only/combined comparison against the IDENTICAL seeded
+population (never three separately-seeded populations), plus EXPLAIN
+evidence for the count-only and drive-only shapes (combined's own EXPLAIN
+was already retained) -- completing the contract's three-way comparison
+requirement. Issue #355 remains explicitly OPEN regardless.
+
 Mirrors `test_power_inventory_query_performance_slice_0093.py`'s own
 disposable-schema isolation and measurement-helper pattern (deliberately
 duplicated rather than cross-imported -- established repo convention).
@@ -622,6 +635,114 @@ def test_claim_only_combined_batched_observations_query_plan_evidence(perf_conn:
         f"population={population_size}]\n{plan}"
     )
     assert "Execution Time" in plan
+
+
+# ---------------------------------------------------------------------------
+# Amendment Round 2, Finding C2: the controlling
+# `specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md` "Executable acceptance
+# proof" section requires a retained "Real 0/40/200 mixed Sail+Power
+# synthetic inventory and PostgreSQL EXPLAIN/statement count evidence" --
+# not merely the combined query alone, but a genuine count-only/drive-only/
+# combined COMPARISON against the *same* seeded mixed population (the
+# `_seed_claim_only_population` above already mixes POWER-match,
+# POWER-non-match, SAIL and insufficient-data candidates together). This
+# directly answers the Round 1 gap: the old SLICE-0093 drive-only benchmark
+# was a *separate* population/file, never a same-population comparison.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("population_size", _CLAIM_ONLY_POPULATION_SIZES)
+def test_claim_only_count_only_drive_only_combined_comparison_same_mixed_population(
+    perf_conn: Any, population_size: int
+) -> None:
+    """Round 2 Finding C2: run count-only, drive-only and combined queries
+    against the IDENTICAL seeded mixed Sail+Power population, reporting
+    real matched/non-matched/insufficient counts and statement counts for
+    each -- never three separately-seeded populations that could hide a
+    population-shape difference as if it were a query-shape difference.
+
+    Expected retained-match-evidence shape on this fixture's exact 40/20/20
+    split: count-only (`power_engine_count=2`) matches only the 40%
+    SHAFT+count=2 group; drive-only (`power_drive=SHAFT`) matches BOTH the
+    40% SHAFT+count=2 group AND the 20% SHAFT+count=1 group (count is
+    irrelevant to a pure drive query); combined matches only their
+    intersection, the same 40% group both narrower queries agree on.
+    """
+    _seed_claim_only_population(perf_conn, population_size)
+    match_count = round(population_size * 0.4)
+    non_match_drive_still_matches_count = round(population_size * 0.2)
+
+    results: dict[str, tuple[int, int]] = {}
+    for label, kwargs in (
+        ("count-only", {"power_drive": None, "power_engine_count": Decimal(2)}),
+        ("drive-only", {"power_drive": "SHAFT", "power_engine_count": None}),
+        ("combined", {"power_drive": "SHAFT", "power_engine_count": Decimal(2)}),
+    ):
+        proxy = _CountingConnProxy(perf_conn)
+        outcome = evaluate_power_requirement(proxy, as_of=_as_of(), **kwargs)
+        results[label] = (len(outcome.claim_only_matches), proxy.query_count[0])
+
+    if population_size == 0:
+        expected_matches = {"count-only": 0, "drive-only": 0, "combined": 0}
+    else:
+        expected_matches = {
+            "count-only": match_count,
+            "drive-only": match_count + non_match_drive_still_matches_count,
+            "combined": match_count,
+        }
+    for label, expected_count in expected_matches.items():
+        actual_count, statements = results[label]
+        assert actual_count == expected_count, (
+            f"{label} query against the {population_size}-candidate mixed population: "
+            f"expected {expected_count} matches, got {actual_count}"
+        )
+        print(
+            f"\n[SLICE-0094 Finding C2 same-population comparison] population={population_size}, "
+            f"query={label}, matches={actual_count}, total_sql_statements={statements}"
+        )
+    # The retained evidence itself: drive-only is strictly the broader
+    # query on this fixture (it also accepts the count-mismatched group),
+    # so it must never match FEWER listings than the narrower count-only
+    # or combined queries against the identical population.
+    if population_size > 0:
+        assert results["drive-only"][0] >= results["count-only"][0]
+        assert results["drive-only"][0] >= results["combined"][0]
+        assert results["combined"][0] == results["count-only"][0]
+
+
+def test_claim_only_count_only_and_drive_only_batched_observations_query_plan_evidence(
+    perf_conn: Any,
+) -> None:
+    """Round 2 Finding C2: real PostgreSQL 18 `EXPLAIN (ANALYZE, BUFFERS)`
+    for the representative batched claim-observation statement under the
+    count-only and drive-only query shapes too (combined is already proven
+    above) -- at the same 200-candidate mixed population, completing the
+    three-way EXPLAIN/statement-count comparison the contract requires."""
+    population_size = 200
+    _seed_claim_only_population(perf_conn, population_size)
+
+    for label, kwargs in (
+        ("count-only", {"power_drive": None, "power_engine_count": Decimal(2)}),
+        ("drive-only", {"power_drive": "SHAFT", "power_engine_count": None}),
+    ):
+        proxy = _CapturingConnProxy(perf_conn)
+        evaluate_power_requirement(proxy, as_of=_as_of(), **kwargs)
+        batched_calls = [
+            (query, params)
+            for query, params in proxy.captured
+            if "physical_boat_claim_heads" in query and "= ANY(%s)" in query
+        ]
+        assert len(batched_calls) == 1, (
+            f"{label}: expected exactly one batched claim-observation statement for "
+            f"{population_size} candidates, captured {len(batched_calls)}"
+        )
+        query, params = batched_calls[0]
+        plan = _explain_analyze_buffers(perf_conn, query, params)
+        print(
+            f"\n[SLICE-0094 Finding C2 {label} batched-observations EXPLAIN, "
+            f"population={population_size}]\n{plan}"
+        )
+        assert "Execution Time" in plan
 
 
 # ---------------------------------------------------------------------------
