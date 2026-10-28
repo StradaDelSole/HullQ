@@ -8,8 +8,17 @@ the Sail registry already established, rather than a second ad hoc parser.
 from __future__ import annotations
 
 import re
+from datetime import UTC, datetime
 from pathlib import Path
 
+from hullq.domain.physical_boat_claims import (
+    AssertionKind,
+    PhysicalBoatClaimRevisionId,
+    PowerDriveConfiguration,
+    PowerDriveConfigurationClaim,
+)
+from hullq.domain.publishing_eligibility import AccountId, MarketplaceOrganizationId
+from hullq.persistence.physical_boat_claims import CurrentPhysicalBoatClaimObservation
 from hullq.search.criteria_registry import CriterionDefinition, CriterionKind
 from hullq.search.power_criteria_registry import (
     POWER_DRIVE_CONFIGURATION_DEFINITION,
@@ -67,7 +76,9 @@ def test_active_power_definitions_is_exactly_one() -> None:
 
 
 def test_parse_categorical_param_rejects_unsupported_value() -> None:
-    assert parse_categorical_param(POWER_DRIVE_CONFIGURATION_DEFINITION, ["DIESEL_ELECTRIC"]) is None
+    assert (
+        parse_categorical_param(POWER_DRIVE_CONFIGURATION_DEFINITION, ["DIESEL_ELECTRIC"]) is None
+    )
 
 
 def test_parse_categorical_param_accepts_every_whitelisted_token() -> None:
@@ -78,3 +89,73 @@ def test_parse_categorical_param_accepts_every_whitelisted_token() -> None:
 
 def test_parse_categorical_param_empty_is_not_supplied() -> None:
     assert parse_categorical_param(POWER_DRIVE_CONFIGURATION_DEFINITION, []) == (None, True)
+
+
+def _observation(
+    power_drive_configuration: PowerDriveConfigurationClaim | None,
+) -> CurrentPhysicalBoatClaimObservation:
+    return CurrentPhysicalBoatClaimObservation(
+        claiming_organization_id=MarketplaceOrganizationId("ORG-TEST"),
+        revision_id=PhysicalBoatClaimRevisionId("REV-TEST"),
+        recorded_by_account_id=AccountId("ACC-TEST"),
+        recorded_at=datetime(2026, 1, 1, tzinfo=UTC),
+        draft=None,
+        keel_configuration=None,
+        loa_length=None,
+        rudder_configuration=None,
+        hull_configuration=None,
+        cockpit_position=None,
+        deck_saloon=None,
+        beam=None,
+        hull_material=None,
+        vessel_category=None,
+        power_drive_configuration=power_drive_configuration,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Review amendment Finding A: MIXED reads as UNKNOWN (never a confirmed
+# categorical scalar); OTHER and single-drive values read as their own
+# ordinary confirmed value, unmodified.
+# ---------------------------------------------------------------------------
+
+
+def test_read_claim_mixed_is_reinterpreted_as_unknown() -> None:
+    observation = _observation(
+        PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.MIXED
+        )
+    )
+    result = POWER_DRIVE_CONFIGURATION_DEFINITION.read_claim(observation)
+    assert result == (AssertionKind.UNKNOWN, None)
+
+
+def test_read_claim_other_is_an_ordinary_confirmed_value_not_reinterpreted() -> None:
+    observation = _observation(
+        PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.OTHER
+        )
+    )
+    result = POWER_DRIVE_CONFIGURATION_DEFINITION.read_claim(observation)
+    assert result == (AssertionKind.VALUE_ASSERTION, "OTHER")
+
+
+def test_read_claim_single_drive_value_is_an_ordinary_confirmed_value() -> None:
+    observation = _observation(
+        PowerDriveConfigurationClaim(
+            assertion_kind=AssertionKind.VALUE_ASSERTION, value=PowerDriveConfiguration.SHAFT
+        )
+    )
+    result = POWER_DRIVE_CONFIGURATION_DEFINITION.read_claim(observation)
+    assert result == (AssertionKind.VALUE_ASSERTION, "SHAFT")
+
+
+def test_read_claim_explicit_unknown_is_unchanged() -> None:
+    observation = _observation(PowerDriveConfigurationClaim(assertion_kind=AssertionKind.UNKNOWN))
+    result = POWER_DRIVE_CONFIGURATION_DEFINITION.read_claim(observation)
+    assert result == (AssertionKind.UNKNOWN, None)
+
+
+def test_read_claim_omitted_field_is_none() -> None:
+    observation = _observation(None)
+    assert POWER_DRIVE_CONFIGURATION_DEFINITION.read_claim(observation) is None

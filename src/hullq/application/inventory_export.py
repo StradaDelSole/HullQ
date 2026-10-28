@@ -81,6 +81,7 @@ from hullq.application.broker_workspace_read import (
     get_organization_workspace_result,
 )
 from hullq.application.public_listing_read import get_public_listing_read_model
+from hullq.application.vessel_category_resolution import resolve_physical_boat_vessel_category
 from hullq.domain.inventory_export import (
     ALLOWED_NAUTIX_SALE_CLASSES,
     MAX_EXPORT_OUTPUT_BYTES,
@@ -113,6 +114,7 @@ from hullq.persistence.market_episode import fetch_market_episode
 from hullq.persistence.media_gallery import fetch_gallery_state
 from hullq.persistence.native_listing import fetch_native_listing
 from hullq.persistence.native_listing_offer import fetch_current_native_listing_offer
+from hullq.persistence.physical_boat import fetch_physical_boat
 from hullq.persistence.physical_boat_claims import fetch_current_physical_boat_claim
 from hullq.persistence.professional_listing_draft import fetch_professional_listing_draft
 from hullq.security.session_token import SessionClaims
@@ -326,7 +328,19 @@ def _claim_physical_boat_facts(
 ) -> dict[str, Any]:
     """This exact Organization's own current PhysicalBoat claim facts
     (never another Organization's claim, never canonical qualified
-    BoatDesign-only Search facts)."""
+    BoatDesign-only Search facts).
+
+    `facts["vessel_category"]` is the one deliberate exception (review
+    amendment Finding B): it is the **resolved** current category --
+    design plane + every current claiming Organization, combined by the
+    existing `hullq.domain.vessel_category.resolve_vessel_category` --
+    never only this Organization's own raw claim. A design-linked
+    BoatDesign positively categorized POWER with no publisher claim at all,
+    or a publisher-SAIL-vs-design/other-Organization disagreement, must be
+    visible to the NautiX preflight exactly like an explicit publisher
+    POWER claim; reading only `claims.vessel_category` (as this function
+    did before the amendment) could never see either case.
+    """
     facts: dict[str, Any] = {
         "marketed_brand_claim": None,
         "model_designation_claim": None,
@@ -343,9 +357,18 @@ def _claim_physical_boat_facts(
     episode = fetch_market_episode(conn, market_episode_id)
     if episode is None:
         return facts
-    claim_record = fetch_current_physical_boat_claim(
-        conn, episode.market_episode.physical_boat_id, organization_id
+    physical_boat_id = episode.market_episode.physical_boat_id
+    physical_boat_record = fetch_physical_boat(conn, physical_boat_id)
+    boat_design_ref = (
+        physical_boat_record.physical_boat.boat_design_ref
+        if physical_boat_record is not None
+        else None
     )
+    category_resolution = resolve_physical_boat_vessel_category(
+        conn, physical_boat_id=physical_boat_id, boat_design_ref=boat_design_ref
+    )
+    facts["vessel_category"] = category_resolution.resolution.value
+    claim_record = fetch_current_physical_boat_claim(conn, physical_boat_id, organization_id)
     if claim_record is None:
         return facts
     claims = claim_record.claims
@@ -367,17 +390,6 @@ def _claim_physical_boat_facts(
             facts["loa_meters"] = claims.loa_length.value
         else:
             facts["loa_unknown"] = True
-    # SLICE-0093: this owning Organization's own current vessel_category
-    # claim, read from the identical already-fetched claim_record -- never
-    # a second query. `None` for omitted/UNKNOWN (preserves the existing
-    # default-SAIL NautiX assumption); only an explicit SAIL/POWER/
-    # MOTORSAILER value is recorded.
-    if (
-        claims.vessel_category is not None
-        and claims.vessel_category.assertion_kind is AssertionKind.VALUE_ASSERTION
-        and claims.vessel_category.value is not None
-    ):
-        facts["vessel_category"] = claims.vessel_category.value.value
     return facts
 
 

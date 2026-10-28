@@ -257,6 +257,31 @@ class TestPreflight:
         with pytest.raises(ValueError, match="vessel_category"):
             _complete_row(vessel_category="NOT_A_REAL_CATEGORY")
 
+    # Review amendment Finding B: `vessel_category` carries the resolved
+    # `VesselCategoryResolution` state (five values), not only the three
+    # positive `VesselCategory` claim values -- `CONFLICT` blocks NautiX
+    # exactly like `POWER`/`MOTORSAILER`; `UNKNOWN` (a genuinely
+    # unestablished resolution) preserves the legacy default-SAIL
+    # assumption, identical to `None`.
+
+    def test_explicit_conflict_resolution_is_never_nautix_exportable(self) -> None:
+        row = _complete_row(vessel_category="CONFLICT")
+        preflight = ie.build_row_preflight(row)
+        nautix = preflight.formats[ie.ExportFormat.NAUTIX]
+        assert nautix.exportable is False
+        assert any("boat_type" in r for r in nautix.reasons)
+
+    def test_resolved_unknown_category_is_still_nautix_exportable(self) -> None:
+        preflight = ie.build_row_preflight(_complete_row(vessel_category="UNKNOWN"))
+        assert preflight.formats[ie.ExportFormat.NAUTIX].exportable is True
+
+    def test_conflict_category_does_not_affect_the_other_six_formats(self) -> None:
+        preflight = ie.build_row_preflight(_complete_row(vessel_category="CONFLICT"))
+        for fmt in ie.ExportFormat:
+            if fmt is ie.ExportFormat.NAUTIX:
+                continue
+            assert preflight.formats[fmt].exportable is True
+
 
 class TestNautixWriterRoundtrip:
     def test_complete_row_passes_pinned_xsd_and_0083_reimport(self) -> None:

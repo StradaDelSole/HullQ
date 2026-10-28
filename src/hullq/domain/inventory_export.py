@@ -162,10 +162,26 @@ ALLOWED_NAUTIX_SALE_CLASSES: frozenset[str] = frozenset(
     }
 )
 _ALLOWED_SALE_CLASSES = ALLOWED_NAUTIX_SALE_CLASSES
-#: SLICE-0093: `hullq.domain.physical_boat_claims.VesselCategory`'s own
-#: three-value vocabulary, mirrored here rather than imported so this pure
-#: export-domain module keeps no dependency on the claims module.
-_VESSEL_CATEGORY_VALUES = frozenset({"SAIL", "POWER", "MOTORSAILER"})
+#: SLICE-0093 (review amendment Finding B): `hullq.domain.vessel_category
+#: .VesselCategoryResolution`'s own five-value vocabulary, mirrored here
+#: rather than imported so this pure export-domain module keeps no
+#: dependency on the category-resolution module. `ExportRow.vessel_category`
+#: carries the *resolved* category state (design + concrete + cross-
+#: Organization, combined by `hullq.domain.vessel_category
+#: .resolve_vessel_category`) -- never only the publisher's own raw claim --
+#: so `CONFLICT` is a legitimate stored value here, distinct from the three
+#: positive `VesselCategory` claim values and from `UNKNOWN`.
+_VESSEL_CATEGORY_VALUES = frozenset({"SAIL", "POWER", "MOTORSAILER", "UNKNOWN", "CONFLICT"})
+#: The explicit resolved states that must fail a NautiX row closed -- the
+#: identical POWER/MOTORSAILER/CONFLICT set `hullq.domain.vessel_category
+#: .VesselCategoryResolutionResult.is_explicitly_non_sail_or_conflicted`
+#: already defines for the Sail technical Search pre-filter, reused here for
+#: the identical "explicitly not confirmed SAIL" meaning. `None`/`"SAIL"`/
+#: `"UNKNOWN"` all pass through unblocked -- preserving every pre-0093 row's
+#: existing default-SAIL NautiX assumption exactly (a row whose category was
+#: never resolved, or resolves to legacy UNKNOWN, is not thereby proven
+#: non-SAIL).
+_NAUTIX_EXCLUDED_VESSEL_CATEGORIES = frozenset({"POWER", "MOTORSAILER", "CONFLICT"})
 
 
 class ExportWriteError(Exception):
@@ -243,13 +259,21 @@ class ExportRow:
     sale_class: str | None = None
     nautix_account_token: str | None = None
     nautix_office_id: str | None = None
-    #: SLICE-0093: the owning Organization's own current `vessel_category`
-    #: claim value (`"SAIL"`/`"POWER"`/`"MOTORSAILER"`), or `None` when
-    #: omitted/`UNKNOWN`/not yet read -- never inferred. `boat_type` below
-    #: remains the sole unconditional NautiX default only for a row whose
-    #: resolved category is `SAIL` or genuinely unestablished; an explicit
-    #: non-SAIL value fails the NautiX preflight closed instead (module
-    #: docstring NautiX representability gap, extended for Power).
+    #: SLICE-0093 (review amendment Finding B): the **resolved** current
+    #: vessel category for this row's PhysicalBoat --
+    #: `hullq.domain.vessel_category.VesselCategoryResolution`'s own value
+    #: (`"SAIL"`/`"POWER"`/`"MOTORSAILER"`/`"UNKNOWN"`/`"CONFLICT"`),
+    #: combining the design plane, this Organization's own claim and every
+    #: other current claiming Organization -- never only the publisher's own
+    #: raw claim (the original cut of this field, which a design-linked
+    #: positively-POWER BoatDesign or a publisher-vs-other-Organization
+    #: category disagreement could silently bypass). `None` only when the
+    #: resolution was genuinely never computed for this row. `boat_type`
+    #: below remains the sole unconditional NautiX default only when this
+    #: resolves to `SAIL`/`UNKNOWN`/omitted; an explicit `POWER`/
+    #: `MOTORSAILER`/`CONFLICT` resolution fails the NautiX preflight closed
+    #: instead (module docstring NautiX representability gap, extended for
+    #: Power).
     vessel_category: str | None = None
 
     def __post_init__(self) -> None:
@@ -577,16 +601,20 @@ def _nautix_preflight(row: ExportRow) -> FormatPreflight:
             "media.images: no approved rights-cleared photo with a genuine NautiX-shaped MD5 "
             "checksum is available (never an invented checksum)"
         )
-    # SLICE-0093 Required Behavior §7: the existing Sail-only `boat_type`
-    # default (`_NAUTIX_CATALOG_BOAT_TYPE`, below) must never be allowed to
-    # coerce an explicitly non-SAIL (POWER/MOTORSAILER) listing into the
-    # catalog-wide "sail-yacht" type. A `None` vessel_category (omitted/
-    # UNKNOWN/not yet read) preserves the existing default-SAIL assumption
-    # unchanged -- only an explicit non-SAIL resolution fails closed here.
-    if row.vessel_category is not None and row.vessel_category != "SAIL":
+    # SLICE-0093 Required Behavior §7 (review amendment Finding B): the
+    # existing Sail-only `boat_type` default (`_NAUTIX_CATALOG_BOAT_TYPE`,
+    # below) must never be allowed to coerce a listing whose **resolved**
+    # category (design + concrete + cross-Organization) is explicitly
+    # POWER/MOTORSAILER/CONFLICT into the catalog-wide "sail-yacht" type --
+    # a design-linked BoatDesign positively categorized POWER with no
+    # publisher claim at all, or a publisher-SAIL-vs-design-POWER/other-
+    # Organization disagreement, must fail closed exactly like an explicit
+    # publisher POWER claim. `None`/`"SAIL"`/`"UNKNOWN"` all preserve the
+    # existing default-SAIL NautiX assumption unchanged.
+    if row.vessel_category in _NAUTIX_EXCLUDED_VESSEL_CATEGORIES:
         reasons.append(
             "boat_types.boat_type: HullQ's sail-yacht NautiX catalog type cannot represent a "
-            f"listing whose current vessel category is explicitly {row.vessel_category} "
+            f"listing whose resolved current vessel category is {row.vessel_category} "
             "(never coerced to sail-yacht)"
         )
 

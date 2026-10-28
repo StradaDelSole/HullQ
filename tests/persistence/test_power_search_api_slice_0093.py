@@ -147,12 +147,14 @@ def _seed_design_unresolved_power_listing(conn: Any, *, listing_id: str, drive: 
         state=MembershipState.ACTIVE,
     )
     create_physical_boat(
-        conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}"), boat_design_ref=None)
+        conn,
+        physical_boat=PhysicalBoat(id=PhysicalBoatId(f"PB-{listing_id}"), boat_design_ref=None),
     )
     create_market_episode(
         conn,
         market_episode=MarketEpisode(
-            id=MarketEpisodeId(f"ME-{listing_id}"), physical_boat_id=PhysicalBoatId(f"PB-{listing_id}")
+            id=MarketEpisodeId(f"ME-{listing_id}"),
+            physical_boat_id=PhysicalBoatId(f"PB-{listing_id}"),
         ),
     )
     create_native_listing(

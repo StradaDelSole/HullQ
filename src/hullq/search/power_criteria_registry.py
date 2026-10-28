@@ -27,7 +27,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Final
 
-from hullq.domain.physical_boat_claims import AssertionKind
+from hullq.domain.physical_boat_claims import AssertionKind, PowerDriveConfiguration
 from hullq.persistence.physical_boat_claims import CurrentPhysicalBoatClaimObservation
 from hullq.search.criteria_registry import (
     ClaimReadResult,
@@ -69,9 +69,42 @@ SEARCH_POWER_DRIVE_VALUES: Final[frozenset[str]] = frozenset(
 def _read_power_drive_configuration_claim(
     observation: CurrentPhysicalBoatClaimObservation,
 ) -> ClaimReadResult:
+    """Review amendment Finding A: a current `VALUE_ASSERTION(MIXED)` claim
+    does not prove the absence of any single accepted drive type -- the
+    normative contract's own words are "even if the vessel uses one of the
+    types". Reading it as a confirmed categorical scalar `"MIXED"` would let
+    the shared `evaluate_categorical_leaf` string-compare it against every
+    one of the five public tokens and produce a false `CONFIRMED_NON_MATCH`
+    via ordinary `!=` inequality -- exactly the unsupported confirmed
+    negative the review identified. Reading it instead as `UNKNOWN` (never
+    persisted this way, only read this way for Search classification) makes
+    the shared fail-closed qualification (`_qualify_claim_field`) treat
+    every one of the five tokens as `MISSING` -> `INSUFFICIENT_DATA`,
+    identical bounded treatment to an explicit `UNKNOWN` claim -- never a
+    proven exclusion.
+
+    `OTHER` is deliberately NOT special-cased here: it denotes a confirmed,
+    single (if uncatalogued) drive -- the publisher would have used the
+    real token if the boat had one of the five, so `OTHER` genuinely is not
+    any of them. Ordinary categorical equality already yields the correct
+    `CONFIRMED_NON_MATCH` for every one of the five tokens, identical
+    treatment to `HullMaterial.OTHER`/`KeelConfiguration.OTHER` elsewhere in
+    this codebase -- no override needed or wanted.
+
+    This Power-specific accessor is the only place this interpretation
+    applies; it does not touch `hullq.search.criteria_registry`'s generic
+    `_qualify_claim_field`/`evaluate_categorical_leaf` or any accepted Sail
+    categorical field, which keep their own unmodified fail-closed equality
+    semantics.
+    """
     claim = observation.power_drive_configuration
     if claim is None:
         return None
+    if (
+        claim.assertion_kind is AssertionKind.VALUE_ASSERTION
+        and claim.value is PowerDriveConfiguration.MIXED
+    ):
+        return (AssertionKind.UNKNOWN, None)
     value = (
         claim.value.value
         if claim.assertion_kind is AssertionKind.VALUE_ASSERTION and claim.value is not None
