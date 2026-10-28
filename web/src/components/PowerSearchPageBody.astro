@@ -5,7 +5,12 @@
 // those calls happen in each top-level `web/src/pages/{locale}/power/
 // search.astro` route's own frontmatter (mirrors `SearchPageBody.astro`'s
 // identical rationale).
-import { SEARCH_POWER_DRIVE_VALUES } from "../lib/powerSearchApi";
+import {
+  SEARCH_POWER_DRIVE_VALUES,
+  SEARCH_POWER_ENGINE_COUNT_VALUES,
+  type PowerCriterionEvidence,
+  type PowerLeafCriterion,
+} from "../lib/powerSearchApi";
 import type { PowerSearchPageData } from "../lib/powerSearchPageData";
 import { powerSearchText } from "../lib/powerSearchText";
 import type { SupportedLocale } from "../lib/searchText";
@@ -32,6 +37,61 @@ function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
   if (truth === "FALSE") return t.truthFalseLabel;
   return t.truthUnknownLabel;
 }
+
+// SLICE-0094 independent-review amendment Finding D: the per-leaf criterion
+// evidence (requested criterion/value, observed truth, reason/explanation)
+// the API already carries (`PowerCriterionEvidence`) but the page never
+// rendered. `criterionFieldLabel`/`criterionRequestedValueLabel` derive the
+// buyer-facing requested-value text from the typed `PowerLeafCriterion`
+// itself -- never re-parsed from `explanation` prose -- distinguishing the
+// two accepted leaf shapes (CATEGORICAL `power_drive`, NUMERIC
+// `power_engine_count` whose RANGE leaf always has threshold_min ==
+// threshold_max for this criterion).
+function criterionFieldLabel(field: string): string {
+  return field === "power_engine_count" ? t.powerEngineCountLabel : t.powerDriveLabel;
+}
+
+function criterionRequestedValueLabel(criterion: PowerLeafCriterion): string {
+  if (criterion.kind === "CATEGORICAL") {
+    return driveLabel(criterion.equals);
+  }
+  return criterion.threshold_min ?? criterion.threshold_max ?? "?";
+}
+
+// SLICE-0094 independent-review amendment Round 2, Finding D2: render the
+// per-leaf `evidence.reason` the backend's `ReasonCode` carries whenever
+// non-null (an UNKNOWN truth never omits one) -- localized via
+// `t.reasonLabels`, falling back to the raw code for forward-compatibility
+// with a reason code this page's translations have not yet caught up to,
+// rather than silently dropping it.
+function criterionReasonLabel(reason: string): string {
+  return (t.reasonLabels as Record<string, string>)[reason] ?? reason;
+}
+
+// SLICE-0094: the active requirement is now sparse (`power_drive` and/or
+// `power_engine_count`). A pure drive-only requirement keeps the
+// byte-for-byte unchanged `requirementSummary` sentence (non-regression);
+// any requirement involving `power_engine_count` (alone or combined) joins
+// each active criterion's own phrase via the generic multi-criterion
+// pattern `searchText.ts` already established.
+function requirementSummaryText(): string | null {
+  if (activeRequirement === null) return null;
+  const hasDrive = activeRequirement.power_drive !== undefined;
+  const hasCount = activeRequirement.power_engine_count !== undefined;
+  if (hasDrive && !hasCount) {
+    return t.requirementSummary(driveLabel(activeRequirement.power_drive as string));
+  }
+  const phrases: string[] = [];
+  if (hasDrive) {
+    phrases.push(t.requirementPhraseDrive(driveLabel(activeRequirement.power_drive as string)));
+  }
+  if (hasCount) {
+    phrases.push(t.requirementPhraseCount(activeRequirement.power_engine_count as string));
+  }
+  return t.requirementSummaryGeneric(phrases.join(` ${t.requirementSummaryListConjunction} `));
+}
+
+const requirementSummary = requirementSummaryText();
 ---
 
 <html lang={locale}>
@@ -61,11 +121,11 @@ function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
         <main>
           <h1>{t.title}</h1>
           <p>{t.formInstructions}</p>
-          <form method="get" action={`/${locale}/power/search`}>
+          <form method="get" action={`/${locale}/power/search`} id="hullq-power-search-form">
             <label>
               {t.powerDriveLabel}
               <select name="power_drive">
-                <option value="" selected={activeRequirement === null}>
+                <option value="" selected={activeRequirement?.power_drive === undefined}>
                   {t.powerDriveAnyOption}
                 </option>
                 {SEARCH_POWER_DRIVE_VALUES.map((value) => (
@@ -75,12 +135,62 @@ function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
                 ))}
               </select>
             </label>
+            <label>
+              {t.powerEngineCountLabel}
+              <select name="power_engine_count">
+                <option value="" selected={activeRequirement?.power_engine_count === undefined}>
+                  {t.powerEngineCountAnyOption}
+                </option>
+                {SEARCH_POWER_ENGINE_COUNT_VALUES.map((value) => (
+                  <option
+                    value={value}
+                    selected={activeRequirement?.power_engine_count === value}
+                  >
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button type="submit">{t.submit}</button>
           </form>
+          <script>
+            // SLICE-0094 independent-review amendment Finding A: pure HTML
+            // cannot represent "buyer left this criterion unset" as an
+            // omitted GET query parameter -- an untouched <select> still
+            // submits `name=<empty value>`, and the accepted, tested
+            // FastAPI contract treats an explicitly present but blank
+            // power_drive/power_engine_count value as an ambiguous INVALID
+            // request, not an absent criterion. Mirrors
+            // `SearchPageBody.astro`'s identical already-accepted
+            // SLICE-0056 mechanism byte-for-byte: this only disables
+            // fields `isUntouchedFormFieldValue` identifies as genuinely
+            // untouched, immediately before the browser's own native
+            // submission, so they are excluded from it -- see
+            // `../lib/searchFormOmission.ts` for the full rationale. This
+            // never builds a URL, canonicalizes a value, validates input
+            // or evaluates Search truth itself (all still exclusively
+            // FastAPI's) -- not a client-side Search engine.
+            import { isUntouchedFormFieldValue } from "../lib/searchFormOmission";
+
+            const form = document.getElementById("hullq-power-search-form");
+            if (form instanceof HTMLFormElement) {
+              form.addEventListener("submit", () => {
+                for (const element of form.elements) {
+                  if (
+                    (element instanceof HTMLInputElement || element instanceof HTMLSelectElement) &&
+                    element.name &&
+                    isUntouchedFormFieldValue(element.value)
+                  ) {
+                    element.disabled = true;
+                  }
+                }
+              });
+            }
+          </script>
 
           {activeRequirement !== null && (
             <section aria-label="power search results">
-              <p>{t.requirementSummary(driveLabel(activeRequirement.power_drive))}</p>
+              <p>{requirementSummary}</p>
 
               <h2>{t.designLinkedHeading(data.designLinkedMatchCount)}</h2>
               {data.designLinkedMatchCount === 0 ? (
@@ -116,6 +226,63 @@ function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
                                 {t.designEvidenceConfigurationLabel}{" "}
                                 <code>{configEvidence.configuration_id}</code>{" "}
                                 ({truthLabel(configEvidence.truth)})
+                                {configEvidence.criterion_evidence.length > 0 && (
+                                  <ul aria-label="criterion evidence">
+                                    {configEvidence.criterion_evidence.map(
+                                      (evidence: PowerCriterionEvidence) => (
+                                        <li>
+                                          {t.criterionRequestedLabel(
+                                            criterionFieldLabel(evidence.criterion.field),
+                                            criterionRequestedValueLabel(evidence.criterion),
+                                          )}
+                                          {" — "}
+                                          {t.criterionObservedLabel(truthLabel(evidence.truth))}
+                                          {" ("}
+                                          {t.sourceDesignQualifiedLabel}
+                                          {") "}
+                                          <span aria-label="explanation">
+                                            {evidence.explanation}
+                                          </span>
+                                          {evidence.reason !== null && (
+                                            <span aria-label="reason">
+                                              {" — "}
+                                              {t.criterionReasonLabel(
+                                                criterionReasonLabel(evidence.reason),
+                                              )}
+                                            </span>
+                                          )}
+                                        </li>
+                                      ),
+                                    )}
+                                  </ul>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {match.criterion_evidence.length > 0 && (
+                        <div aria-label="concrete criterion evidence">
+                          <p>{t.criterionEvidenceHeading}</p>
+                          <ul>
+                            {match.criterion_evidence.map((evidence: PowerCriterionEvidence) => (
+                              <li>
+                                {t.criterionRequestedLabel(
+                                  criterionFieldLabel(evidence.criterion.field),
+                                  criterionRequestedValueLabel(evidence.criterion),
+                                )}
+                                {" — "}
+                                {t.criterionObservedLabel(truthLabel(evidence.truth))}
+                                {" ("}
+                                {t.sourcePublisherClaimLabel}
+                                {") "}
+                                <span aria-label="explanation">{evidence.explanation}</span>
+                                {evidence.reason !== null && (
+                                  <span aria-label="reason">
+                                    {" — "}
+                                    {t.criterionReasonLabel(criterionReasonLabel(evidence.reason))}
+                                  </span>
+                                )}
                               </li>
                             ))}
                           </ul>
@@ -152,6 +319,33 @@ function truthLabel(truth: "TRUE" | "FALSE" | "UNKNOWN"): string {
                         </span>
                         {match.freshness_status === "DUE_FOR_CONFIRMATION" && (
                           <p aria-label="freshness due note">{t.freshnessDueNote}</p>
+                        )}
+                        {match.criterion_evidence.length > 0 && (
+                          <div aria-label="publisher claim criterion evidence">
+                            <p>{t.criterionEvidenceHeading}</p>
+                            <ul>
+                              {match.criterion_evidence.map((evidence: PowerCriterionEvidence) => (
+                                <li>
+                                  {t.criterionRequestedLabel(
+                                    criterionFieldLabel(evidence.criterion.field),
+                                    criterionRequestedValueLabel(evidence.criterion),
+                                  )}
+                                  {" — "}
+                                  {t.criterionObservedLabel(truthLabel(evidence.truth))}
+                                  {" ("}
+                                  {t.sourcePublisherClaimLabel}
+                                  {") "}
+                                  <span aria-label="explanation">{evidence.explanation}</span>
+                                  {evidence.reason !== null && (
+                                    <span aria-label="reason">
+                                      {" — "}
+                                      {t.criterionReasonLabel(criterionReasonLabel(evidence.reason))}
+                                    </span>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )}
                       </li>
                     ))}

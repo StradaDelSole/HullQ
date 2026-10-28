@@ -252,6 +252,14 @@ if (Astro.request.method === "POST" && organizationId && nativeListingId) {
     if (powerDriveConfiguration) {
       body["physical_boat.power_drive_configuration"] = powerDriveConfiguration;
     }
+    // SLICE-0094: must be read from this real form exactly like every other
+    // optional claim field above, or an ordinary unrelated edit through
+    // this actual page would silently resubmit the claim snapshot without
+    // it -- erasing an already-saved current installed engine-count claim.
+    const powerEngineCount = assertionField(formData, "power_engine_count", (raw) =>
+      Number.parseInt(raw, 10),
+    );
+    if (powerEngineCount) body["physical_boat.power_engine_count"] = powerEngineCount;
     const boatName = assertionField(formData, "boat_name");
     if (boatName) body["physical_boat.boat_name"] = boatName;
 
@@ -1272,6 +1280,40 @@ const claimRevisionId = result.kind === "ok" ? result.data.current_claim_revisio
                       </option>
                     ))}
                   </select>
+                </fieldset>
+
+                <fieldset>
+                  <legend>Power engine count</legend>
+                  <label for="power_engine_count_kind">
+                    Power engine count assertion status
+                  </label>
+                  <select id="power_engine_count_kind" name="power_engine_count_kind">
+                    {UNKNOWN_ONLY.map((kind) => (
+                      <option
+                        value={kind}
+                        selected={
+                          (currentWire(claim, "physical_boat.power_engine_count")
+                            ?.assertion_kind ?? "") === kind
+                        }
+                      >
+                        {kind === "" ? "(not specified)" : kind}
+                      </option>
+                    ))}
+                  </select>
+                  <label for="power_engine_count_value">
+                    Power engine count value (1-32)
+                  </label>
+                  <input
+                    type="number"
+                    id="power_engine_count_value"
+                    name="power_engine_count_value"
+                    min="1"
+                    max="32"
+                    value={
+                      (currentWire(claim, "physical_boat.power_engine_count")?.value as number) ??
+                      ""
+                    }
+                  />
                 </fieldset>
 
                 <fieldset>

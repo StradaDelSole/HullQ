@@ -1,20 +1,23 @@
-"""Static whitelisted Power-domain Search criterion registry — SLICE-0093.
+"""Static whitelisted Power-domain Search criterion registry — SLICE-0093,
+extended SLICE-0094.
 
 The Power-domain counterpart of `hullq.search.criteria_registry`, bounded to
-exactly the one accepted Power hard technical criterion
-(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`):
-`power_drive_configuration`. This is a deliberately **separate** registry
-module, not an eleventh entry merged into the Sail `CRITERION_DEFINITIONS`
-tuple -- the slice contract requires "a separate Power-only buyer request
-parser" that "does not widen Sail parser to accept Power keys". It reuses
-the identical shared `CriterionDefinition`/`CriterionKind`/
-`parse_categorical_param` shape and the identical
+exactly the two accepted Power hard technical criteria
+(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`,
+`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md`): `power_drive_configuration`
+and `power_engine_count`. This is a deliberately **separate** registry
+module, not entries merged into the Sail `CRITERION_DEFINITIONS` tuple -- the
+slice contract requires "a separate Power-only buyer request parser" that
+"does not widen Sail parser to accept Power keys". It reuses the identical
+shared `CriterionDefinition`/`CriterionKind`/`parse_categorical_param`/
+`parse_numeric_param` shape and the identical
 `hullq.search.configuration_engine.evaluate_projection`/
 `evaluate_configuration` MUST/AND truth kernel the Sail registry already
 established (Trigger Gates "Second-criterion bridge comparison" /
 "Third-copy abstraction guard": COMMON STRUCTURE GENERALIZED / REUSED, not a
-third copy) -- only the category-specific field decoder/projection
-(`hullq.search.power_drive_design_bridge`) and this distinct Power
+third copy) -- only each criterion's own field decoder/projection
+(`hullq.search.power_drive_design_bridge`,
+`hullq.search.power_engine_count_design_bridge`) and the distinct Power
 param-key/vocabulary are new.
 
 A registry entry is never a database field scan, a raw JSON field pointer, a
@@ -34,6 +37,7 @@ from hullq.search.criteria_registry import (
     CriterionDefinition,
     CriterionKind,
     parse_categorical_param,
+    parse_numeric_param,
 )
 from hullq.search.power_drive_design_bridge import (
     POWER_DRIVE_CONFIGURATION_PROJECTION_FIELD as _POWER_DRIVE_CONFIGURATION_PROJECTION_FIELD,
@@ -41,19 +45,59 @@ from hullq.search.power_drive_design_bridge import (
 from hullq.search.power_drive_design_bridge import (
     build_boat_design_power_drive_configuration_set,
 )
+from hullq.search.power_engine_count_design_bridge import (
+    POWER_ENGINE_COUNT_PROJECTION_FIELD as _POWER_ENGINE_COUNT_PROJECTION_FIELD,
+)
+from hullq.search.power_engine_count_design_bridge import (
+    build_boat_design_power_engine_count_configuration_set,
+)
+from hullq.search.power_engine_count_request import (
+    canonical_power_engine_count_str,
+    parse_power_engine_count_decimal,
+)
 
 __all__ = [
+    "CANONICAL_POWER_PARAM_KEY_ORDER",
     "POWER_DRIVE_CONFIGURATION_DEFINITION",
     "POWER_DRIVE_PARAM_KEY",
+    "POWER_ENGINE_COUNT_DEFINITION",
+    "POWER_ENGINE_COUNT_PARAM_KEY",
     "SEARCH_POWER_DRIVE_VALUES",
+    "SEARCH_POWER_ENGINE_COUNT_VALUES",
+    "SUPPORTED_POWER_PARAM_KEYS",
     "active_power_definitions",
     "parse_categorical_param",
+    "parse_numeric_param",
 ]
 
 #: The one accepted public Power query-parameter key
 #: (`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md` "Request /
 #: query contract"): `GET /api/search/{locale}/power?power_drive=TOKEN`.
 POWER_DRIVE_PARAM_KEY: Final = "power_drive"
+
+#: SLICE-0094 second Power public query-parameter key
+#: (`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md` "Request, result and
+#: canonical URL").
+POWER_ENGINE_COUNT_PARAM_KEY: Final = "power_engine_count"
+
+#: The complete bounded Power public query-parameter whitelist.
+SUPPORTED_POWER_PARAM_KEYS: Final[frozenset[str]] = frozenset(
+    {POWER_DRIVE_PARAM_KEY, POWER_ENGINE_COUNT_PARAM_KEY}
+)
+
+#: The one accepted canonical key ordering (contract: "canonical key order
+#: `power_drive` then `power_engine_count`") -- also the plain lexicographic
+#: sort of `SUPPORTED_POWER_PARAM_KEYS`, asserted below so this constant can
+#: never silently drift from either rule.
+CANONICAL_POWER_PARAM_KEY_ORDER: Final[tuple[str, ...]] = (
+    POWER_DRIVE_PARAM_KEY,
+    POWER_ENGINE_COUNT_PARAM_KEY,
+)
+
+assert tuple(sorted(SUPPORTED_POWER_PARAM_KEYS)) == CANONICAL_POWER_PARAM_KEY_ORDER, (
+    "CANONICAL_POWER_PARAM_KEY_ORDER must stay exactly the lexicographic sort of "
+    "SUPPORTED_POWER_PARAM_KEYS -- see this module's docstring"
+)
 
 #: The exact accepted public five-token exact whitelist (contract "One field,
 #: one meaning"). A current publisher's durable claim may additionally
@@ -63,6 +107,16 @@ POWER_DRIVE_PARAM_KEY: Final = "power_drive"
 #: tokens.
 SEARCH_POWER_DRIVE_VALUES: Final[frozenset[str]] = frozenset(
     {"SHAFT", "STERNDRIVE", "POD", "WATERJET", "OUTBOARD"}
+)
+
+#: SLICE-0094: the exact accepted public eight-token exact whitelist
+#: (`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md` "One field, one
+#: meaning"). A current publisher's durable claim may truthfully assert
+#: 9-32 (`hullq.domain.physical_boat_claims.PowerEngineCountClaim`'s own
+#: broader 1-32 storage envelope), but 9 and above are never public Search
+#: filter tokens in this slice -- "No `8+` bucket ... in this slice."
+SEARCH_POWER_ENGINE_COUNT_VALUES: Final[frozenset[str]] = frozenset(
+    {"1", "2", "3", "4", "5", "6", "7", "8"}
 )
 
 
@@ -113,13 +167,31 @@ def _read_power_drive_configuration_claim(
     return claim.assertion_kind, value
 
 
-#: The one accepted Power `CriterionDefinition` -- Power domain ordinal 1,
-#: global accepted native technical criterion ordinal 10 (9 Sail + 1 Power,
-#: advanced only by the separately reviewed Owner-accepted closure, never in
-#: this READY/implementation branch). Reuses the identical
-#: `CategoricalLeafCriterion`/`evaluate_projection`/`evaluate_configuration`
-#: MUST/AND kernel the Sail registry's own categorical criteria already use
-#: -- no new Power ad hoc evaluator.
+def _read_power_engine_count_claim(
+    observation: CurrentPhysicalBoatClaimObservation,
+) -> ClaimReadResult:
+    """Plain passthrough read of the current `power_engine_count` claim --
+    identical shape to `_read_power_drive_configuration_claim` and every
+    other Sail `_read_*_claim` accessor. `power_engine_count` has no enum
+    vocabulary (unlike drive), so there is no `.value.value` unwrap -- the
+    stored `int` is reported verbatim, including a truthful current claim
+    of 9-32 (never a public filter token, but a real reported value a
+    cross-Organization contradiction check or a requested-token non-match
+    must still see unmasked)."""
+    claim = observation.power_engine_count
+    if claim is None:
+        return None
+    value = claim.value if claim.assertion_kind is AssertionKind.VALUE_ASSERTION else None
+    return claim.assertion_kind, value
+
+
+#: The one accepted Power drive `CriterionDefinition` -- Power domain
+#: ordinal 1, global accepted native technical criterion ordinal 10 (9 Sail
+#: + 1 Power, advanced only by the separately reviewed Owner-accepted
+#: closure, never in this READY/implementation branch). Reuses the
+#: identical `CategoricalLeafCriterion`/`evaluate_projection`/
+#: `evaluate_configuration` MUST/AND kernel the Sail registry's own
+#: categorical criteria already use -- no new Power ad hoc evaluator.
 POWER_DRIVE_CONFIGURATION_DEFINITION: Final = CriterionDefinition(
     criterion_id="power_drive_configuration",
     kind=CriterionKind.CATEGORICAL,
@@ -130,12 +202,35 @@ POWER_DRIVE_CONFIGURATION_DEFINITION: Final = CriterionDefinition(
     read_claim=_read_power_drive_configuration_claim,
 )
 
+#: SLICE-0094: the one accepted Power engine-count `CriterionDefinition` --
+#: Power domain ordinal 2, global accepted native technical criterion
+#: ordinal 11 (9 Sail + 2 Power), advanced only by the separately reviewed
+#: Owner-accepted closure. Reuses the identical `NumericLeafCriterion`/
+#: `evaluate_projection`/`evaluate_configuration` MUST/AND kernel every
+#: other numeric criterion already uses -- the contract's own words: "The
+#: count filter uses an exact numeric RANGE with threshold_min=threshold_max,
+#: so the common kernel is reused ... without another count scorer".
+POWER_ENGINE_COUNT_DEFINITION: Final = CriterionDefinition(
+    criterion_id="power_engine_count",
+    kind=CriterionKind.NUMERIC_EXACT,
+    param_keys=(POWER_ENGINE_COUNT_PARAM_KEY,),
+    projection_field=_POWER_ENGINE_COUNT_PROJECTION_FIELD,
+    allowed_values=None,
+    design_set_builder=build_boat_design_power_engine_count_configuration_set,
+    read_claim=_read_power_engine_count_claim,
+    parse_value=parse_power_engine_count_decimal,
+    canonicalize_value=canonical_power_engine_count_str,
+)
+
 
 def active_power_definitions() -> Sequence[CriterionDefinition]:
-    """The exactly-one active Power `CriterionDefinition` -- kept as a
-    function (not a bare tuple constant) so application callers that
-    generalize over "active definitions" read identically to the Sail
-    funnel's own `active_definitions: Sequence[CriterionDefinition]` shape,
-    without implying a second, independently-sized Power criterion list
-    exists yet."""
-    return (POWER_DRIVE_CONFIGURATION_DEFINITION,)
+    """Every accepted Power `CriterionDefinition` -- kept as a function (not
+    a bare tuple constant) so application callers that generalize over
+    "active definitions" read identically to the Sail funnel's own
+    `active_definitions: Sequence[CriterionDefinition]` shape. SLICE-0094:
+    now two entries; a caller evaluating a single-criterion request (e.g.
+    the unmodified SLICE-0093 drive-only path) builds its own narrower
+    `(POWER_DRIVE_CONFIGURATION_DEFINITION,)` tuple directly rather than
+    calling this function -- see `hullq.application.power_inventory_query`.
+    """
+    return (POWER_DRIVE_CONFIGURATION_DEFINITION, POWER_ENGINE_COUNT_DEFINITION)

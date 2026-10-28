@@ -945,3 +945,126 @@ class TestClaimEditRequest:
         parsed = parse_physical_boat_claim_edit_request(body)
         assert parsed.claims.vessel_category.value.value == "POWER"
         assert parsed.claims.power_drive_configuration.value.value == "OUTBOARD"
+
+    # SLICE-0094: physical_boat.power_engine_count must be accepted by the
+    # existing authorized claim-edit request exactly like every other
+    # optional claim field -- unlike drive, it has no enum vocabulary, so
+    # the accepted range (1-32) is checked here instead of a token set.
+
+    def test_power_engine_count_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_engine_count": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": 2,
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.power_engine_count is not None
+        assert parsed.claims.power_engine_count.value == 2
+
+    def test_power_engine_count_accepts_values_beyond_the_public_search_vocabulary(self) -> None:
+        for value in (9, 20, 32):
+            body = dict(
+                _BASE_CLAIM,
+                **{
+                    "physical_boat.power_engine_count": {
+                        "assertion_kind": "VALUE_ASSERTION",
+                        "value": value,
+                    }
+                },
+            )
+            parsed = parse_physical_boat_claim_edit_request(body)
+            assert parsed.claims.power_engine_count.value == value
+
+    @pytest.mark.parametrize("value", [0, -1, 33, 100])
+    def test_power_engine_count_out_of_range_is_invalid(self, value: int) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_engine_count": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": value,
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_engine_count_rejects_float_value(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_engine_count": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": 2.0,
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_engine_count_rejects_bool_value(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_engine_count": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": True,
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_engine_count_rejects_string_value(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_engine_count": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "2",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_engine_count_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{"physical_boat.power_engine_count": {"assertion_kind": "UNKNOWN", "value": 2}},
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_engine_count_absent_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM, **{"physical_boat.power_engine_count": {"assertion_kind": "ABSENT"}}
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_engine_count_omitted_key_leaves_claim_none(self) -> None:
+        parsed = parse_physical_boat_claim_edit_request(_BASE_CLAIM)
+        assert parsed.claims.power_engine_count is None
+
+    def test_power_engine_count_combinable_with_power_drive_configuration(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_drive_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "SHAFT",
+                },
+                "physical_boat.power_engine_count": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": 2,
+                },
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.power_drive_configuration.value.value == "SHAFT"
+        assert parsed.claims.power_engine_count.value == 2

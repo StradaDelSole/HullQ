@@ -62,6 +62,10 @@ export async function loadPowerSearchPageData(
  * Build the exact canonical `<link rel="canonical">` path for a canonical
  * (`kind: "ok"`) result -- `null` `activeRequirement` (base state) or a
  * `redirect`/`invalid`/`unavailable` page never has a canonical result URL.
+ *
+ * SLICE-0094: `activeRequirement` is now sparse -- only the criteria it
+ * actually carries are rendered, in the accepted canonical key order
+ * (`power_drive` then `power_engine_count`).
  */
 export function buildPowerSearchCanonicalPath(
   locale: SupportedLocale,
@@ -70,5 +74,15 @@ export function buildPowerSearchCanonicalPath(
   if (activeRequirement === null) {
     return `/${locale}/power/search`;
   }
-  return `/${locale}/power/search?power_drive=${activeRequirement.power_drive}`;
+  const parts: string[] = [];
+  if (activeRequirement.power_drive !== undefined) {
+    parts.push(`power_drive=${activeRequirement.power_drive}`);
+  }
+  if (activeRequirement.power_engine_count !== undefined) {
+    parts.push(`power_engine_count=${activeRequirement.power_engine_count}`);
+  }
+  if (parts.length === 0) {
+    return `/${locale}/power/search`;
+  }
+  return `/${locale}/power/search?${parts.join("&")}`;
 }

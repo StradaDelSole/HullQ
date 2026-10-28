@@ -60,6 +60,7 @@ from hullq.domain.physical_boat_claims import (
     PhysicalBoatClaimSnapshot,
     PowerDriveConfiguration,
     PowerDriveConfigurationClaim,
+    PowerEngineCountClaim,
     RudderConfiguration,
     RudderConfigurationClaim,
     VesselCategory,
@@ -376,6 +377,7 @@ _CLAIM_KEYS = frozenset(
         "physical_boat.hull_material",
         "physical_boat.vessel_category",
         "physical_boat.power_drive_configuration",
+        "physical_boat.power_engine_count",
     }
 )
 
@@ -610,6 +612,34 @@ def _parse_power_drive_configuration(raw: Any) -> PowerDriveConfigurationClaim:
     )
 
 
+def _parse_power_engine_count(raw: Any) -> PowerEngineCountClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.power_engine_count")
+    kind = _assertion_kind(raw_kind, "physical_boat.power_engine_count")
+    value: int | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        # bool is a subclass of int in Python; reject it explicitly here too
+        # (PowerEngineCountClaim's own constructor also rejects it, but
+        # failing early keeps the error message specific to this field).
+        if (
+            not isinstance(raw_value, int)
+            or isinstance(raw_value, bool)
+            or not (1 <= raw_value <= 32)
+        ):
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.power_engine_count.value must be an integer between 1 and 32"
+            )
+        value = raw_value
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.power_engine_count.value must be omitted/null when assertion_kind is "
+            f"{kind.value}"
+        )
+    return _construct(
+        lambda: PowerEngineCountClaim(assertion_kind=kind, value=value),
+        "physical_boat.power_engine_count",
+    )
+
+
 def _parse_boat_name(raw: Any) -> BoatNameClaim:
     raw_kind, raw_value = _assertion_object(raw, "physical_boat.boat_name")
     kind = _assertion_kind(raw_kind, "physical_boat.boat_name")
@@ -715,6 +745,11 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
         if "physical_boat.power_drive_configuration" in raw
         else None
     )
+    power_engine_count = (
+        _parse_power_engine_count(raw["physical_boat.power_engine_count"])
+        if "physical_boat.power_engine_count" in raw
+        else None
+    )
 
     claims = _construct(
         lambda: PhysicalBoatClaimSnapshot(
@@ -733,6 +768,7 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
             hull_material=hull_material,
             vessel_category=vessel_category,
             power_drive_configuration=power_drive_configuration,
+            power_engine_count=power_engine_count,
         ),
         "physical_boat",
     )

@@ -1,22 +1,37 @@
-"""Public Power-only Search request-state boundary — SLICE-0093.
+"""Public Power-only Search request-state boundary — SLICE-0093, extended
+SLICE-0094.
 
 The Power-domain counterpart of `hullq.application.search_read`, bounded to
-the one accepted public key `power_drive`
-(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`, "Request / query
-contract"). Decides among the identical four accepted request states
+the two accepted public keys `power_drive`
+(`specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`) and
+`power_engine_count`
+(`specs/POWER_ENGINE_COUNT_SEARCH_CONTRACT.v0.1.md`, "Request, result and
+canonical URL"). Decides among the identical four accepted request states
 (Required Behavior parity with the Sail boundary), independent of any HTTP
 framework:
 
     zero active criteria   -> BASE      (200, no Search evaluation)
-    one canonical power_drive -> RESULT (runs the bounded Power vertical)
-    valid but non-canonical/duplicate value -> REDIRECT (308 to canonical URL)
+    one canonical power_drive and/or power_engine_count -> RESULT
+    valid but non-canonical/duplicate value(s)/order -> REDIRECT (308)
     invalid/unknown params -> INVALID   (400, no Search evaluation)
 
 This module never accepts a Sail key, and the existing `hullq.application
-.search_read` module never accepts `power_drive` -- two entirely separate
-parsers (contract §3: "Do not widen Sail parser to accept Power keys").
-Locale support/routing stays `hullq.api.app`/the Astro route tree's job, not
-decided here.
+.search_read` module never accepts `power_drive`/`power_engine_count` --
+two entirely separate parsers (contract §3: "Do not widen Sail parser to
+accept Power keys"). Locale support/routing stays `hullq.api.app`/the Astro
+route tree's job, not decided here.
+
+SLICE-0094 mirrors `hullq.application.search_read`'s own two-criterion
+canonical-ordering/REDIRECT discipline exactly (`docs/
+OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`/`docs/
+OQ_018_SEARCH_NONCANONICAL_REDIRECT_DECISION_2026-09-11.md`, extended here
+to the Power surface): active key order must be canonical
+(`power_drive` before `power_engine_count`), and either criterion may be
+supplied alone or combined. A pure `power_drive`-only request still reaches
+the byte-for-byte unmodified SLICE-0093
+`hullq.application.power_inventory_query.evaluate_power_drive_requirement`
+via `evaluate_power_requirement`'s own internal dispatch -- never a second,
+independently-timed equivalent for that case.
 """
 
 from __future__ import annotations
@@ -24,17 +39,23 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 
 from hullq.application.power_inventory_query import (
     PowerSearchOutcome,
-    evaluate_power_drive_requirement,
+    evaluate_power_requirement,
 )
 from hullq.search.power_criteria_registry import (
+    CANONICAL_POWER_PARAM_KEY_ORDER,
     POWER_DRIVE_CONFIGURATION_DEFINITION,
     POWER_DRIVE_PARAM_KEY,
+    POWER_ENGINE_COUNT_DEFINITION,
+    POWER_ENGINE_COUNT_PARAM_KEY,
+    SUPPORTED_POWER_PARAM_KEYS,
     parse_categorical_param,
+    parse_numeric_param,
 )
 
 __all__ = [
@@ -44,7 +65,7 @@ __all__ = [
     "evaluate_power_search_request",
 ]
 
-_ALLOWED_PARAM_KEYS = frozenset({POWER_DRIVE_PARAM_KEY})
+_ALLOWED_PARAM_KEYS = SUPPORTED_POWER_PARAM_KEYS
 
 
 class PowerSearchOutcomeKind(StrEnum):
@@ -60,11 +81,18 @@ class PowerSearchOutcomeKind(StrEnum):
 @dataclass(frozen=True, slots=True)
 class PowerSearchRequestOutcome:
     """One evaluated public Power Search request. Exactly one payload
-    matches `kind`."""
+    matches `kind`.
+
+    SLICE-0094: `power_drive`/`power_engine_count` are each independently
+    optional on a `RESULT` -- at least one is present, but not necessarily
+    both (mirrors `hullq.application.search_read.SearchRequestOutcome`'s
+    identical multi-criterion shape).
+    """
 
     kind: PowerSearchOutcomeKind
     canonical_path: str | None = None
     power_drive: str | None = None
+    power_engine_count: Decimal | None = None
     search_outcome: PowerSearchOutcome | None = None
 
     def __post_init__(self) -> None:
@@ -73,22 +101,39 @@ class PowerSearchRequestOutcome:
         if self.kind is not PowerSearchOutcomeKind.REDIRECT and self.canonical_path is not None:
             raise ValueError("Only a REDIRECT outcome may carry canonical_path")
         is_result = self.kind is PowerSearchOutcomeKind.RESULT
+        active_values = (self.power_drive, self.power_engine_count)
         if is_result:
-            if self.power_drive is None:
-                raise ValueError("A RESULT outcome must carry power_drive")
             if self.search_outcome is None:
                 raise ValueError("A RESULT outcome must carry search_outcome")
-        elif self.power_drive is not None or self.search_outcome is not None:
-            raise ValueError("Only a RESULT outcome may carry power_drive/search_outcome")
+            if all(value is None for value in active_values):
+                raise ValueError("A RESULT outcome must carry at least one active criterion")
+        elif any(value is not None for value in active_values) or self.search_outcome is not None:
+            raise ValueError(
+                "Only a RESULT outcome may carry power_drive/power_engine_count/search_outcome"
+            )
 
 
-def build_canonical_power_search_path(locale: str, *, power_drive: str | None) -> str:
-    """Build the one canonical Power Search path for *locale* -- the sole
-    accepted key means there is no multi-key ordering concern (unlike the
-    Sail boundary's `CANONICAL_PARAM_KEY_ORDER`)."""
-    if power_drive is None:
+def build_canonical_power_search_path(
+    locale: str, *, power_drive: str | None, power_engine_count: Decimal | None = None
+) -> str:
+    """Build the one canonical, sparse, lexicographically-ordered public
+    Power Search path for *locale* -- only the active criteria are
+    included, each rendered through its own canonicalization; the accepted
+    canonical key order is `power_drive` then `power_engine_count`
+    (`hullq.search.power_criteria_registry.CANONICAL_POWER_PARAM_KEY_ORDER`).
+    """
+    assert POWER_ENGINE_COUNT_DEFINITION.canonicalize_value is not None
+    rendered: dict[str, str] = {}
+    if power_drive is not None:
+        rendered[POWER_DRIVE_PARAM_KEY] = power_drive
+    if power_engine_count is not None:
+        rendered[POWER_ENGINE_COUNT_PARAM_KEY] = POWER_ENGINE_COUNT_DEFINITION.canonicalize_value(
+            power_engine_count
+        )
+    parts = [f"{key}={rendered[key]}" for key in CANONICAL_POWER_PARAM_KEY_ORDER if key in rendered]
+    if not parts:
         return f"/{locale}/power/search"
-    return f"/{locale}/power/search?{POWER_DRIVE_PARAM_KEY}={power_drive}"
+    return f"/{locale}/power/search?{'&'.join(parts)}"
 
 
 def evaluate_power_search_request(
@@ -108,27 +153,45 @@ def evaluate_power_search_request(
     if unknown_keys:
         return PowerSearchRequestOutcome(kind=PowerSearchOutcomeKind.INVALID)
 
-    raw_values = list(query_params.get(POWER_DRIVE_PARAM_KEY, ()))
-    if not raw_values:
+    drive_raw_values = list(query_params.get(POWER_DRIVE_PARAM_KEY, ()))
+    count_raw_values = list(query_params.get(POWER_ENGINE_COUNT_PARAM_KEY, ()))
+    if not drive_raw_values and not count_raw_values:
         return PowerSearchRequestOutcome(kind=PowerSearchOutcomeKind.BASE)
 
-    result = parse_categorical_param(POWER_DRIVE_CONFIGURATION_DEFINITION, raw_values)
-    if result is None:
-        return PowerSearchRequestOutcome(kind=PowerSearchOutcomeKind.INVALID)
-    power_drive, is_single_canonical = result
-    assert (
-        power_drive is not None
-    )  # raw_values is non-empty, so result cannot be the (None, True) shape
+    # Mirrors hullq.application.search_read's identical canonical-key-order
+    # structural check: a semantically valid but non-canonically ordered
+    # request (power_engine_count before power_drive) must 308-redirect,
+    # never remain a second successful 200 identity.
+    canonical_active_key_order = [
+        key for key in CANONICAL_POWER_PARAM_KEY_ORDER if key in query_params
+    ]
+    actual_active_key_order = [key for key in query_params if key in _ALLOWED_PARAM_KEYS]
+    order_is_canonical = actual_active_key_order == canonical_active_key_order
 
-    if not is_single_canonical:
+    drive_result = parse_categorical_param(POWER_DRIVE_CONFIGURATION_DEFINITION, drive_raw_values)
+    if drive_result is None:
+        return PowerSearchRequestOutcome(kind=PowerSearchOutcomeKind.INVALID)
+    power_drive, drive_is_single_canonical = drive_result
+
+    count_result = parse_numeric_param(POWER_ENGINE_COUNT_DEFINITION, count_raw_values)
+    if count_result is None:
+        return PowerSearchRequestOutcome(kind=PowerSearchOutcomeKind.INVALID)
+    power_engine_count, count_is_single_canonical = count_result
+
+    if not (drive_is_single_canonical and count_is_single_canonical and order_is_canonical):
         return PowerSearchRequestOutcome(
             kind=PowerSearchOutcomeKind.REDIRECT,
-            canonical_path=build_canonical_power_search_path(locale, power_drive=power_drive),
+            canonical_path=build_canonical_power_search_path(
+                locale, power_drive=power_drive, power_engine_count=power_engine_count
+            ),
         )
 
-    search_outcome = evaluate_power_drive_requirement(conn, power_drive=power_drive, as_of=as_of)
+    search_outcome = evaluate_power_requirement(
+        conn, power_drive=power_drive, power_engine_count=power_engine_count, as_of=as_of
+    )
     return PowerSearchRequestOutcome(
         kind=PowerSearchOutcomeKind.RESULT,
         power_drive=power_drive,
+        power_engine_count=power_engine_count,
         search_outcome=search_outcome,
     )
