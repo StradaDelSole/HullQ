@@ -203,6 +203,14 @@ from hullq.application.owner_direct_draft import (
     record_to_public_dict,
     update_owner_direct_draft_for_account,
 )
+from hullq.application.power_inventory_query import (
+    PowerClaimOnlyMatch,
+    PowerDesignLinkedMatch,
+)
+from hullq.application.power_search_read import (
+    PowerSearchOutcomeKind,
+    evaluate_power_search_request,
+)
 from hullq.application.preview_read import get_preview_read_model
 from hullq.application.professional_listing_draft import (
     CreateProfessionalDraftOutcome,
@@ -679,6 +687,76 @@ def _serialize_claim_only_match(match: Any, *, secret: bytes) -> dict[str, Any]:
     safe source-type discriminator, never a private account id, revision
     id or another Organization's raw observation (contract §D).
     """
+    return {
+        "native_listing_id": match.native_listing_id.value,
+        "publishing_organization_id": match.publishing_organization_id.value,
+        "freshness_status": match.freshness_status.value,
+        "last_confirmed_at": (
+            match.last_confirmed_at.isoformat() if match.last_confirmed_at is not None else None
+        ),
+        "source_basis": match.source_basis.value,
+        "criterion_evidence": [
+            _serialize_criterion_evidence(item) for item in match.criterion_evidence
+        ],
+        "discovery_token": mint_discovery_surface_token(
+            DiscoverySurface.TECHNICAL_SEARCH, match.native_listing_id.value, secret=secret
+        ),
+    }
+
+
+#: SLICE-0093 localized buyer-friendly 400 recovery guidance for the
+#: separate Power-only Search surface -- mirrors
+#: `_INVALID_SEARCH_REQUEST_MESSAGE`'s identical rationale (item K: technical
+#: parameter names/values stay language-neutral; only this prose is
+#: translated).
+_INVALID_POWER_SEARCH_REQUEST_MESSAGE = {
+    "en": "This search link isn't valid. Choose one supported current drive arrangement (shaft, sterndrive, pod, waterjet or outboard).",
+    "de": "Dieser Suchlink ist ungültig. Wählen Sie eine unterstützte aktuelle Antriebsart (Wellenantrieb, Z-Antrieb, Pod-Antrieb, Wasserstrahlantrieb oder Außenborder).",
+    "fr": "Ce lien de recherche n'est pas valide. Choisissez un type de propulsion actuel pris en charge (ligne d'arbre, Z-drive, pod, hydrojet ou hors-bord).",
+    "pt": "Esta ligação de pesquisa não é válida. Escolha uma configuração de propulsão atual suportada (veio, sterndrive, pod, hidrojato ou motor de popa).",
+    "es": "Este enlace de búsqueda no es válido. Elija una configuración de propulsión actual admitida (eje, sterndrive, pod, hidrojet o fueraborda).",
+}
+
+
+def _serialize_power_design_linked_match(
+    match: PowerDesignLinkedMatch, *, secret: bytes
+) -> dict[str, Any]:
+    """SLICE-0093: one `hullq.application.power_inventory_query
+    .PowerDesignLinkedMatch` -- design-linked Power result, distinguishing
+    `source_basis` by whether the per-criterion evidence is design-qualified
+    or an additional concrete publisher claim (mirrors the Sail serializer's
+    identical typed-evidence discipline, never fabricated)."""
+    return {
+        "native_listing_id": match.native_listing_id.value,
+        "publishing_organization_id": match.publishing_organization_id.value,
+        "freshness_status": match.freshness_status.value,
+        "last_confirmed_at": (
+            match.last_confirmed_at.isoformat() if match.last_confirmed_at is not None else None
+        ),
+        "design_evaluation": _serialize_design_evaluation(match.design_evaluation),
+        "design_configuration_evidence": [
+            _serialize_configuration_evidence(evidence)
+            for evidence in match.design_configuration_evidence
+        ],
+        "criterion_evidence": [
+            _serialize_criterion_evidence(evidence)
+            for evidence in match.concrete_criterion_evidence
+        ],
+        "discovery_token": mint_discovery_surface_token(
+            DiscoverySurface.TECHNICAL_SEARCH, match.native_listing_id.value, secret=secret
+        ),
+    }
+
+
+def _serialize_power_claim_only_match(
+    match: PowerClaimOnlyMatch, *, secret: bytes
+) -> dict[str, Any]:
+    """SLICE-0093: one `hullq.application.power_inventory_query
+    .PowerClaimOnlyMatch` -- design-unresolved Power publisher-claim result.
+    Always `source_basis: "PUBLISHER_CLAIM"`; never a `design_evaluation`
+    key (there is no BoatDesign to report). Mirrors
+    `_serialize_claim_only_match`'s identical privacy discipline -- never
+    discloses `match.source_evidence`'s internal revision/actor identity."""
     return {
         "native_listing_id": match.native_listing_id.value,
         "publishing_organization_id": match.publishing_organization_id.value,
@@ -1585,6 +1663,69 @@ def create_app(
                 # above, and never carrying a DesignQueryEvaluation.
                 "publisher_claim_matches": [
                     _serialize_claim_only_match(match, secret=resolved_secret)
+                    for match in search_outcome.claim_only_matches
+                ],
+                "publisher_claim_match_count": search_outcome.claim_only_match_count,
+            }
+        )
+
+    @app.get("/api/search/{locale}/power")
+    def get_power_search(locale: str, request: Request) -> Response:
+        # SLICE-0093: a separate Power-only public Search entrypoint.
+        # Mirrors get_search's locale gate/noindex discipline exactly, but
+        # never shares query-parameter parsing/dispatch with the Sail route
+        # above -- `power_drive` is never accepted on `/api/search/{locale}`
+        # and no Sail key is ever accepted here.
+        if locale not in _SUPPORTED_SEARCH_LOCALES:
+            raise HTTPException(status_code=404, detail="unsupported search locale")
+
+        raw_query_params: dict[str, list[str]] = {
+            key: request.query_params.getlist(key) for key in dict(request.query_params)
+        }
+
+        conn = open_connection(resolved_database_url)
+        try:
+            outcome = evaluate_power_search_request(
+                conn, locale=locale, query_params=raw_query_params, as_of=_current_as_of()
+            )
+        finally:
+            conn.close()
+
+        if outcome.kind is PowerSearchOutcomeKind.INVALID:
+            message = _INVALID_POWER_SEARCH_REQUEST_MESSAGE[locale]
+            return JSONResponse(
+                {"error": "invalid_power_search_request", "message": message}, status_code=400
+            )
+
+        if outcome.kind is PowerSearchOutcomeKind.REDIRECT:
+            assert outcome.canonical_path is not None
+            return RedirectResponse(url=outcome.canonical_path, status_code=308)
+
+        if outcome.kind is PowerSearchOutcomeKind.BASE:
+            return JSONResponse({"locale": locale, "active_requirement": None})
+
+        assert outcome.kind is PowerSearchOutcomeKind.RESULT
+        assert outcome.search_outcome is not None
+        search_outcome = outcome.search_outcome
+
+        return JSONResponse(
+            {
+                "locale": locale,
+                "active_requirement": {"power_drive": outcome.power_drive},
+                "design_linked_matches": [
+                    _serialize_power_design_linked_match(match, secret=resolved_secret)
+                    for match in search_outcome.design_linked_matches
+                ],
+                "design_linked_match_count": search_outcome.design_linked_match_count,
+                "design_linked_insufficient_data_count": len(
+                    search_outcome.design_linked_insufficient_data
+                ),
+                # SLICE-0093: entirely separate, additive result surface --
+                # never merged into design_linked_matches/
+                # design_linked_match_count above, and never carrying a
+                # DesignQueryEvaluation.
+                "publisher_claim_matches": [
+                    _serialize_power_claim_only_match(match, secret=resolved_secret)
                     for match in search_outcome.claim_only_matches
                 ],
                 "publisher_claim_match_count": search_outcome.claim_only_match_count,

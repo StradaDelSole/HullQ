@@ -858,3 +858,90 @@ class TestClaimEditRequest:
         parsed = parse_physical_boat_claim_edit_request(body)
         assert parsed.claims.vessel_category.value.value == "MOTORSAILER"
         assert parsed.claims.hull_material.value.value == "STEEL"
+
+    # SLICE-0093: physical_boat.power_drive_configuration must be accepted
+    # by the existing authorized claim-edit request exactly like every
+    # other optional categorical claim field.
+
+    def test_power_drive_configuration_value_assertion_parses(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_drive_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "POD",
+                }
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.power_drive_configuration is not None
+        assert parsed.claims.power_drive_configuration.value.value == "POD"
+
+    def test_power_drive_configuration_accepts_mixed_and_other(self) -> None:
+        for value in ("MIXED", "OTHER"):
+            body = dict(
+                _BASE_CLAIM,
+                **{
+                    "physical_boat.power_drive_configuration": {
+                        "assertion_kind": "VALUE_ASSERTION",
+                        "value": value,
+                    }
+                },
+            )
+            parsed = parse_physical_boat_claim_edit_request(body)
+            assert parsed.claims.power_drive_configuration.value.value == value
+
+    def test_power_drive_configuration_unrecognized_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_drive_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "DIESEL_ELECTRIC",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_drive_configuration_unknown_with_present_value_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.power_drive_configuration": {
+                    "assertion_kind": "UNKNOWN",
+                    "value": "POD",
+                }
+            },
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_drive_configuration_absent_is_invalid(self) -> None:
+        body = dict(
+            _BASE_CLAIM, **{"physical_boat.power_drive_configuration": {"assertion_kind": "ABSENT"}}
+        )
+        with pytest.raises(InvalidInventoryEditRequestError):
+            parse_physical_boat_claim_edit_request(body)
+
+    def test_power_drive_configuration_omitted_key_leaves_claim_none(self) -> None:
+        parsed = parse_physical_boat_claim_edit_request(_BASE_CLAIM)
+        assert parsed.claims.power_drive_configuration is None
+
+    def test_power_drive_configuration_combinable_with_vessel_category(self) -> None:
+        body = dict(
+            _BASE_CLAIM,
+            **{
+                "physical_boat.vessel_category": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "POWER",
+                },
+                "physical_boat.power_drive_configuration": {
+                    "assertion_kind": "VALUE_ASSERTION",
+                    "value": "OUTBOARD",
+                },
+            },
+        )
+        parsed = parse_physical_boat_claim_edit_request(body)
+        assert parsed.claims.vessel_category.value.value == "POWER"
+        assert parsed.claims.power_drive_configuration.value.value == "OUTBOARD"

@@ -58,6 +58,8 @@ from hullq.domain.physical_boat_claims import (
     LoaLengthClaim,
     PhysicalBoatClaimRevisionId,
     PhysicalBoatClaimSnapshot,
+    PowerDriveConfiguration,
+    PowerDriveConfigurationClaim,
     RudderConfiguration,
     RudderConfigurationClaim,
     VesselCategory,
@@ -373,6 +375,7 @@ _CLAIM_KEYS = frozenset(
         "physical_boat.beam",
         "physical_boat.hull_material",
         "physical_boat.vessel_category",
+        "physical_boat.power_drive_configuration",
     }
 )
 
@@ -583,6 +586,30 @@ def _parse_vessel_category(raw: Any) -> VesselCategoryClaim:
     )
 
 
+def _parse_power_drive_configuration(raw: Any) -> PowerDriveConfigurationClaim:
+    raw_kind, raw_value = _assertion_object(raw, "physical_boat.power_drive_configuration")
+    kind = _assertion_kind(raw_kind, "physical_boat.power_drive_configuration")
+    value: PowerDriveConfiguration | None = None
+    if kind is AssertionKind.VALUE_ASSERTION:
+        if not isinstance(raw_value, str) or raw_value not in {
+            k.value for k in PowerDriveConfiguration
+        }:
+            raise InvalidInventoryEditRequestError(
+                "physical_boat.power_drive_configuration.value must be a recognized "
+                "power drive configuration"
+            )
+        value = PowerDriveConfiguration(raw_value)
+    elif raw_value is not None:
+        raise InvalidInventoryEditRequestError(
+            "physical_boat.power_drive_configuration.value must be omitted/null when "
+            f"assertion_kind is {kind.value}"
+        )
+    return _construct(
+        lambda: PowerDriveConfigurationClaim(assertion_kind=kind, value=value),
+        "physical_boat.power_drive_configuration",
+    )
+
+
 def _parse_boat_name(raw: Any) -> BoatNameClaim:
     raw_kind, raw_value = _assertion_object(raw, "physical_boat.boat_name")
     kind = _assertion_kind(raw_kind, "physical_boat.boat_name")
@@ -683,6 +710,11 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
         if "physical_boat.vessel_category" in raw
         else None
     )
+    power_drive_configuration = (
+        _parse_power_drive_configuration(raw["physical_boat.power_drive_configuration"])
+        if "physical_boat.power_drive_configuration" in raw
+        else None
+    )
 
     claims = _construct(
         lambda: PhysicalBoatClaimSnapshot(
@@ -700,6 +732,7 @@ def parse_physical_boat_claim_edit_request(raw: Any) -> ClaimEditRequest:
             beam=beam,
             hull_material=hull_material,
             vessel_category=vessel_category,
+            power_drive_configuration=power_drive_configuration,
         ),
         "physical_boat",
     )

@@ -584,6 +584,7 @@ def classify_concrete_candidate(
     boat_design_id: str,
     query: MixedAndQuery,
     active_definitions: Sequence[CriterionDefinition],
+    observations: Sequence[CurrentPhysicalBoatClaimObservation] | None = None,
 ) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
     """Classify one design-eligible, currently-fresh candidate's concrete
     PhysicalBoat claims.
@@ -593,6 +594,19 @@ def classify_concrete_candidate(
     SQL statement, therefore one consistent PostgreSQL MVCC snapshot across
     every active criterion -- mirrors the SLICE-0051 Finding 5 rationale),
     then reuses the exact same `evaluate_configuration` MUST-AND kernel
+
+    SLICE-0093 review amendment (Finding G): *observations* may be supplied
+    by a caller that has already read this PhysicalBoat's current claim
+    observations as part of one larger coherent snapshot -- e.g. folded
+    together with a design-category read in the same SQL statement
+    (`hullq.persistence.power_category_drive_snapshot
+    .fetch_power_category_drive_snapshot`). Passing it here avoids a
+    second, separately-timed SQL statement that could observe a different
+    current revision than the one the caller's own snapshot already
+    established (closing exactly the admission-vs-classification MVCC race
+    window a two-statement read would otherwise open). `None` -- every
+    existing Sail caller -- preserves the exact previous behavior: fetch
+    fresh via `list_current_physical_boat_claim_observations`.
     already used for design-level eligibility to combine the active
     criteria's concrete truth: any confirmed FALSE prevents a confirmed
     joint match; unresolved evidence never becomes TRUE (Required
@@ -623,9 +637,13 @@ def classify_concrete_candidate(
     classification kernel -- never a second, independently maintained
     concrete-claim truth path.
     """
-    observations = list_current_physical_boat_claim_observations(conn, physical_boat_id)
+    resolved_observations = (
+        observations
+        if observations is not None
+        else list_current_physical_boat_claim_observations(conn, physical_boat_id)
+    )
     projection, observed_by_field = _qualify_claims_against_definitions(
-        observations,
+        resolved_observations,
         publishing_organization_id=publishing_organization_id,
         active_definitions=active_definitions,
     )
