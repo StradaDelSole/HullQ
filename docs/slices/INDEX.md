@@ -16,8 +16,8 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest Owner-accepted slice:       SLICE-0094 (implementation #393 and formal docs closure recorded; Owner-local FINISH pending)
-Current queue:                  SLICE-0095 — NOT SELECTED / NOT READY; no START authorized
+Latest Owner-accepted slice:       SLICE-0094 (implementation and closure merged; Owner-local FINISH SUCCESS)
+Current queue:                  SLICE-0095 — SELECTED / READY docs proposal; Owner START only after reviewed docs merge
 Current capability:             9 Sail hard criteria + 2 qualified Power criteria (current drive and installed engine count), with same-configuration AND
 Current operational restriction: No real external broker/owner-direct data or pilot (#355); no joint release (#366)
 Technical native Search count:  11 accepted globally = Sail 9 / Power 2; full Power parity #372 and Search scale #355 still outstanding
@@ -34,7 +34,9 @@ Production Launch Pack:         NOT_STARTED
 
 - SLICE-0093 is **Owner-accepted IMPLEMENTATION**: first source-qualified Power hard technical criterion (`power_drive=SHAFT|STERNDRIVE|POD|WATERJET|OUTBOARD`), existing shared Search kernel with own current publisher POWER category + drive and D29 gating, limited genuine v0.6 shaft/outboard bridge, separate five-locale noindex Power buyer routes, valid NautiX Sail-only export guard and unchanged nine Sail criteria. Independently reviewed exact HEAD `4b9060e7fce7ebb7a7893c87890571210f94d825` with all Findings A–K and publisher-owned-category invariant closed; full exact-head six-job CI/manufacturer SUCCESS; Owner explicitly accepted 2026-10-28. PR #390 squash merged as `c38a60d821a6e9a88fba023a0008a36a3dcd51e1`. Formal closure: `docs/slices/SLICE-0093-acceptance-closure.md`. Global accepted count **10 = Sail 9 / Power 1** in this separate docs-only closure; Owner-local FINISH 0093 confirmed SUCCESS. #355 scale/real-data STOP, #366 joint release and #372 full Power technical parity OPEN. No external pilot/public launch authorized.
 
-- SLICE-0094 is **Owner-accepted IMPLEMENTATION** on independently reviewed exact HEAD `76f542635d3d04ae9e8c4c05c8a704912f0ba3d4` with closed findings A–F/C2/D2/F2/G3/C3. PR #393 squash merged as `9ac9705825bcc3bdab83a85c74f011eaf285d67a`. It implements source-qualified immutable current principal propulsion engine count (public exact tokens 1–8; publisher authoring 1–32), real same-current-revision and same-FieldResolution-qualified-configuration MUST/AND with the accepted Power drive criterion, five-locale buyer source-labelled evidence, strict 400/308/502 and actual browser/PG18 proof, without changing nine Sail criteria. Exact accepted-HEAD six-job CI/manufacturer and applicable Deploy workflow SUCCESS. Formal docs-only acceptance is `docs/slices/SLICE-0094-acceptance-closure.md`; **Owner-local FINISH 0094 remains pending**. Accepted global count **11 = Sail 9 / Power 2** is recorded in this separate docs-only closure. No successor selected, no external inventory/pilot/public launch; #355/#366/#372 remain OPEN.
+- SLICE-0094 is **Owner-accepted IMPLEMENTATION** on independently reviewed exact HEAD `76f542635d3d04ae9e8c4c05c8a704912f0ba3d4` with closed findings A–F/C2/D2/F2/G3/C3. PR #393 squash merged as `9ac9705825bcc3bdab83a85c74f011eaf285d67a`. It implements source-qualified immutable current principal propulsion engine count (public exact tokens 1–8; publisher authoring 1–32), real same-current-revision and same-FieldResolution-qualified-configuration MUST/AND with the accepted Power drive criterion, five-locale buyer source-labelled evidence, strict 400/308/502 and actual browser/PG18 proof, without changing nine Sail criteria. Exact accepted-HEAD six-job CI/manufacturer and applicable Deploy workflow SUCCESS. Formal docs-only acceptance is `docs/slices/SLICE-0094-acceptance-closure.md`; **Owner-local FINISH 0094 confirmed SUCCESS**. Accepted global count **11 = Sail 9 / Power 2** is recorded in this separate docs-only closure. Next READY proposal is SLICE-0095 Power Broker DRAFT Search-fit; no implementation START yet, no external inventory/pilot/public launch; #355/#366/#372 remain OPEN.
+
+- SLICE-0095 is **SELECTED FOR READY DOCS REVIEW ONLY**: the two accepted Power Buyer filters (current drive and installed engine count) must also support an authorized, read-only promoted-DRAFT Power Broker Search-fit. Both qualified design-linked and design-unresolved publisher-claim truth paths must work, with exact Organization PUBLISHER/MFA/lifecycle controls and same-current-revision/same-configuration AND. Controlling READY proposal: `docs/slices/SLICE-0095-power-broker-prepublication-search-fit.md` and `specs/POWER_BROKER_SEARCH_FIT_CONTRACT.v0.1.md`. No new Search criterion, external pilot or Power import/export. **Implementation not started**; independent readiness check/remote CI/docs merge and Owner-local START 0095 still required.
 
 ## Historical execution ranges
 
@@ -47,7 +49,8 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0091 | Owner-accepted category IMPLEMENTATION; Owner-local FINISH SUCCESS |
 | SLICE-0092 | Owner-accepted claim-only Sail Search implementation; Owner-local FINISH SUCCESS |
 | SLICE-0093 | Owner-accepted Power drive-configuration Search criterion (global #10, Power-domain #1); implementation+closure merged; Owner-local FINISH SUCCESS |
-| SLICE-0094 | Owner-accepted second Power criterion (current installed engine count) and conjunctive same-config Search; implementation and docs-only closure recorded; Owner-local FINISH pending |
+| SLICE-0094 | Owner-accepted second Power criterion (current installed engine count) and conjunctive same-config Search; implementation+closure merged; Owner-local FINISH SUCCESS |
+| SLICE-0095 | SELECTED / READY docs proposal only: Power Broker DRAFT Search-fit; Owner START after reviewed readiness merge |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
