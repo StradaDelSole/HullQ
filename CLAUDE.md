@@ -72,6 +72,8 @@ For an active implementation/research slice:
 
 Use `START_SLICE.bat` and `FINISH_SLICE.bat` for the normal lifecycle. Never carry an old slice worktree forward as the next slice base.
 
+**START handoff (Owner-confirmed 2026-10-28):** The reviewed READY slice and normative spec are authored and merged **before** the Owner runs local `START_SLICE.bat`. `scripts/workflow/start-slice.ps1` automatically generates the concise Claude implementation instruction from that existing contract and copies it to the Windows clipboard. The Owner opens the new slice worktree in VS Code and pastes that instruction into a fresh Claude conversation. **No routine START terminal output or separate manually authored post-START prompt is sent to ChatGPT.** Claude's pushed exact-HEAD implementation/handoff report is the next normal project-master review input. See `docs/engineering/AI_SLICE_WORKFLOW.md` (Start a slice).
+
 ### Shell / permission discipline
 
 - Run shell commands directly from the current slice worktree. Do not prepend routine Bash/PowerShell commands with `cd <worktree> &&` / `cd <worktree>;` wrappers; the operator opens Claude Code in the correct worktree.
