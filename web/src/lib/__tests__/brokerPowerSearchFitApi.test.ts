@@ -147,6 +147,113 @@ const VALID_DESIGN_LINKED_VIEW: PowerSearchFitView = {
   blockers: [],
 };
 
+// Independent review amendment Finding F (round 2): a genuinely valid
+// design-linked MATCH where TWO configurations (baseline + a NamedVariant)
+// are each independently TRUE -- `matching_configuration_ids` must list
+// BOTH, not merely one of them, for the view to be accepted.
+const SECOND_TRUE_CONFIG = {
+  configuration_id: "BD-1::NV-1",
+  boat_design_id: "BD-1",
+  named_variant_id: "NV-1",
+  truth: "TRUE" as const,
+  criterion_evidence: VALID_DESIGN_LINKED_VIEW.design_configuration_evidence[0].criterion_evidence,
+};
+const VALID_DESIGN_LINKED_TWO_CONFIG_MATCH_VIEW: PowerSearchFitView = {
+  ...VALID_DESIGN_LINKED_VIEW,
+  design_evaluation: {
+    ...VALID_DESIGN_LINKED_VIEW.design_evaluation!,
+    matching_configuration_ids: ["BD-1::baseline", "BD-1::NV-1"],
+  },
+  design_configuration_evidence: [
+    VALID_DESIGN_LINKED_VIEW.design_configuration_evidence[0],
+    SECOND_TRUE_CONFIG,
+  ],
+};
+
+// A genuinely valid design-linked CONFIRMED_NON_MATCH: every configuration
+// is a real confirmed FALSE, no matching ids, no concrete criterion
+// evidence (design/configuration eligibility never admitted this design
+// to the concrete funnel).
+const FALSE_CONFIG = {
+  configuration_id: "BD-1::baseline",
+  boat_design_id: "BD-1",
+  named_variant_id: null,
+  truth: "FALSE" as const,
+  criterion_evidence: [
+    {
+      criterion: { kind: "CATEGORICAL" as const, field: "power_drive_configuration", equals: "SHAFT" },
+      field: "power_drive_configuration",
+      truth: "FALSE" as const,
+      reason: null,
+      explanation: "design value OUTBOARD does not satisfy SHAFT",
+      observed_value: "OUTBOARD",
+    },
+    {
+      criterion: {
+        kind: "NUMERIC" as const,
+        field: "power_engine_count",
+        comparison: "RANGE" as const,
+        threshold_min: "2",
+        threshold_max: "2",
+      },
+      field: "power_engine_count",
+      truth: "TRUE" as const,
+      reason: null,
+      explanation: "design value 2 satisfies 2",
+      observed_value: "2",
+    },
+  ],
+};
+const VALID_DESIGN_LINKED_NON_MATCH_VIEW: PowerSearchFitView = {
+  ...VALID_DESIGN_LINKED_VIEW,
+  result_class: "CONFIRMED_NON_MATCH",
+  design_evaluation: {
+    design_id: "BD-1",
+    result_class: "CONFIRMED_NON_MATCH",
+    matching_configuration_ids: [],
+    reason: null,
+  },
+  design_configuration_evidence: [FALSE_CONFIG],
+  criterion_evidence: [],
+};
+
+// A genuinely valid design-linked INSUFFICIENT_DATA: no configuration is
+// TRUE, no matching ids, one configuration UNKNOWN (a legitimately
+// incomplete configuration space).
+const UNKNOWN_CONFIG = {
+  configuration_id: "BD-1::baseline",
+  boat_design_id: "BD-1",
+  named_variant_id: null,
+  truth: "UNKNOWN" as const,
+  criterion_evidence: [
+    {
+      criterion: { kind: "CATEGORICAL" as const, field: "power_drive_configuration", equals: "SHAFT" },
+      field: "power_drive_configuration",
+      truth: "UNKNOWN" as const,
+      reason: "VALUE_MISSING",
+      explanation: "design drive type has no accepted mapping",
+      observed_value: null,
+    },
+  ],
+};
+const VALID_DESIGN_LINKED_INSUFFICIENT_VIEW: PowerSearchFitView = {
+  native_listing_id: "NL-1",
+  domain: "POWER",
+  active_requirement: { power_drive: "SHAFT" },
+  result_class: "INSUFFICIENT_DATA",
+  design_evaluation: {
+    design_id: "BD-1",
+    result_class: "INSUFFICIENT_DATA",
+    matching_configuration_ids: [],
+    reason: "CONFIGURATION_AMBIGUOUS",
+  },
+  design_configuration_evidence: [UNKNOWN_CONFIG],
+  criterion_evidence: [],
+  vessel_category_exclusion: null,
+  source_basis: null,
+  blockers: ["BOATDESIGN_CONFIGURATION_UNRESOLVED"],
+};
+
 test("fetchPowerSearchFit: valid claim-only shape is surfaced as ok", async () => {
   await withServer(
     (_req, res) => jsonResponse(res, 200, VALID_CLAIM_ONLY_VIEW),
@@ -179,6 +286,220 @@ test("fetchPowerSearchFit: valid design-linked combined shape is surfaced as ok"
         assert.equal(result.data.source_basis, null);
         assert.ok(result.data.design_evaluation !== null);
       }
+    },
+  );
+});
+
+test("fetchPowerSearchFit: valid design-linked two-configuration MATCH (both TRUE, both listed) is accepted", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, VALID_DESIGN_LINKED_TWO_CONFIG_MATCH_VIEW),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "ok");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: valid design-linked CONFIRMED_NON_MATCH (all configurations FALSE) is accepted", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, VALID_DESIGN_LINKED_NON_MATCH_VIEW),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "ok");
+      if (result.kind === "ok") {
+        assert.equal(result.data.result_class, "CONFIRMED_NON_MATCH");
+      }
+    },
+  );
+});
+
+test("fetchPowerSearchFit: valid design-linked INSUFFICIENT_DATA (no TRUE configuration) is accepted", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, VALID_DESIGN_LINKED_INSUFFICIENT_VIEW),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "ok");
+      if (result.kind === "ok") {
+        assert.equal(result.data.result_class, "INSUFFICIENT_DATA");
+      }
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (a) CONFIRMED_NON_MATCH with a genuinely TRUE configuration is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_NON_MATCH_VIEW,
+        design_configuration_evidence: [VALID_DESIGN_LINKED_VIEW.design_configuration_evidence[0]],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (a) CONFIRMED_NON_MATCH with an UNKNOWN (never genuinely FALSE) configuration is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_NON_MATCH_VIEW,
+        design_configuration_evidence: [UNKNOWN_CONFIG],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (b) INSUFFICIENT_DATA with a genuinely TRUE configuration is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_INSUFFICIENT_VIEW,
+        design_configuration_evidence: [VALID_DESIGN_LINKED_VIEW.design_configuration_evidence[0]],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (b) INSUFFICIENT_DATA with a nonempty matching_configuration_ids is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_INSUFFICIENT_VIEW,
+        design_evaluation: {
+          ...VALID_DESIGN_LINKED_INSUFFICIENT_VIEW.design_evaluation!,
+          matching_configuration_ids: ["BD-1::baseline"],
+        },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (c) MATCH omitting a second genuine TRUE configuration from matching_configuration_ids is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_TWO_CONFIG_MATCH_VIEW,
+        design_evaluation: {
+          ...VALID_DESIGN_LINKED_TWO_CONFIG_MATCH_VIEW.design_evaluation!,
+          matching_configuration_ids: ["BD-1::baseline"],
+        },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (d) a configuration naming a different boat_design_id is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_VIEW,
+        design_configuration_evidence: [
+          { ...VALID_DESIGN_LINKED_VIEW.design_configuration_evidence[0], boat_design_id: "BD-OTHER" },
+        ],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (e) a duplicate configuration_id across design_configuration_evidence is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_TWO_CONFIG_MATCH_VIEW,
+        design_configuration_evidence: [
+          VALID_DESIGN_LINKED_VIEW.design_configuration_evidence[0],
+          { ...SECOND_TRUE_CONFIG, configuration_id: "BD-1::baseline" },
+        ],
+        design_evaluation: {
+          ...VALID_DESIGN_LINKED_TWO_CONFIG_MATCH_VIEW.design_evaluation!,
+          matching_configuration_ids: ["BD-1::baseline", "BD-1::baseline"],
+        },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: Finding F (e) a duplicated matching_configuration_ids entry (even of a genuinely TRUE id) is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_VIEW,
+        design_evaluation: {
+          ...VALID_DESIGN_LINKED_VIEW.design_evaluation!,
+          matching_configuration_ids: ["BD-1::baseline", "BD-1::baseline"],
+        },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
     },
   );
 });

@@ -22,16 +22,34 @@
 // public Power Buyer Search surface (`isValidCriterionEvidence`,
 // `hasExactActiveCriterionCoverage`, `aggregateTruthFromLeaves`,
 // `isValidConfigurationEvidence`, `isValidDesignEvaluation`,
-// `hasGenuineMatchingConfigurations`, `isValidResultClass`) rather than a
-// second, independently maintained copy of that logic -- this is a
-// response-shape/consistency guard, never a reimplementation of the
-// backend Search evaluator (no scoring, no qualification, no
-// FieldResolution logic).
+// `hasGenuineMatchingConfigurations`, `hasUniqueConfigurationIds`,
+// `hasConsistentBoatDesignId`, `isValidResultClass`) rather than a second,
+// independently maintained copy of that logic -- this is a response-
+// shape/consistency guard, never a reimplementation of the backend Search
+// evaluator (no scoring, no qualification, no FieldResolution logic).
+//
+// Independent review amendment Finding F (round 2): this preview's own
+// `design_evaluation` can legitimately be CONFIRMED_NON_MATCH/
+// INSUFFICIENT_DATA alongside real `design_configuration_evidence` --
+// unlike the public buyer surface, where `design_linked_matches[]` only
+// ever serializes a genuine CONFIRMED_MATCH. Every design result class
+// here must still agree with its own configuration-level evidence:
+// `hullq.search.configuration_engine.evaluate_design_configuration_set`
+// declares CONFIRMED_MATCH iff at least one configuration is TRUE (and
+// then always lists every TRUE configuration id), CONFIRMED_NON_MATCH
+// only when every configuration is a genuine confirmed FALSE, and
+// INSUFFICIENT_DATA whenever no configuration is TRUE but the space is
+// not exhaustively FALSE either (an UNKNOWN configuration, or a
+// genuinely incomplete configuration space) -- never a TRUE configuration
+// or a nonempty `matching_configuration_ids` on anything but a genuine
+// MATCH.
 
 import {
   aggregateTruthFromLeaves,
+  hasConsistentBoatDesignId,
   hasExactActiveCriterionCoverage,
   hasGenuineMatchingConfigurations,
+  hasUniqueConfigurationIds,
   isValidConfigurationEvidence,
   isValidCriterionEvidence,
   isValidDesignEvaluation,
@@ -213,9 +231,41 @@ function isPowerSearchFitView(
   const designConfigurationEvidence = value.design_configuration_evidence as PowerConfigurationEvidence[];
   const criterionEvidence = value.criterion_evidence as PowerCriterionEvidence[];
 
-  if (hasDesignEvaluation && designEvaluation!.result_class === "CONFIRMED_MATCH") {
-    if (!hasGenuineMatchingConfigurations(designEvaluation!, designConfigurationEvidence)) {
+  if (hasDesignEvaluation) {
+    // Independent review amendment Finding F (round 2): every listed
+    // configuration must genuinely belong to this same design, be
+    // uniquely identified, and the design-level result class must agree
+    // with the configuration-level truth/matching-id evidence it is
+    // supposedly summarizing -- for every result class, not only
+    // CONFIRMED_MATCH.
+    if (!hasUniqueConfigurationIds(designConfigurationEvidence)) return false;
+    if (!hasConsistentBoatDesignId(designEvaluation!.design_id, designConfigurationEvidence)) {
       return false;
+    }
+    const matchingIds = designEvaluation!.matching_configuration_ids;
+    if (new Set(matchingIds).size !== matchingIds.length) return false; // no duplicate matching ids
+    const trueConfigurationIds = designConfigurationEvidence
+      .filter((c) => c.truth === "TRUE")
+      .map((c) => c.configuration_id);
+
+    if (designEvaluation!.result_class === "CONFIRMED_MATCH") {
+      if (!hasGenuineMatchingConfigurations(designEvaluation!, designConfigurationEvidence)) {
+        return false;
+      }
+    } else if (designEvaluation!.result_class === "CONFIRMED_NON_MATCH") {
+      // Every configuration must be a genuine confirmed FALSE (never a
+      // TRUE or UNKNOWN configuration hiding behind a declared
+      // non-match), and no configuration can be listed as matching.
+      if (trueConfigurationIds.length !== 0) return false;
+      if (matchingIds.length !== 0) return false;
+      if (!designConfigurationEvidence.every((c) => c.truth === "FALSE")) return false;
+    } else {
+      // INSUFFICIENT_DATA: no configuration may be TRUE and none may be
+      // listed as matching -- an UNKNOWN configuration, or a genuinely
+      // incomplete configuration space, is legitimate and never required
+      // to look any particular way beyond that.
+      if (trueConfigurationIds.length !== 0) return false;
+      if (matchingIds.length !== 0) return false;
     }
   }
 

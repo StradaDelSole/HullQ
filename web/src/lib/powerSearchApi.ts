@@ -430,26 +430,58 @@ function isValidPositiveCriterionEvidence(
   );
 }
 
-// SLICE-0094 independent-review amendment Round 3, Finding G3: a design-
-// linked match's own `design_evaluation.result_class` must genuinely be
-// CONFIRMED_MATCH (the only result class this array ever serializes), and
-// EVERY id it lists in `matching_configuration_ids` must correspond to an
-// actually-present configuration in `design_configuration_evidence` whose
-// own (already aggregate-validated) `truth` is TRUE -- a fabricated or
-// stale matching-configuration id, or one naming a configuration that
-// is not itself genuinely TRUE, is never genuine.
+// SLICE-0094 independent-review amendment Round 3, Finding G3; SLICE-0095
+// independent-review amendment Round 2, Finding F: a design-linked match's
+// own `design_evaluation.result_class` must genuinely be CONFIRMED_MATCH
+// (the only result class this array ever serializes), and
+// `matching_configuration_ids` must name EXACTLY the set of
+// actually-present configurations in `design_configuration_evidence` whose
+// own (already aggregate-validated) `truth` is TRUE -- not merely a
+// subset. `hullq.search.configuration_engine.evaluate_design_configuration_set`
+// declares CONFIRMED_MATCH whenever *any* configuration is TRUE and always
+// lists every TRUE configuration id, so a response omitting a second
+// genuinely TRUE configuration from the list (or naming a fabricated/
+// stale/non-TRUE id, or duplicating an id) is never genuine.
 export function hasGenuineMatchingConfigurations(
   designEvaluation: PowerDesignEvaluation,
   configurationEvidence: readonly PowerConfigurationEvidence[],
 ): boolean {
   if (designEvaluation.result_class !== "CONFIRMED_MATCH") return false;
-  if (designEvaluation.matching_configuration_ids.length === 0) return false;
+  const matchingIds = designEvaluation.matching_configuration_ids;
+  if (matchingIds.length === 0) return false;
+  const uniqueMatchingIds = new Set(matchingIds);
+  if (uniqueMatchingIds.size !== matchingIds.length) return false; // no duplicate matching ids
   const trueConfigurationIds = new Set(
     configurationEvidence
       .filter((configuration) => configuration.truth === "TRUE")
       .map((configuration) => configuration.configuration_id),
   );
-  return designEvaluation.matching_configuration_ids.every((id) => trueConfigurationIds.has(id));
+  if (trueConfigurationIds.size !== uniqueMatchingIds.size) return false; // exact set, not a subset
+  return matchingIds.every((id) => trueConfigurationIds.has(id));
+}
+
+// SLICE-0095 independent-review amendment Round 2, Finding F: every
+// `design_configuration_evidence` entry's own `configuration_id` must be
+// unique within the array -- the backend's `ConfigurationIdentity` is
+// unique per resolved baseline/NamedVariant configuration, so a duplicate
+// id can only be a fabricated/corrupted response.
+export function hasUniqueConfigurationIds(
+  configurationEvidence: readonly PowerConfigurationEvidence[],
+): boolean {
+  const ids = configurationEvidence.map((configuration) => configuration.configuration_id);
+  return new Set(ids).size === ids.length;
+}
+
+// SLICE-0095 independent-review amendment Round 2, Finding F: every listed
+// configuration must genuinely belong to the same BoatDesign the
+// surrounding `design_evaluation.design_id` names -- a configuration
+// naming a different `boat_design_id` could only be a cross-design mixup,
+// never a real per-design configuration set.
+export function hasConsistentBoatDesignId(
+  designId: string,
+  configurationEvidence: readonly PowerConfigurationEvidence[],
+): boolean {
+  return configurationEvidence.every((configuration) => configuration.boat_design_id === designId);
 }
 
 export function isValidResultClass(
@@ -498,7 +530,12 @@ function isValidDesignLinkedMatch(
     v.design_configuration_evidence.every((evidence: unknown) =>
       isValidConfigurationEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
     ) &&
+    hasUniqueConfigurationIds(v.design_configuration_evidence as PowerConfigurationEvidence[]) &&
     isValidDesignEvaluation(v.design_evaluation) &&
+    hasConsistentBoatDesignId(
+      (v.design_evaluation as PowerDesignEvaluation).design_id,
+      v.design_configuration_evidence as PowerConfigurationEvidence[],
+    ) &&
     hasGenuineMatchingConfigurations(
       v.design_evaluation as PowerDesignEvaluation,
       v.design_configuration_evidence as PowerConfigurationEvidence[],
