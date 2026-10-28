@@ -389,6 +389,8 @@ SLICE-0095 — NOT SELECTED / NOT READY; no readiness contract, no Owner START, 
 
 **Prior accepted state:** SLICE-0087 and the nine technical hard Search dimensions remain unchanged. The Owner subsequently provided an explicit successful local `FINISH_SLICE.bat 0088` log: `main` updated to `feb1f4af03e300b232643a021b73d9a7d9fc427b` and the implementation worktree/local+remote branch removed.
 
+**Binding workflow ownership (Owner direction 2026-10-28):** Following explicit Owner Acceptance, **ChatGPT project master/reviewer**—not Claude Code—must autonomously finish the exact-HEAD implementation PR merge, docs-only acceptance-closure branch/PR, source-based closure review, own exact-HEAD CI/manufacturer/Deploy checks, corrections and closure PR merge. The Owner is approached **only after remote closure has actually merged**, to run local `FINISH_SLICE.bat` and share its output. Never delegate closure review to Claude, hand off pending CI monitoring to the Owner, or claim local FINISH without the Owner's report. Durable procedure: `docs/engineering/AI_SLICE_WORKFLOW.md` “Post-Owner-Acceptance continuation”. This applies to SLICE-0094 and future slices unless expressly changed by the Owner.
+
 ## Development workflow
 
 - `origin/main` is canonical shared truth;
