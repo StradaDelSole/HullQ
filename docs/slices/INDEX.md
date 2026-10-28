@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE navigation board  
-**Updated:** 2026-10-27  
+**Updated:** 2026-10-28  
 **Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
 This file is deliberately a **compact navigation index**, not a second historical status authority.
@@ -16,11 +16,11 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest Owner-accepted slice:       SLICE-0092 (Owner-local FINISH SUCCESS)
-Current queue:                  SLICE-0093 — IMPLEMENTATION complete, REVIEW (independent review/CI/Owner acceptance outstanding)
-Current capability:             9 Sail criteria + design-unresolved broker-claim Search; first Power criterion implemented on branch, NOT yet Owner-accepted/merged
+Latest Owner-accepted slice:       SLICE-0093 (implementation merged; Owner-local FINISH pending)
+Current queue:                  SLICE-0094 — NOT SELECTED / NOT READY
+Current capability:             9 qualified Sail criteria + first Power drive arrangement criterion, separate buyer routes, own publisher category + drive
 Current operational restriction: No production email/provider; no external broker upload/pilot (#355)
-Technical native Search count:  9 accepted hard Sail criteria (global marker stays 9 until separate Owner-accepted SLICE-0093 closure); joint Sail+Power external release #366/#372 still outstanding
+Technical native Search count:  10 accepted globally = Sail 9 / Power 1; full Power parity #372 and joint external release #366 still outstanding
 Production Launch Pack:         NOT_STARTED
 ```
 
@@ -32,7 +32,7 @@ Production Launch Pack:         NOT_STARTED
 
 - SLICE-0092 is **Owner-accepted IMPLEMENTATION**, independently reviewed exact HEAD `441d6ec27b9a284321a946fa3cc4e348f77f1035`, implementation PR #387 squash merged as `c2425232967a8223b64b3a677cbad2c83c2e2336`. Category-qualified publishing-Organization claim truth for design-unresolved ACTIVE SAIL listings now participates in both Sail search paths, separate buyer sensitivity and five-locale result evidence as `PUBLISHER_CLAIM`; the nine accepted Sail criteria and legacy design-linked results remain untouched. Findings A/B/C/E closed; performance D accepted **only for internal synthetic development** with actual 0/40/200 measurements (2/169/809 SQL statements) and mandatory pre-real-data/pilot scaling hard stop in issue #355. Exact-head six-job CI/manufacturer succeeded. See `docs/slices/SLICE-0092-acceptance-closure.md`. Owner-local FINISH 0092 confirmed SUCCESS. No Power criteria, motorsailer policy or external release; #372 and #366 remain OPEN.
 
-- SLICE-0093 is the **first** source-qualified POWER technical hard Search criterion, a categorical current propulsion-drive arrangement matching SHAFT/STERNDRIVE/POD/WATERJET/OUTBOARD (exact tokens in the contract). Implementation is complete on `slice/0093-power-drive-configuration-ready`, reusing the accepted shared `CriterionDefinition`/`evaluate_projection`/`evaluate_configuration` kernel and the SLICE-0092 batched D29/claim-observation primitives rather than a second Search engine, without pretending that BoatDesign v0.6's `other` means POD or WATERJET (the design-linked bridge only ever qualifies `shaft`/`outboard`). A separate `/api/search/{locale}/power` route and five noindex Astro pages exist; the existing nine Sail dimensions and their routes are untouched. Reported `REVIEW`: independent exact-HEAD review, full remote six-job CI/manufacturer reproducibility and explicit Owner acceptance remain outstanding before merge; the global technical-criterion marker advances 9→10 only in the separate docs-only acceptance closure. Contract: `docs/slices/SLICE-0093-power-drive-configuration-ready.md`; normative Power vocabulary: `specs/POWER_DRIVE_CONFIGURATION_SEARCH_CONTRACT.v0.1.md`. No external pilot/public launch authorized by this implementation.
+- SLICE-0093 is **Owner-accepted IMPLEMENTATION**: first source-qualified Power hard technical criterion (`power_drive=SHAFT|STERNDRIVE|POD|WATERJET|OUTBOARD`), existing shared Search kernel with own current publisher POWER category + drive and D29 gating, limited genuine v0.6 shaft/outboard bridge, separate five-locale noindex Power buyer routes, valid NautiX Sail-only export guard and unchanged nine Sail criteria. Independently reviewed exact HEAD `4b9060e7fce7ebb7a7893c87890571210f94d825` with all Findings A–K and publisher-owned-category invariant closed; full exact-head six-job CI/manufacturer SUCCESS; Owner explicitly accepted 2026-10-28. PR #390 squash merged as `c38a60d821a6e9a88fba023a0008a36a3dcd51e1`. Formal closure: `docs/slices/SLICE-0093-acceptance-closure.md`. Global accepted count **10 = Sail 9 / Power 1** in this separate docs-only closure; Owner-local FINISH 0093 pending. #355 scale/real-data STOP, #366 joint release and #372 full Power technical parity OPEN. No external pilot/public launch authorized.
 
 ## Historical execution ranges
 
@@ -44,7 +44,7 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0090 | Owner-accepted DESIGN_RESEARCH (not implementation); Owner-local FINISH SUCCESS |
 | SLICE-0091 | Owner-accepted category IMPLEMENTATION; Owner-local FINISH SUCCESS |
 | SLICE-0092 | Owner-accepted claim-only Sail Search implementation; Owner-local FINISH SUCCESS |
-| SLICE-0093 | Power drive-configuration criterion (global #10, Power-domain #1) IMPLEMENTATION complete, REVIEW; independent review/CI/Owner acceptance outstanding |
+| SLICE-0093 | Owner-accepted Power drive-configuration Search criterion (global #10, Power-domain #1); implementation merged, closure in progress; Owner-local FINISH pending |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
