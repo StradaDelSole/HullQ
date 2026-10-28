@@ -467,7 +467,10 @@ def main() -> int:
     try:
         from hullq.domain.market_identity import PhysicalBoatId
         from hullq.domain.publishing_eligibility import MarketplaceOrganizationId
-        from hullq.persistence.alembic_baseline import alembic_upgrade_head, prepare_alembic_baseline
+        from hullq.persistence.alembic_baseline import (
+            alembic_upgrade_head,
+            prepare_alembic_baseline,
+        )
         from hullq.persistence.physical_boat_claims import fetch_current_physical_boat_claim
         from hullq.security.oidc import AUTH0_MFA_STEP_UP_ACR_VALUE
 
@@ -512,7 +515,9 @@ def main() -> int:
             )
         issuer_ready = _wait_for_http(f"{issuer_base}.well-known/jwks.json")
         ok &= issuer_ready
-        print(f"1. deterministic local OIDC/JWKS test issuer serving -> {'OK' if issuer_ready else 'FAIL'}")
+        print(
+            f"1. deterministic local OIDC/JWKS test issuer serving -> {'OK' if issuer_ready else 'FAIL'}"
+        )
 
         api_proc, api_log_path = _start_api(
             url=url,
@@ -589,7 +594,7 @@ def main() -> int:
         finally:
             conn.close()
 
-        def _get_edit_page(listing_id: str, query: dict[str, str]) -> str:
+        def _get_edit_page(listing_id: str, query: dict[str, str] | list[tuple[str, str]]) -> str:
             qs = urlencode(query)
             status, headers, body = session.get(
                 f"{web_base}{_edit_page_path(_ORG_ID, listing_id)}?{qs}"
@@ -600,6 +605,16 @@ def main() -> int:
             assert noindex_ok, "private editor page must carry X-Robots-Tag: noindex"
             assert no_store_ok, "private editor page must carry Cache-Control: no-store"
             return body.decode("utf-8")
+
+        def _power_section(page_text: str) -> str:
+            """Independent review amendment Finding B: slice out only the
+            Power Search-fit section's own rendered output -- the Sail
+            section renders a structurally identical "Result: <strong>..."
+            fragment, so checking the whole page for that substring proves
+            nothing specific about the Power section alone."""
+            start = page_text.index("<h2>Power Search-fit preview</h2>")
+            end = page_text.index("<h2>Sale / outcome</h2>", start)
+            return page_text[start:end]
 
         # --- Claim-only combined positive ---------------------------------
         page_text = _get_edit_page(
@@ -643,9 +658,8 @@ def main() -> int:
 
         # --- Insufficient/negative with actionable source -----------------
         page_text = _get_edit_page("NL-0095-INSP-CLAIM", {"psf_power_engine_count": "5"})
-        insufficient_ok = (
-            "CONFIRMED_NON_MATCH" in page_text
-            or ("INSUFFICIENT_DATA" in page_text and "PhysicalBoat claim" in page_text)
+        insufficient_ok = "CONFIRMED_NON_MATCH" in page_text or (
+            "INSUFFICIENT_DATA" in page_text and "PhysicalBoat claim" in page_text
         )
         ok &= insufficient_ok
         print(
@@ -669,6 +683,62 @@ def main() -> int:
             f"section still renders its own unaffected result -> {'OK' if sail_legacy_ok else 'FAIL'}\n"
         )
 
+        # --- Finding B: clearing both controls must yield no preview, never
+        # the backend's correct INVALID_SCENARIO surfaced as a broker-facing
+        # error for an action that submitted nothing meaningful -------------
+        page_text = _get_edit_page(
+            "NL-0095-INSP-CLAIM", {"psf_power_drive": "", "psf_power_engine_count": ""}
+        )
+        both_blank_section = _power_section(page_text)
+        both_blank_ok = (
+            "Result:" not in both_blank_section and "isn&#39;t valid" not in both_blank_section
+        )
+        ok &= both_blank_ok
+        print(
+            "11. GET edit?psf_power_drive=&psf_power_engine_count= (both cleared, the real "
+            "default form submission): no preview rendered, no invalid-scenario error -> "
+            f"{'OK' if both_blank_ok else 'FAIL'}"
+        )
+
+        page_text = _get_edit_page("NL-0095-INSP-CLAIM", {"psf_power_drive": ""})
+        single_blank_ok = "Result:" not in _power_section(page_text)
+        ok &= single_blank_ok
+        print(
+            "12. GET edit?psf_power_drive= alone (single present-but-blank key, direct URL): "
+            f"no preview rendered -> {'OK' if single_blank_ok else 'FAIL'}"
+        )
+
+        page_text = _get_edit_page("NL-0095-INSP-CLAIM", {"psf_power_drive": "SHAFT"})
+        drive_only_ok = "Result:" in _power_section(
+            page_text
+        ) and "CONFIRMED_MATCH" in _power_section(page_text)
+        ok &= drive_only_ok
+        print(
+            f"13. GET edit?psf_power_drive=SHAFT alone: preview runs (CONFIRMED_MATCH) -> "
+            f"{'OK' if drive_only_ok else 'FAIL'}"
+        )
+
+        page_text = _get_edit_page("NL-0095-INSP-CLAIM", {"psf_power_engine_count": "2"})
+        count_only_ok = "Result:" in _power_section(
+            page_text
+        ) and "CONFIRMED_MATCH" in _power_section(page_text)
+        ok &= count_only_ok
+        print(
+            f"14. GET edit?psf_power_engine_count=2 alone: preview runs (CONFIRMED_MATCH) -> "
+            f"{'OK' if count_only_ok else 'FAIL'}"
+        )
+
+        page_text = _get_edit_page(
+            "NL-0095-INSP-CLAIM", [("psf_power_drive", "SHAFT"), ("psf_power_drive", "SHAFT")]
+        )
+        duplicate_section = _power_section(page_text)
+        duplicate_ok = "duplicate/ambiguous parameter was submitted" in duplicate_section
+        ok &= duplicate_ok
+        print(
+            "15. GET edit?psf_power_drive=SHAFT&psf_power_drive=SHAFT (duplicate, even identical "
+            f"values): rejected as ambiguous, never silently collapsed -> {'OK' if duplicate_ok else 'FAIL'}\n"
+        )
+
         # --- Zero writes ----------------------------------------------------
         conn = psycopg.connect(url)
         try:
@@ -686,7 +756,9 @@ def main() -> int:
             conn.close()
         zero_writes_ok = fingerprint_before == fingerprint_after
         ok &= zero_writes_ok
-        print(f"11. every preview GET above caused zero writes -> {'OK' if zero_writes_ok else 'FAIL'}")
+        print(
+            f"16. every preview GET above caused zero writes -> {'OK' if zero_writes_ok else 'FAIL'}"
+        )
 
         # --- Public Power Buyer Search never sees the DRAFT previews ------
         api_status, _, api_body = _http_get(
@@ -695,14 +767,15 @@ def main() -> int:
         api_json = _json(api_body)
         seen_ids = {
             m["native_listing_id"]
-            for m in api_json.get("design_linked_matches", []) + api_json.get("publisher_claim_matches", [])
+            for m in api_json.get("design_linked_matches", [])
+            + api_json.get("publisher_claim_matches", [])
         }
         public_leak_ok = api_status == 200 and not (
             seen_ids & {"NL-0095-INSP-CLAIM", "NL-0095-INSP-LINKED", "NL-0095-INSP-SAIL"}
         )
         ok &= public_leak_ok
         print(
-            "12. GET /api/search/en/power?power_drive=SHAFT&power_engine_count=2: none of this "
+            "17. GET /api/search/en/power?power_drive=SHAFT&power_engine_count=2: none of this "
             f"slice's lifecycle-DRAFT listings leak into public Power Buyer Search -> "
             f"{'OK' if public_leak_ok else 'FAIL'}\n"
         )
@@ -714,7 +787,9 @@ def main() -> int:
             for text in (api_log_text, web_log_text)
         )
         ok &= secrets_clean
-        print(f"    ordinary API/web logs contain no client/session secret -> {'OK' if secrets_clean else 'FAIL'}\n")
+        print(
+            f"    ordinary API/web logs contain no client/session secret -> {'OK' if secrets_clean else 'FAIL'}\n"
+        )
 
         print(f"SLICE-0095 POWER BROKER SEARCH-FIT PROOF RESULT -> {'PASS' if ok else 'FAIL'}")
         return 0 if ok else 1

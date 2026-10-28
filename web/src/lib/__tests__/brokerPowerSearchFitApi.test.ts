@@ -7,6 +7,16 @@
 // than throwing, against a tiny local http server standing in for
 // FastAPI's `/api/broker/organizations/{id}/inventory/{listing}/power-search-fit`
 // route.
+//
+// Independent review amendment Finding A (round 1): the original
+// `VALID_CLAIM_ONLY_VIEW` fixture was itself internally INVALID (two
+// `active_requirement` keys for a drive-only request, one evidence leaf)
+// and the validator at the time accepted it anyway. Every "valid" fixture
+// below is now genuinely self-consistent with the request it answers, and
+// a battery of adversarial mutations of it (cross-listing, changed value,
+// extra/missing active_requirement key, missing/swapped leaf, incoherent
+// source/category/result, impossible TRUE aggregate) is asserted to
+// collapse to `service_error`.
 import assert from "node:assert/strict";
 import http from "node:http";
 import { test } from "node:test";
@@ -38,10 +48,14 @@ function jsonResponse(res: http.ServerResponse, status: number, body: unknown): 
   res.end(JSON.stringify(body));
 }
 
+// Genuinely self-consistent: a drive-ONLY request ({ powerDrive: "SHAFT" }),
+// exactly one active_requirement key, exactly one matching TRUE evidence
+// leaf, claim-only (no design_evaluation, source_basis=PUBLISHER_CLAIM),
+// no exclusion, no blockers.
 const VALID_CLAIM_ONLY_VIEW: PowerSearchFitView = {
   native_listing_id: "NL-1",
   domain: "POWER",
-  active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+  active_requirement: { power_drive: "SHAFT" },
   result_class: "CONFIRMED_MATCH",
   design_evaluation: null,
   design_configuration_evidence: [],
@@ -60,6 +74,79 @@ const VALID_CLAIM_ONLY_VIEW: PowerSearchFitView = {
   blockers: [],
 };
 
+// Genuinely self-consistent combined (drive+count) design-linked match.
+const VALID_DESIGN_LINKED_VIEW: PowerSearchFitView = {
+  native_listing_id: "NL-1",
+  domain: "POWER",
+  active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+  result_class: "CONFIRMED_MATCH",
+  design_evaluation: {
+    design_id: "BD-1",
+    result_class: "CONFIRMED_MATCH",
+    matching_configuration_ids: ["BD-1::baseline"],
+    reason: null,
+  },
+  design_configuration_evidence: [
+    {
+      configuration_id: "BD-1::baseline",
+      boat_design_id: "BD-1",
+      named_variant_id: null,
+      truth: "TRUE",
+      criterion_evidence: [
+        {
+          criterion: { kind: "CATEGORICAL", field: "power_drive_configuration", equals: "SHAFT" },
+          field: "power_drive_configuration",
+          truth: "TRUE",
+          reason: null,
+          explanation: "design value SHAFT satisfies SHAFT",
+          observed_value: "SHAFT",
+        },
+        {
+          criterion: {
+            kind: "NUMERIC",
+            field: "power_engine_count",
+            comparison: "RANGE",
+            threshold_min: "2",
+            threshold_max: "2",
+          },
+          field: "power_engine_count",
+          truth: "TRUE",
+          reason: null,
+          explanation: "design value 2 satisfies 2",
+          observed_value: "2",
+        },
+      ],
+    },
+  ],
+  criterion_evidence: [
+    {
+      criterion: { kind: "CATEGORICAL", field: "power_drive_configuration", equals: "SHAFT" },
+      field: "power_drive_configuration",
+      truth: "TRUE",
+      reason: null,
+      explanation: "power_drive_configuration=SHAFT satisfies SHAFT",
+      observed_value: "SHAFT",
+    },
+    {
+      criterion: {
+        kind: "NUMERIC",
+        field: "power_engine_count",
+        comparison: "RANGE",
+        threshold_min: "2",
+        threshold_max: "2",
+      },
+      field: "power_engine_count",
+      truth: "TRUE",
+      reason: null,
+      explanation: "power_engine_count=2 satisfies 2",
+      observed_value: "2",
+    },
+  ],
+  vessel_category_exclusion: null,
+  source_basis: null,
+  blockers: [],
+};
+
 test("fetchPowerSearchFit: valid claim-only shape is surfaced as ok", async () => {
   await withServer(
     (_req, res) => jsonResponse(res, 200, VALID_CLAIM_ONLY_VIEW),
@@ -70,6 +157,27 @@ test("fetchPowerSearchFit: valid claim-only shape is surfaced as ok", async () =
         assert.equal(result.data.result_class, "CONFIRMED_MATCH");
         assert.equal(result.data.source_basis, "PUBLISHER_CLAIM");
         assert.equal(result.data.design_evaluation, null);
+      }
+    },
+  );
+});
+
+test("fetchPowerSearchFit: valid design-linked combined shape is surfaced as ok", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, VALID_DESIGN_LINKED_VIEW),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "ok");
+      if (result.kind === "ok") {
+        assert.equal(result.data.result_class, "CONFIRMED_MATCH");
+        assert.equal(result.data.source_basis, null);
+        assert.ok(result.data.design_evaluation !== null);
       }
     },
   );
@@ -104,6 +212,255 @@ test("fetchPowerSearchFit: a body with domain != POWER is service_error", async 
     async (baseUrl) => {
       const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
       assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: a response naming a different (cross-listing) native_listing_id is service_error", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, { ...VALID_CLAIM_ONLY_VIEW, native_listing_id: "NL-OTHER" }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: active_requirement echoing an extra unrequested key is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        active_requirement: { power_drive: "SHAFT", power_engine_count: "2" },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: active_requirement missing the requested key is service_error", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, { ...VALID_CLAIM_ONLY_VIEW, active_requirement: {} }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: active_requirement echoing a changed value is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, { ...VALID_CLAIM_ONLY_VIEW, active_requirement: { power_drive: "POD" } }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: a combined request missing the count evidence leaf is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_VIEW,
+        criterion_evidence: [VALID_DESIGN_LINKED_VIEW.criterion_evidence[0]],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: a combined request with the drive leaf duplicated instead of count is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_VIEW,
+        criterion_evidence: [
+          VALID_DESIGN_LINKED_VIEW.criterion_evidence[0],
+          VALID_DESIGN_LINKED_VIEW.criterion_evidence[0],
+        ],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: an evidence leaf for an unrequested field (count leaf on a drive-only request) is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        criterion_evidence: [
+          VALID_CLAIM_ONLY_VIEW.criterion_evidence[0],
+          VALID_DESIGN_LINKED_VIEW.criterion_evidence[1],
+        ],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: CONFIRMED_MATCH declared but design_evaluation present with source_basis also PUBLISHER_CLAIM is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_DESIGN_LINKED_VIEW,
+        source_basis: "PUBLISHER_CLAIM",
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(
+        baseUrl,
+        "ORG-1",
+        "NL-1",
+        { powerDrive: "SHAFT", powerEngineCount: "2" },
+        null,
+      );
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: claim-only view declared with source_basis null (no design_evaluation) is service_error", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, { ...VALID_CLAIM_ONLY_VIEW, source_basis: null }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: a CONFIRMED_NON_MATCH declared with a vessel_category_exclusion but nonempty criterion_evidence is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        result_class: "CONFIRMED_NON_MATCH",
+        vessel_category_exclusion: { resolution: "SAIL", reason: "CONCRETE_ONLY" },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: an unrecognized vessel_category_exclusion resolution (e.g. POWER) is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        result_class: "CONFIRMED_NON_MATCH",
+        criterion_evidence: [],
+        vessel_category_exclusion: { resolution: "POWER", reason: "CONCRETE_ONLY" },
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: an impossible TRUE aggregate (TRUE result_class with a FALSE leaf) is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        criterion_evidence: [
+          {
+            ...VALID_CLAIM_ONLY_VIEW.criterion_evidence[0],
+            truth: "FALSE",
+            observed_value: "POD",
+          },
+        ],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: result_class disagreeing with its own (all-TRUE) leaf aggregate is service_error", async () => {
+  await withServer(
+    (_req, res) => jsonResponse(res, 200, { ...VALID_CLAIM_ONLY_VIEW, result_class: "INSUFFICIENT_DATA" }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: a FALSE leaf whose observed_value equals the requested value (self-contradiction) is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        result_class: "CONFIRMED_NON_MATCH",
+        criterion_evidence: [
+          { ...VALID_CLAIM_ONLY_VIEW.criterion_evidence[0], truth: "FALSE", observed_value: "SHAFT" },
+        ],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: an unknown blocker token is service_error", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        result_class: "INSUFFICIENT_DATA",
+        criterion_evidence: [
+          { ...VALID_CLAIM_ONLY_VIEW.criterion_evidence[0], truth: "UNKNOWN", observed_value: null },
+        ],
+        blockers: ["SOMETHING_ELSE"],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "service_error");
+    },
+  );
+});
+
+test("fetchPowerSearchFit: a genuine INSUFFICIENT_DATA with the correct POWER_DRIVE_UNCONFIRMED blocker is accepted", async () => {
+  await withServer(
+    (_req, res) =>
+      jsonResponse(res, 200, {
+        ...VALID_CLAIM_ONLY_VIEW,
+        result_class: "INSUFFICIENT_DATA",
+        criterion_evidence: [
+          { ...VALID_CLAIM_ONLY_VIEW.criterion_evidence[0], truth: "UNKNOWN", observed_value: null },
+        ],
+        blockers: ["POWER_DRIVE_UNCONFIRMED"],
+      }),
+    async (baseUrl) => {
+      const result = await fetchPowerSearchFit(baseUrl, "ORG-1", "NL-1", { powerDrive: "SHAFT" }, null);
+      assert.equal(result.kind, "ok");
     },
   );
 });

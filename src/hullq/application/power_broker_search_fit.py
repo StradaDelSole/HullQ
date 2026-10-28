@@ -428,9 +428,7 @@ def evaluate_organization_listing_power_search_fit(
             design_configuration_evidence = ()
 
             observations = list_current_physical_boat_claim_observations(conn, physical_boat_id)
-            category_resolution = resolve_power_claim_only_category_from_observations(
-                observations
-            )
+            category_resolution = resolve_power_claim_only_category_from_observations(observations)
             admitted, exclusion = resolve_power_category_admission(
                 category_resolution, organization_id
             )
@@ -451,8 +449,8 @@ def evaluate_organization_listing_power_search_fit(
                     query=query,
                     active_definitions=active_definitions,
                 )
-                result_class, criterion_evidence = (
-                    downgrade_mixed_non_match_to_insufficient_data(result_class, criterion_evidence)
+                result_class, criterion_evidence = downgrade_mixed_non_match_to_insufficient_data(
+                    result_class, criterion_evidence
                 )
                 vessel_category_exclusion = None
                 blockers = _derive_field_blockers(result_class, criterion_evidence)
@@ -568,6 +566,33 @@ def evaluate_organization_listing_power_search_fit(
     recheck_denial = _authorize_actor(conn, session, organization_id)
     if recheck_denial is not None:
         return recheck_denial
+
+    # Independent review amendment Finding C (round 1): the contract's own
+    # words are "independently recheck current role/MFA authorization and
+    # listing ownership/lifecycle with fresh statements" -- re-fetching
+    # only lifecycle (as the original SLICE-0084 Sail recheck does) silently
+    # assumes the listing's owning Organization can never change out from
+    # under an in-flight evaluation. That assumption happens to hold today
+    # -- `hullq.persistence.native_listing` never issues an `UPDATE
+    # native_listings SET publishing_organization_id = ...` anywhere in
+    # this codebase; the only mutable column on that table is
+    # `lifecycle_state` (`hullq.persistence.native_listing_lifecycle
+    # ._apply_transition`) -- but this preview re-fetches the full
+    # NativeListing record and re-verifies its `publishing_organization_id`
+    # explicitly rather than silently relying on that invariant never being
+    # violated by a future change elsewhere in the codebase. A foreign or
+    # now-missing listing identity collapses to the identical
+    # non-enumerating `LISTING_NOT_FOUND` the snapshot phase itself already
+    # uses for the same condition -- never a distinguishable outcome that
+    # could confirm a listing's prior existence/ownership to an
+    # unauthorized caller.
+    recheck_listing_record = fetch_native_listing(conn, native_listing_id)
+    if (
+        recheck_listing_record is None
+        or recheck_listing_record.publishing_organization_id != organization_id
+    ):
+        return PowerSearchFitResult(outcome=PowerSearchFitOutcome.LISTING_NOT_FOUND)
+
     recheck_lifecycle_state = fetch_lifecycle_state(conn, native_listing_id)
     if recheck_lifecycle_state is not NativeListingLifecycleState.DRAFT:
         return PowerSearchFitResult(outcome=PowerSearchFitOutcome.NOT_PREVIEWABLE)

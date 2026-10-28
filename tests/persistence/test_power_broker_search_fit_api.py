@@ -411,7 +411,9 @@ def _capture_write_fingerprint(
 
 class TestPowerSearchFitAuthorization:
     def test_unauthenticated_is_blocked(self, client: TestClient) -> None:
-        response = client.get(_power_search_fit_path("ORG-X", "NL-X"), params={"power_drive": "SHAFT"})
+        response = client.get(
+            _power_search_fit_path("ORG-X", "NL-X"), params={"power_drive": "SHAFT"}
+        )
         assert response.status_code == 401
 
     def test_unknown_organization_is_not_found(self, client: TestClient) -> None:
@@ -567,7 +569,10 @@ class TestPowerSearchFitScenarioValidation:
 class TestPowerSearchFitClaimOnlyTruth:
     def test_combined_match_with_no_boat_design(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-CLAIM", account_id="ACC-PSF-CLAIM", membership_id="OM-PSF-CLAIM"
+            api_url,
+            org_id="ORG-PSF-CLAIM",
+            account_id="ACC-PSF-CLAIM",
+            membership_id="OM-PSF-CLAIM",
         )
         _create_draft_listing(
             api_url,
@@ -617,7 +622,10 @@ class TestPowerSearchFitClaimOnlyTruth:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-NOCAT", account_id="ACC-PSF-NOCAT", membership_id="OM-PSF-NOCAT"
+            api_url,
+            org_id="ORG-PSF-NOCAT",
+            account_id="ACC-PSF-NOCAT",
+            membership_id="OM-PSF-NOCAT",
         )
         _create_draft_listing(
             api_url,
@@ -650,7 +658,10 @@ class TestPowerSearchFitClaimOnlyTruth:
 
     def test_sail_category_never_produces_positive(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-SAILCAT", account_id="ACC-PSF-SAILCAT", membership_id="OM-PSF-SAILCAT"
+            api_url,
+            org_id="ORG-PSF-SAILCAT",
+            account_id="ACC-PSF-SAILCAT",
+            membership_id="OM-PSF-SAILCAT",
         )
         _create_draft_listing(
             api_url,
@@ -671,19 +682,26 @@ class TestPowerSearchFitClaimOnlyTruth:
         )
         _log_in(client, "ACC-PSF-SAILCAT")
         response = client.get(
-            _power_search_fit_path("ORG-PSF-SAILCAT", "NL-PSF-SAILCAT"), params={"power_drive": "SHAFT"}
+            _power_search_fit_path("ORG-PSF-SAILCAT", "NL-PSF-SAILCAT"),
+            params={"power_drive": "SHAFT"},
         )
         assert response.status_code == 200
         body = response.json()
         assert body["result_class"] == "CONFIRMED_NON_MATCH"
         assert body["blockers"] == []
-        assert body["vessel_category_exclusion"] == {"resolution": "SAIL", "reason": "CONCRETE_ONLY"}
+        assert body["vessel_category_exclusion"] == {
+            "resolution": "SAIL",
+            "reason": "CONCRETE_ONLY",
+        }
 
     def test_engine_count_mismatch_is_confirmed_non_match(
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-CNTNM", account_id="ACC-PSF-CNTNM", membership_id="OM-PSF-CNTNM"
+            api_url,
+            org_id="ORG-PSF-CNTNM",
+            account_id="ACC-PSF-CNTNM",
+            membership_id="OM-PSF-CNTNM",
         )
         _create_draft_listing(
             api_url,
@@ -713,6 +731,153 @@ class TestPowerSearchFitClaimOnlyTruth:
         assert body["result_class"] == "CONFIRMED_NON_MATCH"
         assert body["blockers"] == []
 
+    def test_mixed_drive_claim_is_insufficient_never_a_confirmed_exclusion(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Independent review amendment Finding D (round 1): a current
+        `VALUE_ASSERTION(MIXED)` drive claim must never surface as a
+        confirmed exclusion on the NEW private preview -- exercises
+        `downgrade_mixed_non_match_to_insufficient_data` through the actual
+        private evaluator, not only the already-accepted public buyer path
+        (mirrors the contract's own words: "even if the vessel uses one of
+        the types")."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PSF-MIXED",
+            account_id="ACC-PSF-MIXED",
+            membership_id="OM-PSF-MIXED",
+        )
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-PSF-MIXED",
+            org_id="ORG-PSF-MIXED",
+            account_id="ACC-PSF-MIXED",
+            membership_id="OM-PSF-MIXED",
+            physical_boat_id="PB-PSF-MIXED",
+            market_episode_id="ME-PSF-MIXED",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-PSF-MIXED",
+            org_id="ORG-PSF-MIXED",
+            account_id="ACC-PSF-MIXED",
+            revision_id="PBCREV-PSF-MIXED",
+            vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+            power_drive_configuration=PowerDriveConfigurationClaim(
+                assertion_kind=VA, value=PowerDriveConfiguration.MIXED
+            ),
+        )
+        _log_in(client, "ACC-PSF-MIXED")
+        response = client.get(
+            _power_search_fit_path("ORG-PSF-MIXED", "NL-PSF-MIXED"), params={"power_drive": "SHAFT"}
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "INSUFFICIENT_DATA", body
+        assert body["blockers"] == ["POWER_DRIVE_UNCONFIRMED"]
+        assert body["vessel_category_exclusion"] is None
+
+    def test_cross_organization_drive_contradiction_is_insufficient(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Independent review amendment Finding D (round 1): source-
+        conflicting current claims on the NEW private preview -- mirrors
+        `test_broker_search_fit_api.py
+        .test_cross_organization_contradiction_is_insufficient`'s identical
+        fixture shape (a second claiming Organization through its own
+        NativeListing -> new MarketEpisode -> the SAME shared PhysicalBoat),
+        generalized to the Power drive field. A different claiming
+        Organization's contradictory current drive claim for the same
+        PhysicalBoat must never be silently treated as agreeing evidence."""
+        _seed_org_and_membership(
+            api_url, org_id="ORG-PSF-XORG", account_id="ACC-PSF-XORG", membership_id="OM-PSF-XORG"
+        )
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PSF-XORG-OTHER",
+            account_id="ACC-PSF-XORG-OTHER",
+            membership_id="OM-PSF-XORG-OTHER",
+        )
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-PSF-XORG",
+            org_id="ORG-PSF-XORG",
+            account_id="ACC-PSF-XORG",
+            membership_id="OM-PSF-XORG",
+            physical_boat_id="PB-PSF-XORG",
+            market_episode_id="ME-PSF-XORG",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-PSF-XORG",
+            org_id="ORG-PSF-XORG",
+            account_id="ACC-PSF-XORG",
+            revision_id="PBCREV-PSF-XORG-A",
+            vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+            power_drive_configuration=PowerDriveConfigurationClaim(
+                assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+            ),
+        )
+        # A different claiming Organization asserts a contradictory drive
+        # for the SAME PhysicalBoat, through its own NativeListing -> new
+        # MarketEpisode -> the shared PhysicalBoat -- the claim-write entry
+        # point itself requires the candidate Organization to equal the
+        # target listing's own publishing Organization, so it cannot be
+        # written through NL-PSF-XORG directly.
+        conn = psycopg.connect(api_url)
+        try:
+            other_account = AccountId("ACC-PSF-XORG-OTHER")
+            other_org = MarketplaceOrganization(
+                id=MarketplaceOrganizationId("ORG-PSF-XORG-OTHER"),
+                professional_category=ProfessionalCategory.BROKER,
+                publishing_eligibility=OrganizationPublishingEligibility.ELIGIBLE,
+            )
+            other_membership = OrganizationMembership(
+                id=OrganizationMembershipId("OM-PSF-XORG-OTHER"),
+                account_id=other_account,
+                organization_id=other_org.id,
+                roles=frozenset({MembershipRole.PUBLISHER}),
+                state=MembershipState.ACTIVE,
+            )
+            create_market_episode(
+                conn,
+                market_episode=MarketEpisode(
+                    id=MarketEpisodeId("ME-PSF-XORG-OTHER"),
+                    physical_boat_id=PhysicalBoatId("PB-PSF-XORG"),
+                ),
+            )
+            create_native_listing(
+                conn,
+                account_id=other_account,
+                candidate_organization=other_org,
+                membership=other_membership,
+                listing=NativeListing(
+                    id=NativeListingId("NL-PSF-XORG-OTHER"),
+                    market_episode_id=MarketEpisodeId("ME-PSF-XORG-OTHER"),
+                ),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        _write_claim(
+            api_url,
+            listing_id="NL-PSF-XORG-OTHER",
+            org_id="ORG-PSF-XORG-OTHER",
+            account_id="ACC-PSF-XORG-OTHER",
+            revision_id="PBCREV-PSF-XORG-B",
+            power_drive_configuration=PowerDriveConfigurationClaim(
+                assertion_kind=VA, value=PowerDriveConfiguration.OUTBOARD
+            ),
+        )
+        _log_in(client, "ACC-PSF-XORG")
+        response = client.get(
+            _power_search_fit_path("ORG-PSF-XORG", "NL-PSF-XORG"), params={"power_drive": "SHAFT"}
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "INSUFFICIENT_DATA", body
+        assert body["blockers"] == ["POWER_DRIVE_UNCONFIRMED"]
+
 
 # ---------------------------------------------------------------------------
 # Design-linked truth
@@ -722,16 +887,17 @@ class TestPowerSearchFitClaimOnlyTruth:
 class TestPowerSearchFitDesignLinkedTruth:
     def test_design_linked_combined_match(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-DMATCH", account_id="ACC-PSF-DMATCH", membership_id="OM-PSF-DMATCH"
+            api_url,
+            org_id="ORG-PSF-DMATCH",
+            account_id="ACC-PSF-DMATCH",
+            membership_id="OM-PSF-DMATCH",
         )
         conn = psycopg.connect(api_url)
         try:
             _insert_boat_design(
                 conn, "BD-PSF-DMATCH", "BM-PSF-DMATCH", drive_type="shaft", engine_count=2
             )
-            _admit_design_drive_and_count(
-                conn, "BD-PSF-DMATCH", drive_type="shaft", engine_count=2
-            )
+            _admit_design_drive_and_count(conn, "BD-PSF-DMATCH", drive_type="shaft", engine_count=2)
         finally:
             conn.close()
         _create_draft_listing(
@@ -773,16 +939,17 @@ class TestPowerSearchFitDesignLinkedTruth:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-DMISS", account_id="ACC-PSF-DMISS", membership_id="OM-PSF-DMISS"
+            api_url,
+            org_id="ORG-PSF-DMISS",
+            account_id="ACC-PSF-DMISS",
+            membership_id="OM-PSF-DMISS",
         )
         conn = psycopg.connect(api_url)
         try:
             _insert_boat_design(
                 conn, "BD-PSF-DMISS", "BM-PSF-DMISS", drive_type="shaft", engine_count=2
             )
-            _admit_design_drive_and_count(
-                conn, "BD-PSF-DMISS", drive_type="shaft", engine_count=2
-            )
+            _admit_design_drive_and_count(conn, "BD-PSF-DMISS", drive_type="shaft", engine_count=2)
         finally:
             conn.close()
         _create_draft_listing(
@@ -811,7 +978,10 @@ class TestPowerSearchFitDesignLinkedTruth:
         assert response.status_code == 200
         body = response.json()
         assert body["result_class"] == "INSUFFICIENT_DATA"
-        assert set(body["blockers"]) == {"POWER_DRIVE_UNCONFIRMED", "POWER_ENGINE_COUNT_UNCONFIRMED"}
+        assert set(body["blockers"]) == {
+            "POWER_DRIVE_UNCONFIRMED",
+            "POWER_ENGINE_COUNT_UNCONFIRMED",
+        }
 
     def test_design_unresolved_configuration_is_insufficient_with_blocker(
         self, client: TestClient, api_url: str
@@ -852,7 +1022,10 @@ class TestPowerSearchFitDesignLinkedTruth:
         self, client: TestClient, api_url: str
     ) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-DANGLE", account_id="ACC-PSF-DANGLE", membership_id="OM-PSF-DANGLE"
+            api_url,
+            org_id="ORG-PSF-DANGLE",
+            account_id="ACC-PSF-DANGLE",
+            membership_id="OM-PSF-DANGLE",
         )
         _create_draft_listing(
             api_url,
@@ -885,10 +1058,243 @@ class TestPowerSearchFitDesignLinkedTruth:
             conn.close()
         _log_in(client, "ACC-PSF-DANGLE")
         response = client.get(
-            _power_search_fit_path("ORG-PSF-DANGLE", "NL-PSF-DANGLE"), params={"power_drive": "SHAFT"}
+            _power_search_fit_path("ORG-PSF-DANGLE", "NL-PSF-DANGLE"),
+            params={"power_drive": "SHAFT"},
         )
         assert response.status_code == 503
         assert response.json()["error"] == "chain_integrity_fault"
+
+    def test_same_named_variant_combined_positive_is_confirmed_match(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Independent review amendment Finding D (round 1): a genuine
+        same-qualified-NamedVariant positive on the NEW private preview --
+        mirrors `test_power_engine_count_slice_0094
+        .test_variant_inheriting_drive_with_overridden_count_is_a_legitimate_match`'s
+        identical fixture shape for the public buyer path. NamedVariant B
+        inherits SHAFT from the baseline (no own drive override) and
+        overrides only `engine_count` to 2 -- this ONE configuration's own
+        resolved projection genuinely satisfies both requested leaves, and
+        the publisher's current concrete claim (SHAFT + count=2)
+        independently confirms both."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PSF-NVPOS",
+            account_id="ACC-PSF-NVPOS",
+            membership_id="OM-PSF-NVPOS",
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) "
+                    "VALUES (%s, %s, %s)",
+                    ["BM-PSF-NVPOS", "Model BM-PSF-NVPOS", "0" * 64],
+                )
+                baseline_json = json.dumps(
+                    {"propulsion": {"drive_type": "shaft", "engine_count": 1}}
+                )
+                named_variants_json = json.dumps(
+                    [{"id": "NV-PSF-NVPOS-B", "overrides": {"propulsion": {"engine_count": 2}}}]
+                )
+                cur.execute(
+                    "INSERT INTO canonical_boat_designs "
+                    "(id, boat_model_id, generation, designers, baseline, named_variants, "
+                    " design_options, quality, content_hash) "
+                    "VALUES (%s, %s, '{}'::jsonb, '[]'::jsonb, %s::jsonb, %s::jsonb, "
+                    "'[]'::jsonb, '{}'::jsonb, %s)",
+                    ["BD-PSF-NVPOS", "BM-PSF-NVPOS", baseline_json, named_variants_json, "1" * 64],
+                )
+            conn.commit()
+            admit_resolved_categorical_field(
+                conn,
+                subject_kind=SubjectKind.BOAT_DESIGN,
+                subject_id="BD-PSF-NVPOS",
+                field_pointer="/baseline/propulsion/drive_type",
+                value="shaft",
+                resolution_id="FR-PWRDRV-BD-PSF-NVPOS",
+                fetch_canonical_value=lookup_power_drive_canonical_value,
+            )
+            admit_resolved_draft_max(
+                conn,
+                subject_kind=SubjectKind.BOAT_DESIGN,
+                subject_id="BD-PSF-NVPOS",
+                field_pointer="/baseline/propulsion/engine_count",
+                value=Decimal(1),
+                resolution_id="FR-PWRCNT-BD-PSF-NVPOS",
+                fetch_canonical_value=lookup_power_engine_count_canonical_value,
+            )
+            admit_resolved_draft_max(
+                conn,
+                subject_kind=SubjectKind.NAMED_VARIANT,
+                subject_id="NV-PSF-NVPOS-B",
+                field_pointer="/overrides/propulsion/engine_count",
+                value=Decimal(2),
+                resolution_id="FR-PWRCNT-NV-PSF-NVPOS-B",
+                fetch_canonical_value=lookup_power_engine_count_canonical_value,
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-PSF-NVPOS",
+            org_id="ORG-PSF-NVPOS",
+            account_id="ACC-PSF-NVPOS",
+            membership_id="OM-PSF-NVPOS",
+            physical_boat_id="PB-PSF-NVPOS",
+            market_episode_id="ME-PSF-NVPOS",
+            boat_design_id="BD-PSF-NVPOS",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-PSF-NVPOS",
+            org_id="ORG-PSF-NVPOS",
+            account_id="ACC-PSF-NVPOS",
+            revision_id="PBCREV-PSF-NVPOS",
+            vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+            power_drive_configuration=PowerDriveConfigurationClaim(
+                assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+            ),
+            power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=2),
+        )
+        _log_in(client, "ACC-PSF-NVPOS")
+        response = client.get(
+            _power_search_fit_path("ORG-PSF-NVPOS", "NL-PSF-NVPOS"),
+            params={"power_drive": "SHAFT", "power_engine_count": "2"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "CONFIRMED_MATCH", body
+        assert body["blockers"] == []
+        assert body["design_evaluation"]["result_class"] == "CONFIRMED_MATCH"
+        assert len(body["design_evaluation"]["matching_configuration_ids"]) >= 1
+
+    def test_cross_variant_split_adversarial_never_matches(
+        self, client: TestClient, api_url: str
+    ) -> None:
+        """Independent review amendment Finding D (round 1): the genuine
+        adversarial cross-variant split on the NEW private preview --
+        mirrors `test_power_engine_count_slice_0094
+        .test_cross_variant_split_adversarial_neither_configuration_satisfies_both_never_matches`'s
+        identical fixture. Baseline is SHAFT+count=1 (properly qualified);
+        NamedVariant B overrides BOTH fields to OUTBOARD+count=2 (also
+        properly qualified). Baseline alone satisfies drive but not count;
+        variant B alone satisfies count but not drive -- neither single
+        resolved configuration satisfies both requested leaves together.
+        The publisher's current concrete claim is SHAFT+count=2, which
+        taken ALONE would satisfy both -- the exact adversarial signal that
+        a confirmed concrete claim must never promote a design level that
+        is not itself a genuine CONFIRMED_MATCH ("design truth never
+        silently becomes concrete truth"). Must be INSUFFICIENT_DATA with
+        BOATDESIGN_CONFIGURATION_UNRESOLVED, never CONFIRMED_MATCH, and the
+        concrete claim is never even consulted."""
+        _seed_org_and_membership(
+            api_url,
+            org_id="ORG-PSF-NVADV",
+            account_id="ACC-PSF-NVADV",
+            membership_id="OM-PSF-NVADV",
+        )
+        conn = psycopg.connect(api_url)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO canonical_boat_models (id, canonical_name, content_hash) "
+                    "VALUES (%s, %s, %s)",
+                    ["BM-PSF-NVADV", "Model BM-PSF-NVADV", "0" * 64],
+                )
+                baseline_json = json.dumps(
+                    {"propulsion": {"drive_type": "shaft", "engine_count": 1}}
+                )
+                named_variants_json = json.dumps(
+                    [
+                        {
+                            "id": "NV-PSF-NVADV-B",
+                            "overrides": {
+                                "propulsion": {"drive_type": "outboard", "engine_count": 2}
+                            },
+                        }
+                    ]
+                )
+                cur.execute(
+                    "INSERT INTO canonical_boat_designs "
+                    "(id, boat_model_id, generation, designers, baseline, named_variants, "
+                    " design_options, quality, content_hash) "
+                    "VALUES (%s, %s, '{}'::jsonb, '[]'::jsonb, %s::jsonb, %s::jsonb, "
+                    "'[]'::jsonb, '{}'::jsonb, %s)",
+                    ["BD-PSF-NVADV", "BM-PSF-NVADV", baseline_json, named_variants_json, "1" * 64],
+                )
+            conn.commit()
+            admit_resolved_categorical_field(
+                conn,
+                subject_kind=SubjectKind.BOAT_DESIGN,
+                subject_id="BD-PSF-NVADV",
+                field_pointer="/baseline/propulsion/drive_type",
+                value="shaft",
+                resolution_id="FR-PWRDRV-BD-PSF-NVADV",
+                fetch_canonical_value=lookup_power_drive_canonical_value,
+            )
+            admit_resolved_draft_max(
+                conn,
+                subject_kind=SubjectKind.BOAT_DESIGN,
+                subject_id="BD-PSF-NVADV",
+                field_pointer="/baseline/propulsion/engine_count",
+                value=Decimal(1),
+                resolution_id="FR-PWRCNT-BD-PSF-NVADV",
+                fetch_canonical_value=lookup_power_engine_count_canonical_value,
+            )
+            admit_resolved_categorical_field(
+                conn,
+                subject_kind=SubjectKind.NAMED_VARIANT,
+                subject_id="NV-PSF-NVADV-B",
+                field_pointer="/overrides/propulsion/drive_type",
+                value="outboard",
+                resolution_id="FR-PWRDRV-NV-PSF-NVADV-B",
+                fetch_canonical_value=lookup_power_drive_canonical_value,
+            )
+            admit_resolved_draft_max(
+                conn,
+                subject_kind=SubjectKind.NAMED_VARIANT,
+                subject_id="NV-PSF-NVADV-B",
+                field_pointer="/overrides/propulsion/engine_count",
+                value=Decimal(2),
+                resolution_id="FR-PWRCNT-NV-PSF-NVADV-B",
+                fetch_canonical_value=lookup_power_engine_count_canonical_value,
+            )
+        finally:
+            conn.close()
+        _create_draft_listing(
+            api_url,
+            listing_id="NL-PSF-NVADV",
+            org_id="ORG-PSF-NVADV",
+            account_id="ACC-PSF-NVADV",
+            membership_id="OM-PSF-NVADV",
+            physical_boat_id="PB-PSF-NVADV",
+            market_episode_id="ME-PSF-NVADV",
+            boat_design_id="BD-PSF-NVADV",
+        )
+        _write_claim(
+            api_url,
+            listing_id="NL-PSF-NVADV",
+            org_id="ORG-PSF-NVADV",
+            account_id="ACC-PSF-NVADV",
+            revision_id="PBCREV-PSF-NVADV",
+            vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+            power_drive_configuration=PowerDriveConfigurationClaim(
+                assertion_kind=VA, value=PowerDriveConfiguration.SHAFT
+            ),
+            power_engine_count=PowerEngineCountClaim(assertion_kind=VA, value=2),
+        )
+        _log_in(client, "ACC-PSF-NVADV")
+        response = client.get(
+            _power_search_fit_path("ORG-PSF-NVADV", "NL-PSF-NVADV"),
+            params={"power_drive": "SHAFT", "power_engine_count": "2"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["result_class"] == "INSUFFICIENT_DATA", body
+        assert body["blockers"] == ["BOATDESIGN_CONFIGURATION_UNRESOLVED"]
+        assert body["criterion_evidence"] == []
+        assert body["design_evaluation"]["result_class"] == "INSUFFICIENT_DATA"
 
 
 # ---------------------------------------------------------------------------
@@ -899,7 +1305,10 @@ class TestPowerSearchFitDesignLinkedTruth:
 class TestPowerSearchFitLifecycleAndRegression:
     def test_active_listing_is_not_previewable(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-ACTIVE", account_id="ACC-PSF-ACTIVE", membership_id="OM-PSF-ACTIVE"
+            api_url,
+            org_id="ORG-PSF-ACTIVE",
+            account_id="ACC-PSF-ACTIVE",
+            membership_id="OM-PSF-ACTIVE",
         )
         _create_draft_listing(
             api_url,
@@ -923,14 +1332,18 @@ class TestPowerSearchFitLifecycleAndRegression:
             conn.close()
         _log_in(client, "ACC-PSF-ACTIVE")
         response = client.get(
-            _power_search_fit_path("ORG-PSF-ACTIVE", "NL-PSF-ACTIVE"), params={"power_drive": "SHAFT"}
+            _power_search_fit_path("ORG-PSF-ACTIVE", "NL-PSF-ACTIVE"),
+            params={"power_drive": "SHAFT"},
         )
         assert response.status_code == 409
         assert response.json()["error"] == "not_previewable"
 
     def test_preview_writes_nothing(self, client: TestClient, api_url: str) -> None:
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-NOWRITE", account_id="ACC-PSF-NOWRITE", membership_id="OM-PSF-NOWRITE"
+            api_url,
+            org_id="ORG-PSF-NOWRITE",
+            account_id="ACC-PSF-NOWRITE",
+            membership_id="OM-PSF-NOWRITE",
         )
         _create_draft_listing(
             api_url,
@@ -960,7 +1373,8 @@ class TestPowerSearchFitLifecycleAndRegression:
         )
         _log_in(client, "ACC-PSF-NOWRITE")
         response = client.get(
-            _power_search_fit_path("ORG-PSF-NOWRITE", "NL-PSF-NOWRITE"), params={"power_drive": "SHAFT"}
+            _power_search_fit_path("ORG-PSF-NOWRITE", "NL-PSF-NOWRITE"),
+            params={"power_drive": "SHAFT"},
         )
         assert response.status_code == 200
         after = _capture_write_fingerprint(
@@ -976,7 +1390,10 @@ class TestPowerSearchFitLifecycleAndRegression:
         its result semantics are untouched by this slice (contract Required
         Behavior §1)."""
         _seed_org_and_membership(
-            api_url, org_id="ORG-PSF-SAILREG", account_id="ACC-PSF-SAILREG", membership_id="OM-PSF-SAILREG"
+            api_url,
+            org_id="ORG-PSF-SAILREG",
+            account_id="ACC-PSF-SAILREG",
+            membership_id="OM-PSF-SAILREG",
         )
         _create_draft_listing(
             api_url,
@@ -989,7 +1406,7 @@ class TestPowerSearchFitLifecycleAndRegression:
         )
         _log_in(client, "ACC-PSF-SAILREG")
         sail_response = client.get(
-            f"/api/broker/organizations/ORG-PSF-SAILREG/inventory/NL-PSF-SAILREG/search-fit",
+            "/api/broker/organizations/ORG-PSF-SAILREG/inventory/NL-PSF-SAILREG/search-fit",
             params={"draft_max": "1.5"},
         )
         assert sail_response.status_code == 200

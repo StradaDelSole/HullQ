@@ -9,12 +9,37 @@
 //
 // This is a read-only GET boundary -- no CSRF header is required or sent.
 //
-// Every `response.json()` call is wrapped and the parsed body is
-// structurally validated before any field is trusted -- a malformed/
-// unexpected-shape body from FastAPI degrades to `{kind: "service_error"}`
-// here, never a thrown exception or a fabricated confirmed result.
+// Independent review amendment Finding A (round 1): a syntactically
+// well-formed 200 body is not enough -- a response that answers a
+// *different* listing/scenario, echoes a different active_requirement,
+// carries incoherent per-leaf truth/source/category evidence, or disagrees
+// with its own declared `result_class`/`blockers` is just as dangerous as
+// a malformed one: it could display a fabricated match or suppress the
+// required `PUBLISHER_CLAIM` disclosure. Every such case must collapse to
+// `service_error`, never a displayed (if surprising) result. This module
+// reuses the exact same typed per-leaf/per-configuration evidence
+// consistency validators `powerSearchApi.ts` already established for the
+// public Power Buyer Search surface (`isValidCriterionEvidence`,
+// `hasExactActiveCriterionCoverage`, `aggregateTruthFromLeaves`,
+// `isValidConfigurationEvidence`, `isValidDesignEvaluation`,
+// `hasGenuineMatchingConfigurations`, `isValidResultClass`) rather than a
+// second, independently maintained copy of that logic -- this is a
+// response-shape/consistency guard, never a reimplementation of the
+// backend Search evaluator (no scoring, no qualification, no
+// FieldResolution logic).
 
-import type { ConfigurationEvidence, CriterionEvidence, DesignEvaluation } from "./brokerSearchFitApi";
+import {
+  aggregateTruthFromLeaves,
+  hasExactActiveCriterionCoverage,
+  hasGenuineMatchingConfigurations,
+  isValidConfigurationEvidence,
+  isValidCriterionEvidence,
+  isValidDesignEvaluation,
+  isValidResultClass,
+  type PowerConfigurationEvidence,
+  type PowerCriterionEvidence,
+  type PowerDesignEvaluation,
+} from "./powerSearchApi.ts";
 
 function cookieHeaders(cookieHeader: string | null): Record<string, string> {
   return cookieHeader ? { Cookie: cookieHeader } : {};
@@ -43,62 +68,54 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isNullableString(value: unknown): value is string | null {
-  return value === null || typeof value === "string";
-}
-
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === "string");
 }
 
-const RESULT_CLASSES = ["CONFIRMED_MATCH", "CONFIRMED_NON_MATCH", "INSUFFICIENT_DATA"] as const;
-type ResultClass = (typeof RESULT_CLASSES)[number];
-function isResultClass(value: unknown): value is ResultClass {
-  return typeof value === "string" && (RESULT_CLASSES as readonly string[]).includes(value);
+type ResultClass = "CONFIRMED_MATCH" | "CONFIRMED_NON_MATCH" | "INSUFFICIENT_DATA";
+
+const POWER_SEARCH_FIT_BLOCKERS = [
+  "BOATDESIGN_CONFIGURATION_UNRESOLVED",
+  "POWER_CATEGORY_UNCONFIRMED",
+  "POWER_DRIVE_UNCONFIRMED",
+  "POWER_ENGINE_COUNT_UNCONFIRMED",
+] as const;
+type PowerSearchFitBlocker = (typeof POWER_SEARCH_FIT_BLOCKERS)[number];
+function isPowerSearchFitBlocker(value: unknown): value is PowerSearchFitBlocker {
+  return typeof value === "string" && (POWER_SEARCH_FIT_BLOCKERS as readonly string[]).includes(value);
 }
 
-function isLeafCriterion(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  if (typeof value.field !== "string") return false;
-  if (value.kind === "NUMERIC") return typeof value.comparison === "string";
-  if (value.kind === "CATEGORICAL") return typeof value.equals === "string";
-  return false;
+// Mirrors `hullq.application.power_inventory_query.PowerCategoryExclusionEvidence`'s
+// own validated invariant: `resolution` is one of the *explicit*
+// non-POWER/conflicted resolutions, and `reason` is only ever one of the
+// positive-evidence reasons for SAIL/MOTORSAILER or a conflict reason for
+// CONFLICT -- never any other combination.
+const _NON_POWER_RESOLUTIONS = ["SAIL", "MOTORSAILER", "CONFLICT"] as const;
+const _POSITIVE_REASONS = ["DESIGN_ONLY", "CONCRETE_ONLY", "SOURCES_AGREE"] as const;
+const _CONFLICT_REASONS = ["DESIGN_CONCRETE_DISAGREEMENT", "CROSS_ORGANIZATION_DISAGREEMENT"] as const;
+
+interface VesselCategoryExclusion {
+  resolution: (typeof _NON_POWER_RESOLUTIONS)[number];
+  reason: string;
 }
 
-function isCriterionEvidence(value: unknown): value is CriterionEvidence {
+function isValidVesselCategoryExclusion(value: unknown): value is VesselCategoryExclusion {
   if (!isRecord(value)) return false;
-  const TRUTH_STATES = ["TRUE", "FALSE", "UNKNOWN"];
-  return (
-    isLeafCriterion(value.criterion) &&
-    typeof value.field === "string" &&
-    typeof value.truth === "string" &&
-    TRUTH_STATES.includes(value.truth) &&
-    isNullableString(value.reason) &&
-    typeof value.explanation === "string" &&
-    isNullableString(value.observed_value)
-  );
+  if (!(_NON_POWER_RESOLUTIONS as readonly string[]).includes(value.resolution as string)) {
+    return false;
+  }
+  if (typeof value.reason !== "string") return false;
+  if (value.resolution === "CONFLICT") {
+    return (_CONFLICT_REASONS as readonly string[]).includes(value.reason);
+  }
+  return (_POSITIVE_REASONS as readonly string[]).includes(value.reason);
 }
 
-function isConfigurationEvidence(value: unknown): value is ConfigurationEvidence {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.configuration_id === "string" &&
-    typeof value.boat_design_id === "string" &&
-    isNullableString(value.named_variant_id) &&
-    typeof value.truth === "string" &&
-    Array.isArray(value.criterion_evidence) &&
-    value.criterion_evidence.every(isCriterionEvidence)
-  );
-}
-
-function isDesignEvaluation(value: unknown): value is DesignEvaluation {
-  if (!isRecord(value)) return false;
-  return (
-    typeof value.design_id === "string" &&
-    isResultClass(value.result_class) &&
-    isStringArray(value.matching_configuration_ids) &&
-    isNullableString(value.reason)
-  );
+function sameBlockerSet(actual: readonly string[], expected: readonly string[]): boolean {
+  if (actual.length !== expected.length) return false;
+  const actualSet = new Set(actual);
+  if (actualSet.size !== actual.length) return false; // no duplicates
+  return expected.every((b) => actualSet.has(b));
 }
 
 export interface PowerSearchFitView {
@@ -109,44 +126,159 @@ export interface PowerSearchFitView {
     power_engine_count?: string;
   };
   result_class: ResultClass;
-  design_evaluation: DesignEvaluation | null;
-  design_configuration_evidence: ConfigurationEvidence[];
-  criterion_evidence: CriterionEvidence[];
-  vessel_category_exclusion: { resolution: string; reason: string } | null;
+  design_evaluation: PowerDesignEvaluation | null;
+  design_configuration_evidence: PowerConfigurationEvidence[];
+  criterion_evidence: PowerCriterionEvidence[];
+  vessel_category_exclusion: VesselCategoryExclusion | null;
   source_basis: "PUBLISHER_CLAIM" | null;
-  blockers: string[];
+  blockers: PowerSearchFitBlocker[];
 }
 
-function isVesselCategoryExclusion(value: unknown): value is { resolution: string; reason: string } {
+/**
+ * Strictly validate a parsed JSON value as a well-formed, internally
+ * consistent `PowerSearchFitView` that actually answers *expected*'s own
+ * request against *expected*'s own listing.
+ *
+ * `expected` carries exactly what this preview was actually asked for:
+ * the target `nativeListingId` and the sent `powerDrive`/`powerEngineCount`
+ * scenario values (each `null`/absent when that criterion was not part of
+ * the request). A response naming a different listing, echoing a
+ * different/extra/missing active-requirement key, carrying an evidence
+ * leaf for an unrequested field, disagreeing between its own declared
+ * `result_class` and its evidence/blockers, or mixing a design-plane
+ * result with an inconsistent `source_basis` is never genuine and must
+ * never be displayed.
+ */
+function isPowerSearchFitView(
+  value: unknown,
+  expected: { nativeListingId: string; powerDrive: string | null; powerEngineCount: string | null },
+): value is PowerSearchFitView {
   if (!isRecord(value)) return false;
-  return typeof value.resolution === "string" && typeof value.reason === "string";
-}
+  if (value.native_listing_id !== expected.nativeListingId) return false;
+  if (value.domain !== "POWER") return false;
 
-function isPowerSearchFitView(value: unknown): value is PowerSearchFitView {
-  if (!isRecord(value)) return false;
-  if (typeof value.native_listing_id !== "string" || value.native_listing_id.length === 0) {
+  if (!isRecord(value.active_requirement)) return false;
+  const activeRequirement = value.active_requirement;
+  const expectedKeys: string[] = [];
+  if (expected.powerDrive !== null) expectedKeys.push("power_drive");
+  if (expected.powerEngineCount !== null) expectedKeys.push("power_engine_count");
+  const actualKeys = Object.keys(activeRequirement);
+  if (actualKeys.length !== expectedKeys.length || !expectedKeys.every((k) => actualKeys.includes(k))) {
     return false;
   }
-  if (value.domain !== "POWER") return false;
-  if (!isRecord(value.active_requirement)) return false;
-  if (!isResultClass(value.result_class)) return false;
-  if (value.design_evaluation !== null && !isDesignEvaluation(value.design_evaluation)) {
+  if (expected.powerDrive !== null && activeRequirement.power_drive !== expected.powerDrive) {
     return false;
   }
   if (
-    !Array.isArray(value.design_configuration_evidence) ||
-    !value.design_configuration_evidence.every(isConfigurationEvidence)
+    expected.powerEngineCount !== null &&
+    activeRequirement.power_engine_count !== expected.powerEngineCount
   ) {
     return false;
   }
-  if (!Array.isArray(value.criterion_evidence) || !value.criterion_evidence.every(isCriterionEvidence)) {
+
+  if (!isValidResultClass(value.result_class)) return false;
+
+  const hasDesignEvaluation = value.design_evaluation !== null;
+  if (hasDesignEvaluation && !isValidDesignEvaluation(value.design_evaluation)) return false;
+  // Design-plane/source-basis consistency: a design-linked evaluation is
+  // never also a publisher-claim-only one, and vice versa -- there is no
+  // third state.
+  if (hasDesignEvaluation && value.source_basis !== null) return false;
+  if (!hasDesignEvaluation && value.source_basis !== "PUBLISHER_CLAIM") return false;
+
+  if (!Array.isArray(value.design_configuration_evidence)) return false;
+  if (!hasDesignEvaluation && value.design_configuration_evidence.length !== 0) return false;
+  if (hasDesignEvaluation && value.design_configuration_evidence.length === 0) return false;
+  if (
+    !value.design_configuration_evidence.every((c: unknown) =>
+      isValidConfigurationEvidence(c, expected.powerDrive, expected.powerEngineCount),
+    )
+  ) {
     return false;
   }
-  if (value.vessel_category_exclusion !== null && !isVesselCategoryExclusion(value.vessel_category_exclusion)) {
+
+  if (!Array.isArray(value.criterion_evidence)) return false;
+  if (!isStringArray(value.blockers) || !value.blockers.every(isPowerSearchFitBlocker)) return false;
+  const blockers = value.blockers as PowerSearchFitBlocker[];
+  if (new Set(blockers).size !== blockers.length) return false; // no duplicate blockers
+
+  if (
+    value.vessel_category_exclusion !== null &&
+    !isValidVesselCategoryExclusion(value.vessel_category_exclusion)
+  ) {
     return false;
   }
-  if (value.source_basis !== null && value.source_basis !== "PUBLISHER_CLAIM") return false;
-  return isStringArray(value.blockers);
+
+  const designEvaluation = value.design_evaluation as PowerDesignEvaluation | null;
+  const designConfigurationEvidence = value.design_configuration_evidence as PowerConfigurationEvidence[];
+  const criterionEvidence = value.criterion_evidence as PowerCriterionEvidence[];
+
+  if (hasDesignEvaluation && designEvaluation!.result_class === "CONFIRMED_MATCH") {
+    if (!hasGenuineMatchingConfigurations(designEvaluation!, designConfigurationEvidence)) {
+      return false;
+    }
+  }
+
+  if (hasDesignEvaluation && designEvaluation!.result_class !== "CONFIRMED_MATCH") {
+    // Design/configuration eligibility never admitted this design to the
+    // concrete funnel -- classified directly from the design-level
+    // result, never consulting the concrete claim.
+    if (criterionEvidence.length !== 0) return false;
+    if (value.vessel_category_exclusion !== null) return false;
+    if (value.result_class !== designEvaluation!.result_class) return false;
+    const expectedBlockers: PowerSearchFitBlocker[] =
+      designEvaluation!.result_class === "INSUFFICIENT_DATA"
+        ? ["BOATDESIGN_CONFIGURATION_UNRESOLVED"]
+        : [];
+    return sameBlockerSet(blockers, expectedBlockers);
+  }
+
+  // From here: either design-unresolved (claim-only) or a genuine
+  // design-level CONFIRMED_MATCH -- the category-admission/concrete-
+  // classification three-way split applies identically to both planes.
+  if (value.vessel_category_exclusion !== null) {
+    // Explicit SAIL/MOTORSAILER/CONFLICT category exclusion.
+    if (value.result_class !== "CONFIRMED_NON_MATCH") return false;
+    if (criterionEvidence.length !== 0) return false;
+    return blockers.length === 0;
+  }
+
+  if (criterionEvidence.length === 0) {
+    // Category admission itself was insufficient (missing/UNKNOWN,
+    // design-only, or another Organization's claim alone) -- never a
+    // false exclusion and never a false match.
+    if (value.result_class !== "INSUFFICIENT_DATA") return false;
+    return sameBlockerSet(blockers, ["POWER_CATEGORY_UNCONFIRMED"]);
+  }
+
+  // Ordinary technical classification (claim-only or concrete).
+  if (
+    !criterionEvidence.every((e) => isValidCriterionEvidence(e, expected.powerDrive, expected.powerEngineCount))
+  ) {
+    return false;
+  }
+  if (!hasExactActiveCriterionCoverage(criterionEvidence, expected.powerDrive, expected.powerEngineCount)) {
+    return false;
+  }
+  const aggregate = aggregateTruthFromLeaves(criterionEvidence);
+  const expectedResultClass: ResultClass =
+    aggregate === "TRUE"
+      ? "CONFIRMED_MATCH"
+      : aggregate === "FALSE"
+        ? "CONFIRMED_NON_MATCH"
+        : "INSUFFICIENT_DATA";
+  if (value.result_class !== expectedResultClass) return false;
+
+  if (expectedResultClass !== "INSUFFICIENT_DATA") {
+    return blockers.length === 0;
+  }
+  const expectedBlockers: PowerSearchFitBlocker[] = [];
+  for (const leaf of criterionEvidence) {
+    if (leaf.truth !== "UNKNOWN") continue;
+    if (leaf.field === "power_drive_configuration") expectedBlockers.push("POWER_DRIVE_UNCONFIRMED");
+    if (leaf.field === "power_engine_count") expectedBlockers.push("POWER_ENGINE_COUNT_UNCONFIRMED");
+  }
+  return sameBlockerSet(blockers, [...new Set(expectedBlockers)]);
 }
 
 // ---------------------------------------------------------------------------
@@ -223,6 +355,11 @@ export async function fetchPowerSearchFit(
   if (response.status === 503) return { kind: "chain_integrity_fault" };
   if (!response.ok) return { kind: "service_error" };
   const body = await safeJson(response);
-  if (!isPowerSearchFitView(body)) return { kind: "service_error" };
+  const expected = {
+    nativeListingId,
+    powerDrive: scenario.powerDrive ?? null,
+    powerEngineCount: scenario.powerEngineCount ?? null,
+  };
+  if (!isPowerSearchFitView(body, expected)) return { kind: "service_error" };
   return { kind: "ok", data: body };
 }

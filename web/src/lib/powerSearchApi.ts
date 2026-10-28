@@ -160,14 +160,14 @@ export interface PowerSearchApiResponse {
 // *shape*/*consistency* check, never a "results must be non-empty" check.
 // ---------------------------------------------------------------------------
 
-function isSearchPowerDriveValue(value: unknown): value is SearchPowerDriveValue {
+export function isSearchPowerDriveValue(value: unknown): value is SearchPowerDriveValue {
   return (
     typeof value === "string" &&
     (SEARCH_POWER_DRIVE_VALUES as readonly string[]).includes(value)
   );
 }
 
-function isSearchPowerEngineCountValue(value: unknown): value is SearchPowerEngineCountValue {
+export function isSearchPowerEngineCountValue(value: unknown): value is SearchPowerEngineCountValue {
   return (
     typeof value === "string" &&
     (SEARCH_POWER_ENGINE_COUNT_VALUES as readonly string[]).includes(value)
@@ -207,7 +207,7 @@ function isFreshnessStatus(value: unknown): value is "CONFIRMED" | "DUE_FOR_CONF
   return value === "CONFIRMED" || value === "DUE_FOR_CONFIRMATION";
 }
 
-function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN" {
+export function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN" {
   return value === "TRUE" || value === "FALSE" || value === "UNKNOWN";
 }
 
@@ -224,7 +224,7 @@ function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN
 // threshold_min=threshold_max"), each an exact canonical 1-8 token -- never
 // MINIMUM/MAXIMUM, never differing thresholds, never a non-canonical
 // numeric spelling.
-function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
+export function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   if (v.kind === "CATEGORICAL") {
@@ -252,7 +252,7 @@ function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
 // actually requested. `expectedPowerDrive`/`expectedPowerEngineCount` are
 // `null` when that criterion was not part of the request at all, in which
 // case no evidence leaf for that field may legitimately appear.
-function criterionMatchesActiveRequirement(
+export function criterionMatchesActiveRequirement(
   criterion: PowerLeafCriterion,
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -271,7 +271,7 @@ function criterionMatchesActiveRequirement(
 // requested one exactly (RANGE with threshold_min==threshold_max for
 // NUMERIC, strict `==` for CATEGORICAL). A `TRUE` leaf whose own
 // `observed_value` differs from its own requested value is never genuine.
-function observedValueMatchesRequestedValue(
+export function observedValueMatchesRequestedValue(
   criterion: PowerLeafCriterion,
   observedValue: string,
 ): boolean {
@@ -294,7 +294,7 @@ function observedValueMatchesRequestedValue(
 // requested one. `FALSE` legitimately carries either a differing concrete
 // observed value or `null` (e.g. a `NOT_APPLICABLE` confirmed exclusion
 // never compares a concrete value) -- never suppressed here.
-function isValidCriterionEvidence(
+export function isValidCriterionEvidence(
   value: unknown,
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -341,7 +341,7 @@ function isValidCriterionEvidence(
 // This does not constrain each leaf's own `truth` -- a non-matching or
 // `UNKNOWN` configuration's evidence still legitimately covers every
 // active criterion, just not all `TRUE`.
-function hasExactActiveCriterionCoverage(
+export function hasExactActiveCriterionCoverage(
   evidence: readonly PowerCriterionEvidence[],
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -368,7 +368,7 @@ function hasExactActiveCriterionCoverage(
 // this is a generic response-contract consistency guard, never a
 // reimplementation of the backend Search evaluator (no scoring, no
 // qualification, no FieldResolution logic).
-function aggregateTruthFromLeaves(
+export function aggregateTruthFromLeaves(
   leaves: readonly PowerCriterionEvidence[],
 ): "TRUE" | "FALSE" | "UNKNOWN" {
   if (leaves.some((leaf) => leaf.truth === "FALSE")) return "FALSE";
@@ -376,7 +376,7 @@ function aggregateTruthFromLeaves(
   return "UNKNOWN";
 }
 
-function isValidConfigurationEvidence(
+export function isValidConfigurationEvidence(
   value: unknown,
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -438,7 +438,7 @@ function isValidPositiveCriterionEvidence(
 // own (already aggregate-validated) `truth` is TRUE -- a fabricated or
 // stale matching-configuration id, or one naming a configuration that
 // is not itself genuinely TRUE, is never genuine.
-function hasGenuineMatchingConfigurations(
+export function hasGenuineMatchingConfigurations(
   designEvaluation: PowerDesignEvaluation,
   configurationEvidence: readonly PowerConfigurationEvidence[],
 ): boolean {
@@ -452,7 +452,7 @@ function hasGenuineMatchingConfigurations(
   return designEvaluation.matching_configuration_ids.every((id) => trueConfigurationIds.has(id));
 }
 
-function isValidResultClass(
+export function isValidResultClass(
   value: unknown,
 ): value is "CONFIRMED_MATCH" | "CONFIRMED_NON_MATCH" | "INSUFFICIENT_DATA" {
   return (
@@ -460,7 +460,7 @@ function isValidResultClass(
   );
 }
 
-function isValidDesignEvaluation(value: unknown): value is PowerDesignEvaluation {
+export function isValidDesignEvaluation(value: unknown): value is PowerDesignEvaluation {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (

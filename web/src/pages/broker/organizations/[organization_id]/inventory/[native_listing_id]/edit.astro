@@ -512,8 +512,24 @@ const powerSearchFitDriveRaw = powerSearchFitDriveValues[0] ?? "";
 const powerSearchFitCountRaw = powerSearchFitCountValues[0] ?? "";
 const powerSearchFitHasAmbiguousParams =
   powerSearchFitDriveValues.length > 1 || powerSearchFitCountValues.length > 1;
+// Independent review amendment Finding B (round 1): the real `<select>`
+// controls' default empty option always submits its key with an empty
+// string value on an ordinary GET form submission (`psf_power_drive=&
+// psf_power_engine_count=`) -- mere key *presence* is never evidence a
+// broker actually selected a canonical criterion. Gating on presence
+// alone made clearing both controls indistinguishable from never having
+// submitted the form, which forwarded an empty scenario to FastAPI and
+// surfaced its correct `INVALID_SCENARIO` 400 as a broker-facing error for
+// an action that should produce no preview at all (contract "clearing
+// both leaves no preview"). Only a genuinely nonempty canonical selection
+// counts as "requested" -- a present-but-blank value is equivalent to
+// omission from this page's perspective, never silently promoted into an
+// API call. A duplicate query key (even of two blank values) is still
+// caught by `powerSearchFitHasAmbiguousParams` above and never reaches
+// this gate at all, so a genuinely malformed/ambiguous direct URL is still
+// never silently accepted.
 const powerSearchFitRequested =
-  powerSearchFitDriveValues.length > 0 || powerSearchFitCountValues.length > 0;
+  powerSearchFitDriveRaw !== "" || powerSearchFitCountRaw !== "";
 const powerSearchFitResult: PowerSearchFitResult | null =
   result.kind === "ok" &&
   organizationId &&
