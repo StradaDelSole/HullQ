@@ -452,3 +452,8 @@ See [`docs/HULLQ_CUSTOMER_ACQUISITION_AND_DIFFERENTIATION_2026-10-21.md`](HULLQ_
 ## Later binding Sail+Power launch boundary — 2026-10-22
 
 Both specialist Sail and Power products share broker Excellence, branding, lawful portability, true zero-lead reporting, lead operations, rights and verified onboarding. Internal Sail-first building is not an external Sail-only pilot. The Owner decision [#366](https://github.com/StradaDelSole/HullQ/issues/366) and implementation tracker [#372](https://github.com/StradaDelSole/HullQ/issues/372) control future category-specific broker Search-fit, importer/exporter classification and conditionally supported concrete claims. No change to original safety or Owner approval gates.
+
+
+## Owner-accepted broker productivity and commercial-value clarification — 2026-10-29
+
+The Owner reaffirmed **Broker Excellence and Buyer Excellence as equal product pillars** and directed HullQ to deliver a broad, high-quality set of **measurable professional time-saving workflows**, not merely monetized listings or a large superficial feature count. Accepted strategic detail, free-core and evidence boundaries, sustainable growth and execution traceability are recorded in [the Owner productivity decision](HULLQ_OWNER_DECISION_BROKER_PRODUCTIVITY_EXCELLENCE_2026-10-29.md) and [execution tracker #400](https://github.com/StradaDelSole/HullQ/issues/400). This clarification does not reopen existing mandatory broker requirements or authorize unreviewed code, paid plans, external data/pilots or SLICE-0096.
