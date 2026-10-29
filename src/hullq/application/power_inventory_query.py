@@ -132,8 +132,11 @@ __all__ = [
     "PowerSearchOutcome",
     "build_power_drive_query",
     "build_power_query",
+    "downgrade_mixed_non_match_to_insufficient_data",
     "evaluate_power_drive_requirement",
     "evaluate_power_requirement",
+    "resolve_power_category_admission",
+    "resolve_power_claim_only_category_from_observations",
 ]
 
 #: Exactly one active Power `CriterionDefinition` -- Power domain ordinal 1.
@@ -351,7 +354,7 @@ class PowerSearchOutcome:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_power_claim_only_category_from_observations(
+def resolve_power_claim_only_category_from_observations(
     observations: Sequence[CurrentPhysicalBoatClaimObservation],
 ) -> VesselCategoryResolutionResult:
     """Resolve the current `VesselCategory` directly from an already-fetched
@@ -375,7 +378,7 @@ def _resolve_power_claim_only_category_from_observations(
     return resolve_vessel_category(design_evidence=None, concrete_evidence=concrete_evidence)
 
 
-def _resolve_power_category_admission(
+def resolve_power_category_admission(
     category_resolution: VesselCategoryResolutionResult,
     publishing_organization_id: MarketplaceOrganizationId,
 ) -> tuple[bool, PowerCategoryExclusionEvidence | None]:
@@ -429,7 +432,7 @@ def _resolve_power_category_admission(
     return publisher_owns_power, exclusion
 
 
-def _downgrade_mixed_non_match_to_insufficient_data(
+def downgrade_mixed_non_match_to_insufficient_data(
     result_class: ResultClass,
     criterion_evidence: tuple[SearchCriterionEvidence, ...],
 ) -> tuple[ResultClass, tuple[SearchCriterionEvidence, ...]]:
@@ -566,8 +569,8 @@ def evaluate_power_claim_only_candidates(
 
     for candidate, freshness in eligible_candidates:
         observations = observations_by_boat[candidate.physical_boat_id]
-        category_resolution = _resolve_power_claim_only_category_from_observations(observations)
-        admitted, exclusion = _resolve_power_category_admission(
+        category_resolution = resolve_power_claim_only_category_from_observations(observations)
+        admitted, exclusion = resolve_power_category_admission(
             category_resolution, candidate.publishing_organization_id
         )
 
@@ -604,7 +607,7 @@ def evaluate_power_claim_only_candidates(
                 query=query,
                 active_definitions=active_definitions,
             )
-            result_class, criterion_evidence = _downgrade_mixed_non_match_to_insufficient_data(
+            result_class, criterion_evidence = downgrade_mixed_non_match_to_insufficient_data(
                 result_class, criterion_evidence
             )
 
@@ -754,7 +757,7 @@ def evaluate_power_design_linked_candidates(
             )
             # Review amendment §2: admission reuses the exact same
             # publisher-owned-POWER precondition the claim-only plane
-            # already enforces (`_resolve_power_category_admission`) --
+            # already enforces (`resolve_power_category_admission`) --
             # the READY contract's "No drive without a publisher's own
             # positive POWER ... in one revision qualifies" invariant
             # applies identically to both planes. `category_resolution.
@@ -766,7 +769,7 @@ def evaluate_power_design_linked_candidates(
             # `classify_concrete_candidate` -- that would let a bare
             # design-level category assertion stand in for the publisher's
             # own missing positive POWER claim.
-            admitted, category_exclusion = _resolve_power_category_admission(
+            admitted, category_exclusion = resolve_power_category_admission(
                 category_resolution, candidate.publishing_organization_id
             )
             if admitted:
@@ -780,7 +783,7 @@ def evaluate_power_design_linked_candidates(
                     active_definitions=active_definitions,
                     observations=snapshot.observations,
                 )
-                result_class, concrete_evidence = _downgrade_mixed_non_match_to_insufficient_data(
+                result_class, concrete_evidence = downgrade_mixed_non_match_to_insufficient_data(
                     result_class, concrete_evidence
                 )
             elif category_exclusion is not None:

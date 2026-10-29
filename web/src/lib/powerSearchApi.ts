@@ -160,14 +160,14 @@ export interface PowerSearchApiResponse {
 // *shape*/*consistency* check, never a "results must be non-empty" check.
 // ---------------------------------------------------------------------------
 
-function isSearchPowerDriveValue(value: unknown): value is SearchPowerDriveValue {
+export function isSearchPowerDriveValue(value: unknown): value is SearchPowerDriveValue {
   return (
     typeof value === "string" &&
     (SEARCH_POWER_DRIVE_VALUES as readonly string[]).includes(value)
   );
 }
 
-function isSearchPowerEngineCountValue(value: unknown): value is SearchPowerEngineCountValue {
+export function isSearchPowerEngineCountValue(value: unknown): value is SearchPowerEngineCountValue {
   return (
     typeof value === "string" &&
     (SEARCH_POWER_ENGINE_COUNT_VALUES as readonly string[]).includes(value)
@@ -207,7 +207,7 @@ function isFreshnessStatus(value: unknown): value is "CONFIRMED" | "DUE_FOR_CONF
   return value === "CONFIRMED" || value === "DUE_FOR_CONFIRMATION";
 }
 
-function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN" {
+export function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN" {
   return value === "TRUE" || value === "FALSE" || value === "UNKNOWN";
 }
 
@@ -224,7 +224,7 @@ function isValidTruthState(value: unknown): value is "TRUE" | "FALSE" | "UNKNOWN
 // threshold_min=threshold_max"), each an exact canonical 1-8 token -- never
 // MINIMUM/MAXIMUM, never differing thresholds, never a non-canonical
 // numeric spelling.
-function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
+export function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   if (v.kind === "CATEGORICAL") {
@@ -252,7 +252,7 @@ function isValidLeafCriterion(value: unknown): value is PowerLeafCriterion {
 // actually requested. `expectedPowerDrive`/`expectedPowerEngineCount` are
 // `null` when that criterion was not part of the request at all, in which
 // case no evidence leaf for that field may legitimately appear.
-function criterionMatchesActiveRequirement(
+export function criterionMatchesActiveRequirement(
   criterion: PowerLeafCriterion,
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -271,7 +271,7 @@ function criterionMatchesActiveRequirement(
 // requested one exactly (RANGE with threshold_min==threshold_max for
 // NUMERIC, strict `==` for CATEGORICAL). A `TRUE` leaf whose own
 // `observed_value` differs from its own requested value is never genuine.
-function observedValueMatchesRequestedValue(
+export function observedValueMatchesRequestedValue(
   criterion: PowerLeafCriterion,
   observedValue: string,
 ): boolean {
@@ -294,7 +294,7 @@ function observedValueMatchesRequestedValue(
 // requested one. `FALSE` legitimately carries either a differing concrete
 // observed value or `null` (e.g. a `NOT_APPLICABLE` confirmed exclusion
 // never compares a concrete value) -- never suppressed here.
-function isValidCriterionEvidence(
+export function isValidCriterionEvidence(
   value: unknown,
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -341,7 +341,7 @@ function isValidCriterionEvidence(
 // This does not constrain each leaf's own `truth` -- a non-matching or
 // `UNKNOWN` configuration's evidence still legitimately covers every
 // active criterion, just not all `TRUE`.
-function hasExactActiveCriterionCoverage(
+export function hasExactActiveCriterionCoverage(
   evidence: readonly PowerCriterionEvidence[],
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -368,7 +368,7 @@ function hasExactActiveCriterionCoverage(
 // this is a generic response-contract consistency guard, never a
 // reimplementation of the backend Search evaluator (no scoring, no
 // qualification, no FieldResolution logic).
-function aggregateTruthFromLeaves(
+export function aggregateTruthFromLeaves(
   leaves: readonly PowerCriterionEvidence[],
 ): "TRUE" | "FALSE" | "UNKNOWN" {
   if (leaves.some((leaf) => leaf.truth === "FALSE")) return "FALSE";
@@ -376,7 +376,7 @@ function aggregateTruthFromLeaves(
   return "UNKNOWN";
 }
 
-function isValidConfigurationEvidence(
+export function isValidConfigurationEvidence(
   value: unknown,
   expectedPowerDrive: string | null,
   expectedPowerEngineCount: string | null,
@@ -430,29 +430,61 @@ function isValidPositiveCriterionEvidence(
   );
 }
 
-// SLICE-0094 independent-review amendment Round 3, Finding G3: a design-
-// linked match's own `design_evaluation.result_class` must genuinely be
-// CONFIRMED_MATCH (the only result class this array ever serializes), and
-// EVERY id it lists in `matching_configuration_ids` must correspond to an
-// actually-present configuration in `design_configuration_evidence` whose
-// own (already aggregate-validated) `truth` is TRUE -- a fabricated or
-// stale matching-configuration id, or one naming a configuration that
-// is not itself genuinely TRUE, is never genuine.
-function hasGenuineMatchingConfigurations(
+// SLICE-0094 independent-review amendment Round 3, Finding G3; SLICE-0095
+// independent-review amendment Round 2, Finding F: a design-linked match's
+// own `design_evaluation.result_class` must genuinely be CONFIRMED_MATCH
+// (the only result class this array ever serializes), and
+// `matching_configuration_ids` must name EXACTLY the set of
+// actually-present configurations in `design_configuration_evidence` whose
+// own (already aggregate-validated) `truth` is TRUE -- not merely a
+// subset. `hullq.search.configuration_engine.evaluate_design_configuration_set`
+// declares CONFIRMED_MATCH whenever *any* configuration is TRUE and always
+// lists every TRUE configuration id, so a response omitting a second
+// genuinely TRUE configuration from the list (or naming a fabricated/
+// stale/non-TRUE id, or duplicating an id) is never genuine.
+export function hasGenuineMatchingConfigurations(
   designEvaluation: PowerDesignEvaluation,
   configurationEvidence: readonly PowerConfigurationEvidence[],
 ): boolean {
   if (designEvaluation.result_class !== "CONFIRMED_MATCH") return false;
-  if (designEvaluation.matching_configuration_ids.length === 0) return false;
+  const matchingIds = designEvaluation.matching_configuration_ids;
+  if (matchingIds.length === 0) return false;
+  const uniqueMatchingIds = new Set(matchingIds);
+  if (uniqueMatchingIds.size !== matchingIds.length) return false; // no duplicate matching ids
   const trueConfigurationIds = new Set(
     configurationEvidence
       .filter((configuration) => configuration.truth === "TRUE")
       .map((configuration) => configuration.configuration_id),
   );
-  return designEvaluation.matching_configuration_ids.every((id) => trueConfigurationIds.has(id));
+  if (trueConfigurationIds.size !== uniqueMatchingIds.size) return false; // exact set, not a subset
+  return matchingIds.every((id) => trueConfigurationIds.has(id));
 }
 
-function isValidResultClass(
+// SLICE-0095 independent-review amendment Round 2, Finding F: every
+// `design_configuration_evidence` entry's own `configuration_id` must be
+// unique within the array -- the backend's `ConfigurationIdentity` is
+// unique per resolved baseline/NamedVariant configuration, so a duplicate
+// id can only be a fabricated/corrupted response.
+export function hasUniqueConfigurationIds(
+  configurationEvidence: readonly PowerConfigurationEvidence[],
+): boolean {
+  const ids = configurationEvidence.map((configuration) => configuration.configuration_id);
+  return new Set(ids).size === ids.length;
+}
+
+// SLICE-0095 independent-review amendment Round 2, Finding F: every listed
+// configuration must genuinely belong to the same BoatDesign the
+// surrounding `design_evaluation.design_id` names -- a configuration
+// naming a different `boat_design_id` could only be a cross-design mixup,
+// never a real per-design configuration set.
+export function hasConsistentBoatDesignId(
+  designId: string,
+  configurationEvidence: readonly PowerConfigurationEvidence[],
+): boolean {
+  return configurationEvidence.every((configuration) => configuration.boat_design_id === designId);
+}
+
+export function isValidResultClass(
   value: unknown,
 ): value is "CONFIRMED_MATCH" | "CONFIRMED_NON_MATCH" | "INSUFFICIENT_DATA" {
   return (
@@ -460,7 +492,7 @@ function isValidResultClass(
   );
 }
 
-function isValidDesignEvaluation(value: unknown): value is PowerDesignEvaluation {
+export function isValidDesignEvaluation(value: unknown): value is PowerDesignEvaluation {
   if (typeof value !== "object" || value === null) return false;
   const v = value as Record<string, unknown>;
   return (
@@ -498,7 +530,12 @@ function isValidDesignLinkedMatch(
     v.design_configuration_evidence.every((evidence: unknown) =>
       isValidConfigurationEvidence(evidence, expectedPowerDrive, expectedPowerEngineCount),
     ) &&
+    hasUniqueConfigurationIds(v.design_configuration_evidence as PowerConfigurationEvidence[]) &&
     isValidDesignEvaluation(v.design_evaluation) &&
+    hasConsistentBoatDesignId(
+      (v.design_evaluation as PowerDesignEvaluation).design_id,
+      v.design_configuration_evidence as PowerConfigurationEvidence[],
+    ) &&
     hasGenuineMatchingConfigurations(
       v.design_evaluation as PowerDesignEvaluation,
       v.design_configuration_evidence as PowerConfigurationEvidence[],

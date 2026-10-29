@@ -203,6 +203,10 @@ from hullq.application.owner_direct_draft import (
     record_to_public_dict,
     update_owner_direct_draft_for_account,
 )
+from hullq.application.power_broker_search_fit import (
+    PowerSearchFitOutcome,
+    evaluate_organization_listing_power_search_fit,
+)
 from hullq.application.power_inventory_query import (
     PowerClaimOnlyMatch,
     PowerDesignLinkedMatch,
@@ -2359,6 +2363,111 @@ def create_app(
         finally:
             conn.close()
         return _search_fit_response(result)
+
+    # -----------------------------------------------------------------
+    # SLICE-0095: authorized single-target hypothetical DRAFT Power
+    # Search-fit preview -- structurally separate from the Sail preview
+    # above, sharing no parser/result semantics (contract Required
+    # Behavior §1).
+    # -----------------------------------------------------------------
+
+    def _power_search_fit_response(result: Any) -> JSONResponse:
+        # Every outcome maps to a mechanically distinct status/body -- never
+        # a false-OK shape for a denied/invalid/not-previewable/faulted
+        # attempt (mirrors `_search_fit_response`).
+        outcome = result.outcome
+        if outcome is PowerSearchFitOutcome.ORG_NOT_FOUND_OR_DENIED:
+            raise HTTPException(status_code=404, detail="organization not found")
+        if outcome is PowerSearchFitOutcome.MFA_REQUIRED:
+            return JSONResponse({"error": "mfa_required"}, status_code=403)
+        if outcome is PowerSearchFitOutcome.PUBLISHER_ROLE_REQUIRED:
+            return JSONResponse(
+                {"error": "publishing_denied", "reason": "PUBLISHER_ROLE_REQUIRED"},
+                status_code=403,
+            )
+        if outcome is PowerSearchFitOutcome.LISTING_NOT_FOUND:
+            raise HTTPException(status_code=404, detail="listing not found")
+        if outcome is PowerSearchFitOutcome.INVALID_SCENARIO:
+            return JSONResponse(
+                {"error": "invalid_scenario", "message": result.invalid_reason}, status_code=400
+            )
+        if outcome is PowerSearchFitOutcome.NOT_PREVIEWABLE:
+            return JSONResponse({"error": "not_previewable"}, status_code=409)
+        if outcome is PowerSearchFitOutcome.CHAIN_INTEGRITY_FAULT:
+            # A service/integrity fault is never a technical result, never 0
+            # matches, never UNKNOWN.
+            return JSONResponse({"error": "chain_integrity_fault"}, status_code=503)
+        assert outcome is PowerSearchFitOutcome.OK
+        view = result.view
+        assert view is not None
+        active_requirement = _build_power_active_requirement(
+            power_drive=view.power_drive, power_engine_count=view.power_engine_count
+        )
+        return JSONResponse(
+            {
+                "native_listing_id": view.native_listing_id,
+                "domain": "POWER",
+                "active_requirement": active_requirement,
+                "result_class": view.result_class.value,
+                # Reuses the identical SLICE-0055 public Search serializers
+                # -- this preview's typed evidence is the exact same
+                # `DesignQueryEvaluation`/`ConfigurationEvidence`/
+                # `SearchCriterionEvidence` shapes, never a second encoding.
+                "design_evaluation": (
+                    _serialize_design_evaluation(view.design_evaluation)
+                    if view.design_evaluation is not None
+                    else None
+                ),
+                "design_configuration_evidence": [
+                    _serialize_configuration_evidence(evidence)
+                    for evidence in view.design_configuration_evidence
+                ],
+                "criterion_evidence": [
+                    _serialize_criterion_evidence(evidence) for evidence in view.criterion_evidence
+                ],
+                # Bounded, enum-only -- never the full
+                # VesselCategoryResolutionResult, which can name a different
+                # claiming Organization.
+                "vessel_category_exclusion": (
+                    {
+                        "resolution": view.vessel_category_exclusion.resolution.value,
+                        "reason": view.vessel_category_exclusion.reason.value,
+                    }
+                    if view.vessel_category_exclusion is not None
+                    else None
+                ),
+                "source_basis": (
+                    view.source_basis.value if view.source_basis is not None else None
+                ),
+                "blockers": [blocker.value for blocker in view.blockers],
+            }
+        )
+
+    @app.get(
+        "/api/broker/organizations/{organization_id}/inventory/{native_listing_id}/power-search-fit"
+    )
+    def get_inventory_power_search_fit_route(
+        organization_id: str, native_listing_id: str, request: Request
+    ) -> JSONResponse:
+        session = _require_session(request)
+        if session is None:
+            raise HTTPException(status_code=401, detail="authentication required")
+        raw_query_params: dict[str, list[str]] = {
+            key: request.query_params.getlist(key) for key in dict(request.query_params)
+        }
+        conn = open_connection(resolved_database_url)
+        try:
+            result = evaluate_organization_listing_power_search_fit(
+                conn,
+                session,
+                organization_id,
+                native_listing_id,
+                raw_query_params,
+                as_of=_current_as_of(),
+            )
+        finally:
+            conn.close()
+        return _power_search_fit_response(result)
 
     # -----------------------------------------------------------------
     # SLICE-0082: broker-confirmed PhysicalBoat -> BoatDesign association
