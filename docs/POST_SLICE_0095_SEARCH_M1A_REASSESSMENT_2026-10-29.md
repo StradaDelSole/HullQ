@@ -1,9 +1,13 @@
 # HullQ — Post-SLICE-0095 Search Foundation and M1a Buyer Workflow Reassessment
 
 **Date:** 2026-10-29 (Europe/Vienna)  
-**Status:** PROPOSED — docs-only reassessment for independent review and explicit Owner capability selection; **NOT READY / NOT SELECTED**  
+**Status:** OWNER-SELECTED REASSESSMENT — Option A selected by Owner on 2026-10-29 for subsequent independently reviewed SLICE-0096 readiness; **SLICE-0096 NOT READY / NOT STARTED**  
 **Source-of-truth baseline:** canonical `main` `e28b2b7a998694131164d51519fef198b5c3ca3c` (Owner-accepted SLICE-0095 plus reviewed docs-only #401 and #402).  
-**Current execution queue:** SLICE-0096 is **NOT SELECTED / NOT READY**. This document is not a numbered slice, implementation prompt or release gate.
+**Current execution queue:** SLICE-0096 **OPTION A SELECTED FOR READINESS / NOT READY / NOT STARTED**. This document is not a numbered slice implementation contract, implementation prompt or release gate.
+
+## Owner selection record
+
+**2026-10-29, explicit Owner approval:** “akzeptiere - go ahead” in direct response to selecting **SLICE-0096: scalable, correctly bounded Sail+Power technical Search results**. This selects only **Option A** for normal READY preparation. Option B (M1a buyer journey) and Option C (314-candidate field waves) remain planned successors, not additional 0096 deliverables. The independent readiness/merge/Owner-local START and later exact-HEAD implementation review/Owner acceptance gates remain unchanged.
 
 ## 1. Source reconciliation and mandate
 
@@ -37,9 +41,9 @@ This order retains equal Buyer Excellence and Broker Productivity Excellence. Th
 - **GENUINELY_OPEN:** cheapest correct Search read strategy (batched observations/qualified SQL preselection/indexes, bounded staged scan, projection/read model or combination) and precise measurable nonproduction performance acceptance budgets **based on actual baseline**, not guessed targets. Cross-surface field registry remains an architecture candidate, not accepted.
 - **CONFLICT_OR_REGRESSION to avoid:** `LIMIT` **before** evaluating all eligible candidates and then claiming global page exhaustiveness can silently drop true matches; stale positive search projections; multiplying BoatDesign evidence across different named variants or physical-claim revisions; leaking cross-organization evidence; pulling DRAFT/non-D29 listings into public results; collapsing `PUBLISHER_CLAIM` into independent verification; reclassifying motorsailers by marketing names; weakening legacy UNKNOWN compatibility or commercial Search neutrality.
 
-## 4. Proposed next-capability options (NOT selected)
+## 4. Next-capability plan (Option A Owner-selected; B/C remain unselected)
 
-### Option A — recommended first: Measured bounded native Search result retrieval (Sail + Power)
+### Option A — OWNER-SELECTED for SLICE-0096 readiness: Measured bounded native Search result retrieval (Sail + Power)
 
 **One observable outcome:** a reproducibly measured, correct, **bounded** first-page technical Search result retrieval path for both categories, over genuine qualifying synthetic ACTIVE/D29-eligible listings, with truthful continuation/end-of-results semantics and matching source evidence. This is a Search safety/product capability, **not** a blanket data-model refactor.
 
@@ -69,4 +73,4 @@ Only after a useful and scalable result pathway: prioritize useful existing neut
 - **Visible result:** Owner can run a synthetic nonproduction first-page buyer Search and inspect evidence, continuation and measured performance; the accepted blocker exception, if needed for preparatory profiling, must be stated precisely in readiness.
 - **Trigger-gate count:** **11** unchanged, no new technical facet. Search-scale #355 remains OPEN until actual gate evidence, regardless of this docs-only plan. Buyer contact verification and other external production gates remain unaffected.
 - **Production:** `PRODUCTION_READINESS_GATE_STATUS=IN_PROGRESS`; no external broker/owner production data, no external pilot, no public launch, no production provider purchase; joint full Sail+Power external launch #366 preserved. `PRODUCTION_LAUNCH_PACK_PHASE=NOT_STARTED`.
-- **Workflow:** First independently review/merge this docs-only **PROPOSED** reassessment as appropriate. **Owner then explicitly selects** the next bounded capability. Only then author a separate fully reconciled `SLICE-0096` READY candidate, independently review/reconcile/CI and merge, then obtain actual Owner-local `START_SLICE.bat` output. **No hand-written initial implementation prompt; no shortcut around exact-head review, Owner acceptance, separate acceptance closure and FINISH.**
+- **Workflow:** The Owner expressly selected Option A on 2026-10-29 (“akzeptiere - go ahead”) **for readiness preparation only**. Independently review/merge this decision-bearing docs-only reassessment, author a separate fully reconciled `SLICE-0096` READY candidate and any indispensable versioned Search paging contract, independently review exact HEAD/CI and merge, then obtain actual Owner-local `START_SLICE.bat 0096` output. **No hand-written initial implementation prompt; no shortcut around exact-head review, Owner acceptance, separate acceptance closure and FINISH.**
