@@ -1,7 +1,7 @@
 # HullQ Slice Index
 
 **Status:** ACTIVE navigation board  
-**Updated:** 2026-10-28  
+**Updated:** 2026-10-29  
 **Canonical current-state authority:** `docs/PROJECT_STATE.md`
 
 This file is deliberately a **compact navigation index**, not a second historical status authority.
@@ -16,9 +16,9 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 ## Current execution boundary
 
 ```text
-Latest Owner-accepted slice:       SLICE-0094 (implementation and closure merged; Owner-local FINISH SUCCESS)
-Current queue:                  SLICE-0095 — SELECTED / READY docs merged (#395); local Owner START 0095 next
-Current capability:             9 Sail hard criteria + 2 qualified Power criteria (current drive and installed engine count), with same-configuration AND
+Latest Owner-accepted slice:       SLICE-0095 (implementation merged, Owner accepted; formal docs closure recorded; Owner-local FINISH 0095 PENDING)
+Current queue:                  SLICE-0096 — NOT SELECTED / NOT READY; post-0095 Owner UAT and strategy checkpoint #397 first
+Current capability:             9 Sail + 2 Power buyer hard criteria, with same-configuration AND; private Power Broker DRAFT Search-fit for both
 Current operational restriction: No real external broker/owner-direct data or pilot (#355); no joint release (#366)
 Technical native Search count:  11 accepted globally = Sail 9 / Power 2; full Power parity #372 and Search scale #355 still outstanding
 Production Launch Pack:         NOT_STARTED
@@ -34,9 +34,9 @@ Production Launch Pack:         NOT_STARTED
 
 - SLICE-0093 is **Owner-accepted IMPLEMENTATION**: first source-qualified Power hard technical criterion (`power_drive=SHAFT|STERNDRIVE|POD|WATERJET|OUTBOARD`), existing shared Search kernel with own current publisher POWER category + drive and D29 gating, limited genuine v0.6 shaft/outboard bridge, separate five-locale noindex Power buyer routes, valid NautiX Sail-only export guard and unchanged nine Sail criteria. Independently reviewed exact HEAD `4b9060e7fce7ebb7a7893c87890571210f94d825` with all Findings A–K and publisher-owned-category invariant closed; full exact-head six-job CI/manufacturer SUCCESS; Owner explicitly accepted 2026-10-28. PR #390 squash merged as `c38a60d821a6e9a88fba023a0008a36a3dcd51e1`. Formal closure: `docs/slices/SLICE-0093-acceptance-closure.md`. Global accepted count **10 = Sail 9 / Power 1** in this separate docs-only closure; Owner-local FINISH 0093 confirmed SUCCESS. #355 scale/real-data STOP, #366 joint release and #372 full Power technical parity OPEN. No external pilot/public launch authorized.
 
-- SLICE-0094 is **Owner-accepted IMPLEMENTATION** on independently reviewed exact HEAD `76f542635d3d04ae9e8c4c05c8a704912f0ba3d4` with closed findings A–F/C2/D2/F2/G3/C3. PR #393 squash merged as `9ac9705825bcc3bdab83a85c74f011eaf285d67a`. It implements source-qualified immutable current principal propulsion engine count (public exact tokens 1–8; publisher authoring 1–32), real same-current-revision and same-FieldResolution-qualified-configuration MUST/AND with the accepted Power drive criterion, five-locale buyer source-labelled evidence, strict 400/308/502 and actual browser/PG18 proof, without changing nine Sail criteria. Exact accepted-HEAD six-job CI/manufacturer and applicable Deploy workflow SUCCESS. Formal docs-only acceptance is `docs/slices/SLICE-0094-acceptance-closure.md`; **Owner-local FINISH 0094 confirmed SUCCESS**. Accepted global count **11 = Sail 9 / Power 2** is recorded in this separate docs-only closure. Next READY proposal is SLICE-0095 Power Broker DRAFT Search-fit; no implementation START yet, no external inventory/pilot/public launch; #355/#366/#372 remain OPEN.
+- SLICE-0094 is **Owner-accepted IMPLEMENTATION** on independently reviewed exact HEAD `76f542635d3d04ae9e8c4c05c8a704912f0ba3d4` with closed findings A–F/C2/D2/F2/G3/C3. PR #393 squash merged as `9ac9705825bcc3bdab83a85c74f011eaf285d67a`. It implements source-qualified immutable current principal propulsion engine count (public exact tokens 1–8; publisher authoring 1–32), real same-current-revision and same-FieldResolution-qualified-configuration MUST/AND with the accepted Power drive criterion, five-locale buyer source-labelled evidence, strict 400/308/502 and actual browser/PG18 proof, without changing nine Sail criteria. Exact accepted-HEAD six-job CI/manufacturer and applicable Deploy workflow SUCCESS. Formal docs-only acceptance is `docs/slices/SLICE-0094-acceptance-closure.md`; **Owner-local FINISH 0094 confirmed SUCCESS**. Accepted global count **11 = Sail 9 / Power 2** is recorded in this separate docs-only closure. SLICE-0095 subsequently implemented the private Power Broker DRAFT Search-fit against the existing two Power criteria; no external inventory/pilot/public launch; #355/#366/#372 remain OPEN.
 
-- SLICE-0095 is **SELECTED / READY DOCS MERGED**: the two accepted Power Buyer filters (current drive and installed engine count) must also support an authorized, read-only promoted-DRAFT Power Broker Search-fit. Both qualified design-linked and design-unresolved publisher-claim truth paths must work, with exact Organization PUBLISHER/MFA/lifecycle controls and same-current-revision/same-configuration AND. Controlling READY proposal: `docs/slices/SLICE-0095-power-broker-prepublication-search-fit.md` and `specs/POWER_BROKER_SEARCH_FIT_CONTRACT.v0.1.md`. No new Search criterion, external pilot or Power import/export. Readiness was reviewed with exact-head CI/manufacturer/Deploy SUCCESS and squash-merged via PR #395 as `d8d7398839bb6515e995c39810b2f8a601186f1f`. Next is the Owner's local START 0095. The launcher automatically copies its Claude instruction to the clipboard from the pre-existing READY/spec; no routine console output goes to ChatGPT. Implementation not yet confirmed started.
+- SLICE-0095 is **OWNER-ACCEPTED IMPLEMENTATION**, exact independently reviewed HEAD `8b588f8e75d88bb2a0abc940a489bca4b1776c8c`, closed A–F, six-job CI/manufacturer/applicable Deploy build SUCCESS, explicitly Owner-accepted 2026-10-29, [implementation PR #398](https://github.com/StradaDelSole/HullQ/pull/398) squash-merged as `a115d70fbccfa69db23fa70734c0bb633772af22`. The private authorized Power Broker lifecycle-DRAFT Search-fit covers the two already accepted Power Buyer criteria (`power_drive`, `power_engine_count`) individually and as same-revision/configuration AND, with design-linked and publisher-claim-only evidence, no writes or DRAFT public leak. See `docs/slices/SLICE-0095-acceptance-closure.md` and controlling contract. **11 buyer technical dimensions unchanged**, no third Power filter. **Owner-local FINISH 0095 pending**. #355/#366/#372 remain open. [Checkpoint #397](https://github.com/StradaDelSole/HullQ/issues/397) explicitly schedules Owner hands-on UAT, a fresh external Claude holistic review and broker/private mixed-supply discussion before another slice is selected.
 
 ## Historical execution ranges
 
@@ -50,7 +50,8 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0092 | Owner-accepted claim-only Sail Search implementation; Owner-local FINISH SUCCESS |
 | SLICE-0093 | Owner-accepted Power drive-configuration Search criterion (global #10, Power-domain #1); implementation+closure merged; Owner-local FINISH SUCCESS |
 | SLICE-0094 | Owner-accepted second Power criterion (current installed engine count) and conjunctive same-config Search; implementation+closure merged; Owner-local FINISH SUCCESS |
-| SLICE-0095 | SELECTED / READY merged: Power Broker DRAFT Search-fit; Owner local START next, clipboard instruction is auto-generated |
+| SLICE-0095 | Owner-accepted Power Broker private DRAFT Search-fit; implementation + docs closure recorded; Owner-local FINISH pending |
+| SLICE-0096 | NOT SELECTED / NOT READY — #397 Owner test + external holistic review + mixed-supply strategy first |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 
