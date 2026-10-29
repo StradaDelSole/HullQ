@@ -221,6 +221,18 @@ export interface SearchResultBody {
   /** SLICE-0092: entirely separate, additive result surface -- see `PublisherClaimMatch`. */
   publisher_claim_matches?: PublisherClaimMatch[];
   publisher_claim_match_count?: number;
+  /**
+   * SLICE-0096 bounded-page envelope. `confirmed_match_count`/
+   * `insufficient_data_count`/`publisher_claim_match_count` above are now
+   * page-local, never a global total. `evaluation_state` is `"PARTIAL"`
+   * (unchecked candidates may remain, even with zero matches on this exact
+   * page) or `"COMPLETE"` (boundedly proven exhausted). `next_cursor` is
+   * the opaque continuation token for the next page -- present if and only
+   * if `evaluation_state === "PARTIAL"`, never decoded/interpreted here.
+   */
+  page_size?: number;
+  evaluation_state?: "PARTIAL" | "COMPLETE";
+  next_cursor?: string | null;
 }
 
 export interface SearchInvalidBody {

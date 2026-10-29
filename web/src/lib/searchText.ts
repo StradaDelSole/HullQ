@@ -160,6 +160,16 @@ export interface SearchText {
    * missing field, mirroring `insufficientDataText`'s draft-only wording.
    */
   insufficientDataTextGeneric: (count: number) => string;
+  /**
+   * SLICE-0096: shown whenever the current bounded result page is
+   * `PARTIAL` -- truthfully distinct from "no matching boats": unchecked
+   * candidates remain, including the possibility of a zero-match page
+   * (contract §1: "the UI MUST say the search is incomplete and allow
+   * continuation. It must NEVER present that as 'no matching boats'").
+   */
+  partialResultsNote: string;
+  /** Label for the continuation control show only while the page is PARTIAL. */
+  showMoreResultsLabel: string;
   viewListing: string;
   /** SLICE-0052: badge/label text distinguishing CONFIRMED from DUE_FOR_CONFIRMATION. */
   freshnessConfirmedLabel: string;
@@ -355,6 +365,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} additional listing(s) could satisfy this requirement but are not shown as a match: the broker's draft is missing, unknown, or conflicts with another organization's current statement.`,
     insufficientDataTextGeneric: (count) =>
       `${count} additional listing(s) could satisfy this requirement but are not shown as a match: the broker's evidence is missing, unknown, or conflicts with another organization's current statement.`,
+    partialResultsNote:
+      "This search is not yet complete. More listings may still be checked -- this is not the full result.",
+    showMoreResultsLabel: "Show more results",
     viewListing: "View listing",
     freshnessConfirmedLabel: "Confirmed current",
     freshnessDueLabel: "Reconfirmation due",
@@ -532,6 +545,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} weitere(s) Angebot(e) könnten diese Anforderung erfüllen, werden aber nicht als Treffer angezeigt: Der Tiefgang fehlt, ist unbekannt oder widerspricht der aktuellen Angabe einer anderen Organisation.`,
     insufficientDataTextGeneric: (count) =>
       `${count} weitere(s) Angebot(e) könnten diese Anforderung erfüllen, werden aber nicht als Treffer angezeigt: Die Angaben des Maklers fehlen, sind unbekannt oder widersprechen der aktuellen Angabe einer anderen Organisation.`,
+    partialResultsNote:
+      "Diese Suche ist noch nicht abgeschlossen. Es können noch weitere Angebote geprüft werden -- dies ist nicht das vollständige Ergebnis.",
+    showMoreResultsLabel: "Weitere Ergebnisse anzeigen",
     viewListing: "Angebot ansehen",
     freshnessConfirmedLabel: "Aktuell bestätigt",
     freshnessDueLabel: "Bestätigung ausstehend",
@@ -710,6 +726,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} annonce(s) supplémentaire(s) pourraient satisfaire cette exigence mais ne sont pas affichées comme correspondance : le tirant d'eau est manquant, inconnu, ou contredit la déclaration actuelle d'une autre organisation.`,
     insufficientDataTextGeneric: (count) =>
       `${count} annonce(s) supplémentaire(s) pourraient satisfaire cette exigence mais ne sont pas affichées comme correspondance : les informations du courtier sont manquantes, inconnues, ou contredisent la déclaration actuelle d'une autre organisation.`,
+    partialResultsNote:
+      "Cette recherche n'est pas encore terminée. D'autres annonces peuvent encore être vérifiées -- ceci n'est pas le résultat complet.",
+    showMoreResultsLabel: "Afficher plus de résultats",
     viewListing: "Voir l'annonce",
     freshnessConfirmedLabel: "Confirmé à jour",
     freshnessDueLabel: "Reconfirmation attendue",
@@ -888,6 +907,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} anúncio(s) adicional(is) poderiam satisfazer este requisito mas não são apresentados como correspondência: o calado está em falta, é desconhecido, ou entra em conflito com a declaração atual de outra organização.`,
     insufficientDataTextGeneric: (count) =>
       `${count} anúncio(s) adicional(is) poderiam satisfazer este requisito mas não são apresentados como correspondência: a informação do corretor está em falta, é desconhecida, ou entra em conflito com a declaração atual de outra organização.`,
+    partialResultsNote:
+      "Esta pesquisa ainda não está concluída. Mais anúncios podem ainda ser verificados -- este não é o resultado completo.",
+    showMoreResultsLabel: "Mostrar mais resultados",
     viewListing: "Ver anúncio",
     freshnessConfirmedLabel: "Confirmado atual",
     freshnessDueLabel: "Reconfirmação pendente",
@@ -1066,6 +1088,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} anuncio(s) adicional(es) podrían cumplir este requisito pero no se muestran como coincidencia: falta el calado, es desconocido, o entra en conflicto con la declaración actual de otra organización.`,
     insufficientDataTextGeneric: (count) =>
       `${count} anuncio(s) adicional(es) podrían cumplir este requisito pero no se muestran como coincidencia: falta información del bróker, es desconocida, o entra en conflicto con la declaración actual de otra organización.`,
+    partialResultsNote:
+      "Esta búsqueda aún no se ha completado. Es posible que se sigan comprobando más anuncios -- este no es el resultado completo.",
+    showMoreResultsLabel: "Mostrar más resultados",
     viewListing: "Ver anuncio",
     freshnessConfirmedLabel: "Confirmado vigente",
     freshnessDueLabel: "Reconfirmación pendiente",

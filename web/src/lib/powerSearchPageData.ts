@@ -22,6 +22,9 @@ export type PowerSearchPageData =
       designLinkedInsufficientDataCount: number;
       publisherClaimMatches: PowerClaimOnlyMatch[];
       publisherClaimMatchCount: number;
+      /** SLICE-0096 -- see `SearchPageData`'s identical fields in `searchPageData.ts`. */
+      evaluationState: "PARTIAL" | "COMPLETE";
+      nextPageQueryString: string | null;
     };
 
 export async function loadPowerSearchPageData(
@@ -37,6 +40,14 @@ export async function loadPowerSearchPageData(
 
   if (response.status === 200 && response.result !== null) {
     const result = response.result;
+    const nextCursor = result.next_cursor ?? null;
+    let nextPageQueryString: string | null = null;
+    if (nextCursor !== null) {
+      const params = new URLSearchParams(queryString);
+      params.delete("page_after");
+      params.set("page_after", nextCursor);
+      nextPageQueryString = params.toString();
+    }
     return {
       kind: "ok",
       activeRequirement: result.active_requirement,
@@ -45,6 +56,8 @@ export async function loadPowerSearchPageData(
       designLinkedInsufficientDataCount: result.design_linked_insufficient_data_count ?? 0,
       publisherClaimMatches: result.publisher_claim_matches ?? [],
       publisherClaimMatchCount: result.publisher_claim_match_count ?? 0,
+      evaluationState: result.evaluation_state ?? "PARTIAL",
+      nextPageQueryString,
     };
   }
 

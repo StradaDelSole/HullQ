@@ -48,6 +48,9 @@ export interface PowerSearchText {
   noDesignLinkedMatches: string;
   noDesignLinkedMatchesButPublisherClaimsExist: (count: number) => string;
   insufficientDataText: (count: number) => string;
+  /** SLICE-0096 -- see `SearchText.partialResultsNote` in `searchText.ts`. */
+  partialResultsNote: string;
+  showMoreResultsLabel: string;
   publisherClaimHeading: (count: number) => string;
   publisherClaimDisclaimer: string;
   viewListing: string;
@@ -120,6 +123,9 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       `No design-confirmed matches, but ${count} publisher-claimed listing(s) below.`,
     insufficientDataText: (count) =>
       `${count} listing(s) have insufficient data to confirm or exclude this drive arrangement.`,
+    partialResultsNote:
+      "This search is not yet complete. More listings may still be checked -- this is not the full result.",
+    showMoreResultsLabel: "Show more results",
     publisherClaimHeading: (count) => `Publisher-claimed matches (${count})`,
     publisherClaimDisclaimer:
       "These listings are shown on the publishing broker's own current statement, not independently verified.",
@@ -178,6 +184,9 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       `Keine design-bestätigten Treffer, aber ${count} Angebot(e) laut Anbieterangabe unten.`,
     insufficientDataText: (count) =>
       `${count} Angebot(e) haben keine ausreichenden Daten, um diese Antriebsart zu bestätigen oder auszuschließen.`,
+    partialResultsNote:
+      "Diese Suche ist noch nicht abgeschlossen. Es können noch weitere Angebote geprüft werden -- dies ist nicht das vollständige Ergebnis.",
+    showMoreResultsLabel: "Weitere Ergebnisse anzeigen",
     publisherClaimHeading: (count) => `Treffer laut Anbieterangabe (${count})`,
     publisherClaimDisclaimer:
       "Diese Angebote beruhen auf der aktuellen Angabe des anbietenden Maklers, nicht auf unabhängiger Prüfung.",
@@ -236,6 +245,9 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       `Aucun résultat confirmé par le design, mais ${count} annonce(s) ci-dessous selon le vendeur.`,
     insufficientDataText: (count) =>
       `${count} annonce(s) ne disposent pas de données suffisantes pour confirmer ou exclure cette configuration.`,
+    partialResultsNote:
+      "Cette recherche n'est pas encore terminée. D'autres annonces peuvent encore être vérifiées -- ceci n'est pas le résultat complet.",
+    showMoreResultsLabel: "Afficher plus de résultats",
     publisherClaimHeading: (count) => `Résultats selon le vendeur (${count})`,
     publisherClaimDisclaimer:
       "Ces annonces reposent sur la déclaration actuelle du courtier vendeur, non vérifiée indépendamment.",
@@ -294,6 +306,9 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       `Sem resultados confirmados pelo design, mas ${count} anúncio(s) abaixo segundo o vendedor.`,
     insufficientDataText: (count) =>
       `${count} anúncio(s) não têm dados suficientes para confirmar ou excluir esta configuração.`,
+    partialResultsNote:
+      "Esta pesquisa ainda não está concluída. Mais anúncios podem ainda ser verificados -- este não é o resultado completo.",
+    showMoreResultsLabel: "Mostrar mais resultados",
     publisherClaimHeading: (count) => `Resultados segundo o vendedor (${count})`,
     publisherClaimDisclaimer:
       "Estes anúncios baseiam-se na declaração atual do corretor anunciante, não verificada de forma independente.",
@@ -352,6 +367,9 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
       `No hay resultados confirmados por diseño, pero ${count} anuncio(s) a continuación según el vendedor.`,
     insufficientDataText: (count) =>
       `${count} anuncio(s) no tienen datos suficientes para confirmar o excluir esta configuración.`,
+    partialResultsNote:
+      "Esta búsqueda aún no se ha completado. Es posible que se sigan comprobando más anuncios -- este no es el resultado completo.",
+    showMoreResultsLabel: "Mostrar más resultados",
     publisherClaimHeading: (count) => `Resultados según el vendedor (${count})`,
     publisherClaimDisclaimer:
       "Estos anuncios se basan en la declaración actual del corredor anunciante, no verificada de forma independiente.",

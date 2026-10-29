@@ -60,6 +60,7 @@ import asyncio
 import concurrent.futures
 import json
 import os
+import re
 import threading
 import time
 import uuid
@@ -150,7 +151,10 @@ from hullq.application.inventory_export import (
     get_export_download,
     get_export_preflight,
 )
-from hullq.application.inventory_search import DraftMaxSearchOutcome
+from hullq.application.inventory_search import (
+    DraftMaxSearchResultPage,
+    evaluate_draft_max_requirement_page,
+)
 from hullq.application.lead_operations import (
     LeadInboxFilters,
     LeadOperationOutcome,
@@ -192,7 +196,10 @@ from hullq.application.media_gallery import (
     set_cover_for_organization,
     upload_image_for_organization,
 )
-from hullq.application.native_inventory_query import NativeInventorySearchOutcome
+from hullq.application.native_inventory_query import (
+    SearchPageEvaluationState,
+    evaluate_native_inventory_requirements_page,
+)
 from hullq.application.owner_direct_draft import (
     CreateOwnerDirectDraftOutcome,
     GetOwnerDirectDraftOutcome,
@@ -210,9 +217,11 @@ from hullq.application.power_broker_search_fit import (
 from hullq.application.power_inventory_query import (
     PowerClaimOnlyMatch,
     PowerDesignLinkedMatch,
+    evaluate_power_requirement_page,
 )
 from hullq.application.power_search_read import (
     PowerSearchOutcomeKind,
+    build_canonical_power_search_path,
     evaluate_power_search_request,
 )
 from hullq.application.preview_read import get_preview_read_model
@@ -236,7 +245,11 @@ from hullq.application.public_media_read import (
     GetPublicMediaBytesOutcome,
     get_public_listing_media_bytes,
 )
-from hullq.application.search_read import SearchOutcomeKind, evaluate_search_request
+from hullq.application.search_read import (
+    SearchOutcomeKind,
+    build_canonical_search_path,
+    evaluate_search_request,
+)
 from hullq.application.search_sensitivity import (
     SensitivityOutcomeKind,
     evaluate_requirement_sensitivity,
@@ -269,6 +282,11 @@ from hullq.security.discovery_surface_signing import (
 from hullq.security.oidc import AuthProviderConfig, get_auth_provider_config
 from hullq.security.preview_signing import get_preview_signing_secret
 from hullq.security.rate_limit import FixedWindowRateLimiter
+from hullq.security.search_page_cursor import (
+    SearchPageCursorDomain,
+    mint_search_page_cursor,
+    verify_search_page_cursor,
+)
 from hullq.security.session_signing import get_session_signing_secret
 from hullq.security.session_token import (
     InvalidSessionTokenError,
@@ -707,6 +725,52 @@ def _serialize_claim_only_match(match: Any, *, secret: bytes) -> dict[str, Any]:
             DiscoverySurface.TECHNICAL_SEARCH, match.native_listing_id.value, secret=secret
         ),
     }
+
+
+#: SLICE-0096 bounded-page navigation-only query keys -- deliberately held
+#: OUTSIDE the technical canonical-identity allowlist
+#: (`hullq.search.criteria_registry.SUPPORTED_PARAM_KEYS`/
+#: `hullq.search.power_criteria_registry.SUPPORTED_POWER_PARAM_KEYS`) and
+#: stripped from the raw query params before either Sail/Power request
+#: boundary ever sees them (contract §2: "Neither is included in the
+#: canonical semantic Search identity"). Shared by both the Sail and Power
+#: bounded routes below -- one page-parameter contract, never two
+#: independently spelled ones.
+_PAGE_AFTER_KEY = "page_after"
+_PAGE_SIZE_KEY = "page_size"
+_DEFAULT_PAGE_SIZE = 20
+_MAX_PAGE_SIZE = 50
+_PAGE_SIZE_RE = re.compile(r"[1-9][0-9]*")
+
+
+def _parse_page_params(raw_query_params: dict[str, list[str]]) -> tuple[str | None, int] | None:
+    """Parse+validate `page_after`/`page_size` from the raw (pre-stripped)
+    query params. Returns `(page_after_token_or_None, page_size)`, or `None`
+    for any malformed/duplicate/out-of-range value -- contract §2: "Duplicate,
+    empty, malformed and noncanonical page-size/cursor keys must fail
+    closed." `page_after` itself is only checked for shape here (non-empty,
+    not duplicated); its signature/binding is verified separately, once an
+    active technical requirement is known to exist.
+    """
+    page_after_values = raw_query_params.get(_PAGE_AFTER_KEY, [])
+    if len(page_after_values) > 1:
+        return None
+    page_after = page_after_values[0] if page_after_values else None
+    if page_after is not None and not page_after:
+        return None
+
+    page_size_values = raw_query_params.get(_PAGE_SIZE_KEY, [])
+    if len(page_size_values) > 1:
+        return None
+    if not page_size_values:
+        return page_after, _DEFAULT_PAGE_SIZE
+    raw_page_size = page_size_values[0]
+    if not _PAGE_SIZE_RE.fullmatch(raw_page_size):
+        return None
+    page_size = int(raw_page_size)
+    if not (1 <= page_size <= _MAX_PAGE_SIZE):
+        return None
+    return page_after, page_size
 
 
 #: SLICE-0093 localized buyer-friendly 400 recovery guidance for the
@@ -1559,135 +1623,240 @@ def create_app(
         raw_query_params: dict[str, list[str]] = {
             key: request.query_params.getlist(key) for key in dict(request.query_params)
         }
+        invalid_message = {
+            "error": "invalid_search_request",
+            "message": _INVALID_SEARCH_REQUEST_MESSAGE[locale],
+        }
+
+        # SLICE-0096: page_after/page_size are navigation-only (contract §2 --
+        # never part of the canonical technical-query identity), so they are
+        # parsed/validated and stripped BEFORE the existing technical-query
+        # boundary (`evaluate_search_request`) ever sees the remaining keys --
+        # that boundary's own unknown-key allowlist is completely unchanged.
+        page_params = _parse_page_params(raw_query_params)
+        if page_params is None:
+            return JSONResponse(invalid_message, status_code=400)
+        page_after, page_size = page_params
+        technical_query_params = {
+            key: values
+            for key, values in raw_query_params.items()
+            if key not in (_PAGE_AFTER_KEY, _PAGE_SIZE_KEY)
+        }
 
         conn = open_connection(resolved_database_url)
         try:
             outcome = evaluate_search_request(
-                conn, locale=locale, query_params=raw_query_params, as_of=_current_as_of()
+                conn, locale=locale, query_params=technical_query_params, as_of=_current_as_of()
             )
+
+            if outcome.kind is SearchOutcomeKind.INVALID:
+                return JSONResponse(invalid_message, status_code=400)
+
+            if outcome.kind is SearchOutcomeKind.REDIRECT:
+                assert outcome.canonical_path is not None
+                if page_after is not None:
+                    # Contract §2: "If a request carries a cursor and
+                    # noncanonical technical query syntax, reject instead of
+                    # redirecting that would accidentally discard or
+                    # rebinds the cursor" -- fail closed rather than
+                    # 308-ing to a URL the cursor was never minted for.
+                    return JSONResponse(invalid_message, status_code=400)
+                return RedirectResponse(url=outcome.canonical_path, status_code=308)
+
+            if outcome.kind is SearchOutcomeKind.BASE:
+                if page_after is not None or _PAGE_SIZE_KEY in raw_query_params:
+                    # Contract §2: "A navigation-only parameter without any
+                    # active technical requirement is invalid (no paginated
+                    # BASE query)."
+                    return JSONResponse(invalid_message, status_code=400)
+                return JSONResponse({"locale": locale, "active_requirement": None})
+
+            assert outcome.kind is SearchOutcomeKind.RESULT
+            active_requirement = _build_active_requirement(
+                draft_max=outcome.draft_max,
+                keel_configuration=outcome.keel_configuration,
+                loa_min=outcome.loa_min,
+                loa_max=outcome.loa_max,
+                rudder_configuration=outcome.rudder_configuration,
+                hull_configuration=outcome.hull_configuration,
+                cockpit_position=outcome.cockpit_position,
+                deck_saloon=outcome.deck_saloon,
+                beam_min=outcome.beam_min,
+                beam_max=outcome.beam_max,
+                hull_material=outcome.hull_material,
+            )
+            # The exact canonical criterion-only identity this page's cursor
+            # is bound to -- never including page_after/page_size themselves
+            # (contract §2: page state is excluded from canonical identity).
+            query_identity = build_canonical_search_path(
+                locale,
+                draft_max=outcome.draft_max,
+                keel_configuration=outcome.keel_configuration,
+                loa_min=outcome.loa_min,
+                loa_max=outcome.loa_max,
+                rudder_configuration=outcome.rudder_configuration,
+                hull_configuration=outcome.hull_configuration,
+                cockpit_position=outcome.cockpit_position,
+                deck_saloon=outcome.deck_saloon,
+                beam_min=outcome.beam_min,
+                beam_max=outcome.beam_max,
+                hull_material=outcome.hull_material,
+            )
+
+            after_native_listing_id: str | None = None
+            if page_after is not None:
+                after_native_listing_id = verify_search_page_cursor(
+                    page_after,
+                    domain=SearchPageCursorDomain.SAIL,
+                    query_identity=query_identity,
+                    page_size=page_size,
+                    secret=resolved_secret,
+                )
+                if after_native_listing_id is None:
+                    # Tampered/expired/wrong-query/wrong-page-size cursor --
+                    # a controlled 400, never a silently "successful" page.
+                    return JSONResponse(invalid_message, status_code=400)
+
+            # SLICE-0051 non-regression: a pure draft_max-only page uses the
+            # SEPARATE legacy-faithful bounded evaluator (preserves the
+            # exact pre-0096 design-exclusion rule -- see
+            # `hullq.application.inventory_search.DraftMaxSearchResultPage`'s
+            # docstring for why reusing the generalized mixed-criteria kernel
+            # here would be a real regression); every other active-
+            # requirement combination uses the SLICE-0055 generalized one.
+            is_pure_draft_only = (
+                outcome.draft_max is not None
+                and outcome.keel_configuration is None
+                and outcome.loa_min is None
+                and outcome.loa_max is None
+                and outcome.rudder_configuration is None
+                and outcome.hull_configuration is None
+                and outcome.cockpit_position is None
+                and outcome.deck_saloon is None
+                and outcome.beam_min is None
+                and outcome.beam_max is None
+                and outcome.hull_material is None
+            )
+            if is_pure_draft_only:
+                assert outcome.draft_max is not None
+                draft_page = evaluate_draft_max_requirement_page(
+                    conn,
+                    outcome.draft_max,
+                    as_of=_current_as_of(),
+                    after_native_listing_id=after_native_listing_id,
+                    page_size=page_size,
+                )
+                page: Any = draft_page
+            else:
+                page = evaluate_native_inventory_requirements_page(
+                    conn,
+                    draft_max=outcome.draft_max,
+                    keel_configuration=outcome.keel_configuration,
+                    loa_min=outcome.loa_min,
+                    loa_max=outcome.loa_max,
+                    rudder_configuration=outcome.rudder_configuration,
+                    hull_configuration=outcome.hull_configuration,
+                    cockpit_position=outcome.cockpit_position,
+                    deck_saloon=outcome.deck_saloon,
+                    beam_min=outcome.beam_min,
+                    beam_max=outcome.beam_max,
+                    hull_material=outcome.hull_material,
+                    as_of=_current_as_of(),
+                    after_native_listing_id=after_native_listing_id,
+                    page_size=page_size,
+                )
         finally:
             conn.close()
 
-        if outcome.kind is SearchOutcomeKind.INVALID:
-            message = _INVALID_SEARCH_REQUEST_MESSAGE[locale]
-            return JSONResponse(
-                {"error": "invalid_search_request", "message": message}, status_code=400
+        next_cursor: str | None = None
+        if page.evaluation_state is SearchPageEvaluationState.PARTIAL:
+            # `NativeInventorySearchResultPage.__post_init__` already
+            # guarantees a PARTIAL page carries this.
+            assert page.next_after_native_listing_id is not None
+            next_cursor = mint_search_page_cursor(
+                domain=SearchPageCursorDomain.SAIL,
+                query_identity=query_identity,
+                page_size=page_size,
+                last_native_listing_id=page.next_after_native_listing_id,
+                secret=resolved_secret,
             )
 
-        if outcome.kind is SearchOutcomeKind.REDIRECT:
-            assert outcome.canonical_path is not None
-            return RedirectResponse(url=outcome.canonical_path, status_code=308)
-
-        if outcome.kind is SearchOutcomeKind.BASE:
-            return JSONResponse({"locale": locale, "active_requirement": None})
-
-        assert outcome.kind is SearchOutcomeKind.RESULT
-        assert outcome.search_outcome is not None
-        search_outcome = outcome.search_outcome
-
-        active_requirement = _build_active_requirement(
-            draft_max=outcome.draft_max,
-            keel_configuration=outcome.keel_configuration,
-            loa_min=outcome.loa_min,
-            loa_max=outcome.loa_max,
-            rudder_configuration=outcome.rudder_configuration,
-            hull_configuration=outcome.hull_configuration,
-            cockpit_position=outcome.cockpit_position,
-            deck_saloon=outcome.deck_saloon,
-            beam_min=outcome.beam_min,
-            beam_max=outcome.beam_max,
-            hull_material=outcome.hull_material,
-        )
-
-        if isinstance(search_outcome, DraftMaxSearchOutcome):
-            # SLICE-0051 draft-only shape, unchanged (contract §8 non-regression).
-            return JSONResponse(
+        # SLICE-0051 non-regression: a pure draft_max-only page keeps the
+        # legacy `resolved_draft_m` wire shape (`DraftMaxConfirmedMatch`);
+        # every other active-requirement combination keeps the SLICE-0055
+        # typed-evidence shape (`NativeInventoryCandidateEvaluation`) --
+        # mirrors the pre-0096 `isinstance(search_outcome,
+        # DraftMaxSearchOutcome)` branch, now driven by which bounded
+        # evaluator produced this page rather than by a second outcome type.
+        if isinstance(page, DraftMaxSearchResultPage):
+            confirmed_matches_json: list[dict[str, Any]] = [
                 {
-                    "locale": locale,
-                    "active_requirement": active_requirement,
-                    "confirmed_matches": [
-                        {
-                            "native_listing_id": match.native_listing_id.value,
-                            "resolved_draft_m": str(match.resolved_draft_m),
-                            "publishing_organization_id": match.publishing_organization_id.value,
-                            "freshness_status": match.freshness_status.value,
-                            "last_confirmed_at": (
-                                match.last_confirmed_at.isoformat()
-                                if match.last_confirmed_at is not None
-                                else None
-                            ),
-                            # SLICE-0071 contract §8B amendment: bound to this
-                            # exact result's own NativeListingId -- a buyer
-                            # who clicks through and contacts the listing
-                            # carries genuine, tamper-safe TECHNICAL_SEARCH
-                            # discovery evidence.
-                            "discovery_token": mint_discovery_surface_token(
-                                DiscoverySurface.TECHNICAL_SEARCH,
-                                match.native_listing_id.value,
-                                secret=resolved_secret,
-                            ),
-                        }
-                        for match in search_outcome.confirmed_matches
-                    ],
-                    "confirmed_match_count": search_outcome.confirmed_match_count,
-                    "insufficient_data_count": search_outcome.insufficient_data_count,
-                    # SLICE-0092: entirely separate, additive result surface --
-                    # never merged into confirmed_matches/confirmed_match_count
-                    # above, and never carrying a DesignQueryEvaluation.
-                    "publisher_claim_matches": [
-                        _serialize_claim_only_match(match, secret=resolved_secret)
-                        for match in search_outcome.claim_only_matches
-                    ],
-                    "publisher_claim_match_count": search_outcome.claim_only_match_count,
+                    "native_listing_id": match.native_listing_id.value,
+                    "resolved_draft_m": str(match.resolved_draft_m),
+                    "publishing_organization_id": match.publishing_organization_id.value,
+                    "freshness_status": match.freshness_status.value,
+                    "last_confirmed_at": (
+                        match.last_confirmed_at.isoformat()
+                        if match.last_confirmed_at is not None
+                        else None
+                    ),
+                    "discovery_token": mint_discovery_surface_token(
+                        DiscoverySurface.TECHNICAL_SEARCH,
+                        match.native_listing_id.value,
+                        secret=resolved_secret,
+                    ),
                 }
-            )
+                for match in page.confirmed_matches
+            ]
+        else:
+            confirmed_matches_json = [
+                {
+                    "native_listing_id": match.native_listing_id.value,
+                    "publishing_organization_id": match.publishing_organization_id.value,
+                    "freshness_status": match.freshness_status.value,
+                    "last_confirmed_at": (
+                        match.last_confirmed_at.isoformat()
+                        if match.last_confirmed_at is not None
+                        else None
+                    ),
+                    "design_evaluation": _serialize_design_evaluation(match.design_evaluation),
+                    "design_configuration_evidence": [
+                        _serialize_configuration_evidence(evidence)
+                        for evidence in match.design_configuration_evidence
+                    ],
+                    "criterion_evidence": [
+                        _serialize_criterion_evidence(evidence)
+                        for evidence in match.concrete_criterion_evidence
+                    ],
+                    "discovery_token": mint_discovery_surface_token(
+                        DiscoverySurface.TECHNICAL_SEARCH,
+                        match.native_listing_id.value,
+                        secret=resolved_secret,
+                    ),
+                }
+                for match in page.confirmed_matches
+            ]
 
-        # SLICE-0055: keel_configuration alone or combined with draft_max.
-        # Retains typed design-level and concrete-level evidence separately
-        # (contract §6/§7, amendment Finding 1) rather than a flat list of
-        # bare criterion truths.
-        assert isinstance(search_outcome, NativeInventorySearchOutcome)
         return JSONResponse(
             {
                 "locale": locale,
                 "active_requirement": active_requirement,
-                "confirmed_matches": [
-                    {
-                        "native_listing_id": match.native_listing_id.value,
-                        "publishing_organization_id": match.publishing_organization_id.value,
-                        "freshness_status": match.freshness_status.value,
-                        "last_confirmed_at": (
-                            match.last_confirmed_at.isoformat()
-                            if match.last_confirmed_at is not None
-                            else None
-                        ),
-                        "design_evaluation": _serialize_design_evaluation(match.design_evaluation),
-                        "design_configuration_evidence": [
-                            _serialize_configuration_evidence(evidence)
-                            for evidence in match.design_configuration_evidence
-                        ],
-                        "criterion_evidence": [
-                            _serialize_criterion_evidence(evidence)
-                            for evidence in match.concrete_criterion_evidence
-                        ],
-                        "discovery_token": mint_discovery_surface_token(
-                            DiscoverySurface.TECHNICAL_SEARCH,
-                            match.native_listing_id.value,
-                            secret=resolved_secret,
-                        ),
-                    }
-                    for match in search_outcome.confirmed_matches
-                ],
-                "confirmed_match_count": search_outcome.confirmed_match_count,
-                "insufficient_data_count": search_outcome.insufficient_data_count,
+                "confirmed_matches": confirmed_matches_json,
+                # SLICE-0096: page-local, never a global total (contract §2).
+                "confirmed_match_count": page.confirmed_match_count,
+                "insufficient_data_count": page.design_linked_insufficient_data_count,
                 # SLICE-0092: entirely separate, additive result surface --
                 # never merged into confirmed_matches/confirmed_match_count
                 # above, and never carrying a DesignQueryEvaluation.
                 "publisher_claim_matches": [
                     _serialize_claim_only_match(match, secret=resolved_secret)
-                    for match in search_outcome.claim_only_matches
+                    for match in page.claim_only_matches
                 ],
-                "publisher_claim_match_count": search_outcome.claim_only_match_count,
+                "publisher_claim_match_count": page.claim_only_match_count,
+                # SLICE-0096 bounded-page envelope.
+                "page_size": page_size,
+                "evaluation_state": page.evaluation_state.value,
+                "next_cursor": next_cursor,
             }
         )
 
@@ -1704,31 +1873,86 @@ def create_app(
         raw_query_params: dict[str, list[str]] = {
             key: request.query_params.getlist(key) for key in dict(request.query_params)
         }
+        invalid_message = {
+            "error": "invalid_power_search_request",
+            "message": _INVALID_POWER_SEARCH_REQUEST_MESSAGE[locale],
+        }
+
+        # SLICE-0096: identical page_after/page_size admission as the Sail
+        # route above -- stripped before the existing Power technical-query
+        # boundary ever sees the remaining keys.
+        page_params = _parse_page_params(raw_query_params)
+        if page_params is None:
+            return JSONResponse(invalid_message, status_code=400)
+        page_after, page_size = page_params
+        technical_query_params = {
+            key: values
+            for key, values in raw_query_params.items()
+            if key not in (_PAGE_AFTER_KEY, _PAGE_SIZE_KEY)
+        }
 
         conn = open_connection(resolved_database_url)
         try:
             outcome = evaluate_power_search_request(
-                conn, locale=locale, query_params=raw_query_params, as_of=_current_as_of()
+                conn, locale=locale, query_params=technical_query_params, as_of=_current_as_of()
+            )
+
+            if outcome.kind is PowerSearchOutcomeKind.INVALID:
+                return JSONResponse(invalid_message, status_code=400)
+
+            if outcome.kind is PowerSearchOutcomeKind.REDIRECT:
+                assert outcome.canonical_path is not None
+                if page_after is not None:
+                    return JSONResponse(invalid_message, status_code=400)
+                return RedirectResponse(url=outcome.canonical_path, status_code=308)
+
+            if outcome.kind is PowerSearchOutcomeKind.BASE:
+                if page_after is not None or _PAGE_SIZE_KEY in raw_query_params:
+                    return JSONResponse(invalid_message, status_code=400)
+                return JSONResponse({"locale": locale, "active_requirement": None})
+
+            assert outcome.kind is PowerSearchOutcomeKind.RESULT
+            query_identity = build_canonical_power_search_path(
+                locale,
+                power_drive=outcome.power_drive,
+                power_engine_count=outcome.power_engine_count,
+            )
+
+            after_native_listing_id: str | None = None
+            if page_after is not None:
+                after_native_listing_id = verify_search_page_cursor(
+                    page_after,
+                    domain=SearchPageCursorDomain.POWER,
+                    query_identity=query_identity,
+                    page_size=page_size,
+                    secret=resolved_secret,
+                )
+                if after_native_listing_id is None:
+                    return JSONResponse(invalid_message, status_code=400)
+
+            page = evaluate_power_requirement_page(
+                conn,
+                power_drive=outcome.power_drive,
+                power_engine_count=outcome.power_engine_count,
+                as_of=_current_as_of(),
+                after_native_listing_id=after_native_listing_id,
+                page_size=page_size,
             )
         finally:
             conn.close()
 
-        if outcome.kind is PowerSearchOutcomeKind.INVALID:
-            message = _INVALID_POWER_SEARCH_REQUEST_MESSAGE[locale]
-            return JSONResponse(
-                {"error": "invalid_power_search_request", "message": message}, status_code=400
+        next_cursor: str | None = None
+        if page.evaluation_state is SearchPageEvaluationState.PARTIAL:
+            # `PowerSearchResultPage.__post_init__` already guarantees a
+            # PARTIAL page carries this.
+            assert page.next_after_native_listing_id is not None
+            next_cursor = mint_search_page_cursor(
+                domain=SearchPageCursorDomain.POWER,
+                query_identity=query_identity,
+                page_size=page_size,
+                last_native_listing_id=page.next_after_native_listing_id,
+                secret=resolved_secret,
             )
-
-        if outcome.kind is PowerSearchOutcomeKind.REDIRECT:
-            assert outcome.canonical_path is not None
-            return RedirectResponse(url=outcome.canonical_path, status_code=308)
-
-        if outcome.kind is PowerSearchOutcomeKind.BASE:
-            return JSONResponse({"locale": locale, "active_requirement": None})
-
-        assert outcome.kind is PowerSearchOutcomeKind.RESULT
-        assert outcome.search_outcome is not None
-        search_outcome = outcome.search_outcome
 
         return JSONResponse(
             {
@@ -1738,21 +1962,24 @@ def create_app(
                 ),
                 "design_linked_matches": [
                     _serialize_power_design_linked_match(match, secret=resolved_secret)
-                    for match in search_outcome.design_linked_matches
+                    for match in page.design_linked_matches
                 ],
-                "design_linked_match_count": search_outcome.design_linked_match_count,
-                "design_linked_insufficient_data_count": len(
-                    search_outcome.design_linked_insufficient_data
-                ),
+                "design_linked_match_count": page.design_linked_match_count,
+                # SLICE-0096: page-local, never a global total.
+                "design_linked_insufficient_data_count": page.design_linked_insufficient_data_count,
                 # SLICE-0093: entirely separate, additive result surface --
                 # never merged into design_linked_matches/
                 # design_linked_match_count above, and never carrying a
                 # DesignQueryEvaluation.
                 "publisher_claim_matches": [
                     _serialize_power_claim_only_match(match, secret=resolved_secret)
-                    for match in search_outcome.claim_only_matches
+                    for match in page.claim_only_matches
                 ],
-                "publisher_claim_match_count": search_outcome.claim_only_match_count,
+                "publisher_claim_match_count": page.claim_only_match_count,
+                # SLICE-0096 bounded-page envelope.
+                "page_size": page_size,
+                "evaluation_state": page.evaluation_state.value,
+                "next_cursor": next_cursor,
             }
         )
 

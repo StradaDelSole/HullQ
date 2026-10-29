@@ -130,6 +130,11 @@ export interface PowerSearchResultBody {
   design_linked_insufficient_data_count?: number;
   publisher_claim_matches?: PowerClaimOnlyMatch[];
   publisher_claim_match_count?: number;
+  /** SLICE-0096 bounded-page envelope -- see `validatePowerSearchResultBody`'s
+   * own strict PARTIAL/COMPLETE + next_cursor consistency check below. */
+  page_size?: number;
+  evaluation_state?: "PARTIAL" | "COMPLETE";
+  next_cursor?: string | null;
 }
 
 export interface PowerSearchInvalidBody {
@@ -687,6 +692,41 @@ export function validatePowerSearchResultBody(
     return null;
   }
 
+  // SLICE-0096 bounded-page envelope. Optional (mirrors every other
+  // RESULT-surface field in this validator being `?:` on
+  // `PowerSearchResultBody`) so pre-0096 fixtures/tests exercising the
+  // older response shape remain valid; the REAL backend always sends all
+  // three together, and whenever ANY of them is present, the full
+  // consistency invariant below still applies -- never partially trusted.
+  // page_size: a safe integer in [1, 50]; evaluation_state: exactly
+  // "PARTIAL"/"COMPLETE"; next_cursor: present (a non-empty string) if and
+  // only if PARTIAL -- the identical hard invariant
+  // `hullq.application.power_inventory_query.PowerSearchResultPage
+  // .__post_init__` already enforces server-side.
+  const hasPageEnvelope =
+    "page_size" in v || "evaluation_state" in v || "next_cursor" in v;
+  if (hasPageEnvelope) {
+    if (
+      !isNonNegativeSafeInteger(v.page_size) ||
+      (v.page_size as number) < 1 ||
+      (v.page_size as number) > 50
+    ) {
+      return null;
+    }
+    if (v.evaluation_state !== "PARTIAL" && v.evaluation_state !== "COMPLETE") {
+      return null;
+    }
+    if (!("next_cursor" in v) || !(v.next_cursor === null || typeof v.next_cursor === "string")) {
+      return null;
+    }
+    if (v.evaluation_state === "PARTIAL" && (v.next_cursor === null || v.next_cursor === "")) {
+      return null;
+    }
+    if (v.evaluation_state === "COMPLETE" && v.next_cursor !== null) {
+      return null;
+    }
+  }
+
   return {
     locale: v.locale,
     active_requirement: activeRequirement,
@@ -695,6 +735,9 @@ export function validatePowerSearchResultBody(
     design_linked_insufficient_data_count: v.design_linked_insufficient_data_count,
     publisher_claim_matches: v.publisher_claim_matches as PowerClaimOnlyMatch[],
     publisher_claim_match_count: v.publisher_claim_match_count,
+    page_size: v.page_size as number | undefined,
+    evaluation_state: v.evaluation_state as "PARTIAL" | "COMPLETE" | undefined,
+    next_cursor: v.next_cursor as string | null | undefined,
   };
 }
 

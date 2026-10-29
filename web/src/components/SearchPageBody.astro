@@ -682,6 +682,23 @@ const publisherClaimMatchCount: number = data.kind === "ok" ? data.publisherClai
               )}
 
               {
+                // SLICE-0096: truthfully distinct from "no matching boats" --
+                // a PARTIAL page may legitimately show zero matches above
+                // while unchecked candidates remain. Never rendered as a
+                // second, contradictory "no results" state.
+                data.kind === "ok" && data.evaluationState === "PARTIAL" && (
+                  <p aria-label="partial results">
+                    {t.partialResultsNote}{" "}
+                    {data.nextPageQueryString !== null && (
+                      <a href={`/${locale}/search?${data.nextPageQueryString}`}>
+                        {t.showMoreResultsLabel}
+                      </a>
+                    )}
+                  </p>
+                )
+              }
+
+              {
                 // SLICE-0092: entirely separate, additive design-unresolved
                 // publisher-claim-only result section -- never merged with
                 // the design-confirmed matches above, never implying

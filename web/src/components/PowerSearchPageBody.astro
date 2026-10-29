@@ -299,6 +299,21 @@ const requirementSummary = requirementSummaryText();
                 </p>
               )}
 
+              {
+                // SLICE-0096: see SearchPageBody.astro's identical rationale --
+                // truthfully distinct from "no matching boats".
+                data.kind === "ok" && data.evaluationState === "PARTIAL" && (
+                  <p aria-label="partial results">
+                    {t.partialResultsNote}{" "}
+                    {data.nextPageQueryString !== null && (
+                      <a href={`/${locale}/power/search?${data.nextPageQueryString}`}>
+                        {t.showMoreResultsLabel}
+                      </a>
+                    )}
+                  </p>
+                )
+              }
+
               {data.publisherClaimMatchCount > 0 && (
                 <section aria-label="publisher claim matches">
                   <h2>{t.publisherClaimHeading(data.publisherClaimMatchCount)}</h2>
