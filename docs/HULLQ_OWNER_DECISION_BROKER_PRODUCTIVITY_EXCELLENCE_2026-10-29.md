@@ -54,7 +54,7 @@ Feature breadth is an **ambition for ongoing high-quality development**, *not* a
 
 ## 5. Mandatory development and acceptance discipline
 
-Every future buyer-search or broker-facing slice readiness/review should reconcile against this direction and its owning requirements, and explicitly answer:
+Every future buyer-search or broker-facing slice readiness/review **MUST reconcile** against this direction and its owning requirements, and explicitly answer:
 
 1. **Job and benefit:** What repeated buyer/broker task becomes materially easier? Which existing user path and baseline demonstrate friction?
 2. **Truth and completeness:** What current source/PhysicalBoat/BoatDesign truth and UNKNOWN/CONFLICT rules apply? Can usable listings be kept current without repeated re-entry?
