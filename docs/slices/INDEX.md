@@ -17,7 +17,7 @@ The previous version had drifted to SLICE-0028 while the canonical project had a
 
 ```text
 Latest Owner-accepted slice:       SLICE-0095 (implementation merged, Owner accepted; docs closure and Owner-local FINISH SUCCESS evidenced in #397)
-Current queue:                  SLICE-0096 — OWNER-SELECTED; bounded Sail+Power public Search retrieval; READY contract PR #404, operable only when reviewed/CI passed and merged
+Current queue:                  SLICE-0096 — READY FOR OWNER-LOCAL START; bounded Sail+Power public Search retrieval; reviewed/CI-passed READY PR #404 merged to main
 Current capability:             9 Sail + 2 Power buyer hard criteria, with same-configuration AND; private Power Broker DRAFT Search-fit for both
 Current operational restriction: No real external broker/owner-direct data or pilot (#355); no joint release (#366)
 Technical native Search count:  11 accepted globally = Sail 9 / Power 2; full Power parity #372 and Search scale #355 still outstanding
@@ -51,7 +51,7 @@ Production Launch Pack:         NOT_STARTED
 | SLICE-0093 | Owner-accepted Power drive-configuration Search criterion (global #10, Power-domain #1); implementation+closure merged; Owner-local FINISH SUCCESS |
 | SLICE-0094 | Owner-accepted second Power criterion (current installed engine count) and conjunctive same-config Search; implementation+closure merged; Owner-local FINISH SUCCESS |
 | SLICE-0095 | Owner-accepted Power Broker private DRAFT Search-fit; implementation + docs closure recorded; Owner-local FINISH SUCCESS |
-| SLICE-0096 | Owner-selected bounded native Sail+Power Search first-page and safe continuation capability; readiness [PR #404](https://github.com/StradaDelSole/HullQ/pull/404). **START permitted only after independently reviewed READY/spec PR merged to main.** Not implemented or Owner-accepted. |
+| SLICE-0096 | Owner-selected bounded native Sail+Power Search first-page and safe continuation capability; readiness [PR #404](https://github.com/StradaDelSole/HullQ/pull/404) **reviewed and merged**. Owner can now run local `START_SLICE.bat` with `0096`, then use its clipboard instruction directly in a fresh Claude Code session; no START-output report is normally required. Not implemented or Owner-accepted. |
 
 Do not infer that every numeric slice in a range has identical type or historical handoff status. Use the individual slice file / acceptance closure when exact history matters.
 

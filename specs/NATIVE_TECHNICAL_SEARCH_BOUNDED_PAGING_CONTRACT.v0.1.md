@@ -1,7 +1,7 @@
 # HullQ — Native Technical Search Bounded Retrieval and Continuation Contract
 
 **Version:** 0.1  
-**Status:** PROPOSED for independent SLICE-0096 readiness review; not implemented, not an accepted public API version  
+**Status:** ACCEPTED AS SLICE-0096 READY NORMATIVE CONTRACT — source-reviewed, amended and merged in PR #404 (`86370ad76bdfa5cc6e1bca1586e04c4df1746809`); NOT YET IMPLEMENTED and not a released public API version  
 **Owner capability selection:** 2026-10-29 — source-backed, scalable, bounded Sail+Power technical Search retrieval, ahead of M1a cards/filters/navigation.  
 **Underlying truth:** `specs/SEARCH_QUERY_SEMANTICS.v0.1.md`, existing Sail/Power criteria/FieldResolution/claim contracts and accepted OQ-018 public Search canonical identity. This contract **does not** create or revise a Search criterion.
 
@@ -50,4 +50,4 @@ An independently reviewed SLICE-0096 implementation must retain:
 
 **Hard STOP:** If the implementer cannot provide a bounded correct continuation and keep the accepted truth/URL/DTO contracts consistent in one coherent vertical, report BLOCKED with measured counterexamples. Do NOT silently cap first N raw candidates, loosen match semantics, fabricate global counts, or mark #355 closed.
 
-This contract may become controlling only when independently reviewed, accepted with the SLICE-0096 readiness package and merged. `PRODUCTION_READINESS_GATE_STATUS=IN_PROGRESS`, `PRODUCTION_LAUNCH_PACK_PHASE=NOT_STARTED`, #355 pre-external-data, #366 joint release and #372 Power/parity stay binding.
+This contract is controlling for the Owner-selected SLICE-0096 implementation because the exact-HEAD readiness review and merge of PR #404 are complete. `PRODUCTION_READINESS_GATE_STATUS=IN_PROGRESS`, `PRODUCTION_LAUNCH_PACK_PHASE=NOT_STARTED`, #355 pre-external-data, #366 joint release and #372 Power/parity stay binding.
