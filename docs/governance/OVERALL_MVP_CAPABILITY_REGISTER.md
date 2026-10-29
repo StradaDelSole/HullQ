@@ -57,9 +57,9 @@ SUPERSEDED_BY_OWNER_ACCEPTED_DECISION
 | MVP-BUY-002 | factual Search explainability / sensitivity | core MVP | PARTIAL — separately qualified BoatDesign/configuration versus offered PhysicalBoat per-leaf evidence across all **9** accepted public hard criteria after SLICE-0087, including beam and hull material; legacy draft/keel-only buyer sensitivity retained and unavailable with any newer active criterion rather than weakening hard constraints. Broader buyer sensitivity remains pending. |
 | MVP-BUY-003 | anonymous Shortlist | core MVP | IMPLEMENTED |
 | MVP-BUY-004 | factual Compare | core MVP | IMPLEMENTED |
-| MVP-BUY-005 | BuyerRequirements persistence / account continuity | overall MVP | PENDING |
+| MVP-BUY-005 | BuyerRequirements persistence / account continuity | overall MVP | PENDING — Owner-accepted buyer Watch dependency #406/#407; not yet implemented |
 | MVP-BUY-006 | persistent account Shortlist + anonymous-to-account migration | overall MVP | PENDING |
-| MVP-BUY-007 | Saved Search / Monitor / Alert | overall MVP | PENDING |
+| MVP-BUY-007 | Saved Search / Monitor / Alert | overall MVP | PENDING — Owner-accepted buyer new-match Watch & consented notification obligation #406/#407; future readiness required |
 | MVP-BUY-008 | price-change alert capability when price history exists | overall MVP / monetization-value | PENDING |
 | MVP-BUY-009 | buyer-contact email verification | before real external production buyer-contact | PENDING |
 | MVP-BUY-010 | buyer-side spam/bot/fake-lead abuse controls | before public buyer-contact exposure | PENDING |
@@ -83,7 +83,7 @@ Existing broker governance remains controlling in docs/governance/BROKER_WORKSPA
 | MVP-BROKER-009 | inventory portability/export | before paid/broad public broker launch | IMPLEMENTED — Owner-accepted SLICE-0088: MFA/current-PUBLISHER/Organization-owned bounded Select→Preview→Download for seven genuine CSV/TSV/XLSX/XLS/ODS/JSON/NautiX 1.4 outputs; fingerprint/rights/loss/preflight safeguards. XLSB export deferred (#362); no live portal submission/sync or production-pilot authorization. |
 | MVP-BROKER-010 | pre-publication Search-fit diagnostics | before paid/broad public broker launch | IMPLEMENTED — SLICE-0084 initial two criteria, SLICE-0085 four, SLICE-0086 seven, and Owner-accepted SLICE-0087 all **9** public hard dimensions (new qualified beam and hull material), on the same MFA/current-PUBLISHER/Organization-owned promoted lifecycle-DRAFT read-only illustrative preview and authorized immutable PhysicalBoat claim editor. Source/design and actual boat facts remain separate; real PG18/FastAPI/built Astro SSR retained proof. No real buyer demand, D29 public bypass or external pilot/production authorization. |
 | MVP-BROKER-011 | structured bulk onboarding/import | before scaled broker onboarding | IMPLEMENTED — Owner-accepted SLICE-0083 (implementation PR #335; bounded CSV/TSV/XLSX/XLS/XLSB/ODS/JSON/NautiX 1.4 upload, mapping/preview and explicit confirmation into private ProfessionalListingDrafts with D26 source-identity safeguards). No automatic public publication or live-feed synchronization; production-data gate unchanged. |
-| MVP-BROKER-012 | Search exclusion / aggregate demand insights | volume-triggered | PENDING |
+| MVP-BROKER-012 | Search exclusion / aggregate demand insights | volume-triggered | PENDING — Owner-accepted truthful, privacy-thresholded demand obligation #406/#408; no current sufficient real traffic |
 | MVP-BROKER-013 | usability evidence + competitive benchmark | before first external self-service pilot | IMPLEMENTED by SLICE-0076; blocking Lead-assignment finding closed by SLICE-0077; Broker Workspace Launch Gate evidence supports PASS |
 | MVP-BROKER-014 | explicit broker NativeListing → existing canonical BoatDesign association (normal inventory path; no guessing) | before meaningful broker-published technical native Search; does not itself authorize external pilot | IMPLEMENTED — Owner-accepted SLICE-0082 (implementation PR #331; independent exact-HEAD CI/reproducibility PASS; closure `docs/slices/SLICE-0082-acceptance-closure.md`); *no external pilot/production authorization* |
 
@@ -175,8 +175,8 @@ Controlling decision: docs/HULLQ_HELP_SUPPORT_ZAMMAD_DECISION_2026-09-30.md.
 | MVP-COMMS-001 | production email provider activation | before real external email dependency | PENDING |
 | MVP-COMMS-002 | SPF/DKIM/DMARC and sender-domain configuration | before production email | PENDING |
 | MVP-COMMS-003 | bounce / complaint / suppression handling | before scaled production email | PENDING |
-| MVP-COMMS-004 | user notification preferences / unsubscribe model | before optional recurring alerts/marketing | PENDING |
-| MVP-COMMS-005 | transactional-vs-optional notification classification | before recurring notification features | PENDING |
+| MVP-COMMS-004 | user notification preferences / unsubscribe model | before optional recurring alerts/marketing | PENDING — binding prerequisite for buyer Saved Search notifications #407 |
+| MVP-COMMS-005 | transactional-vs-optional notification classification | before recurring notification features | PENDING — binding prerequisite for buyer Saved Search notifications #407 |
 | MVP-COMMS-006 | SMS provider, delivery/failure semantics, normalization and resend/rate protection | before phone verification | PENDING |
 | MVP-COMMS-007 | provider outage/retry/observability behavior | before provider is production-critical | PENDING |
 
