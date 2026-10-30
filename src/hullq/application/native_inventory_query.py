@@ -90,6 +90,7 @@ carry (the resolved/observed value) -- never re-derived from
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -204,6 +205,43 @@ __all__ = [
 #: (`hullq.application.power_inventory_query`) so both domains are capped
 #: identically.
 DEFAULT_CANDIDATE_SCAN_BUDGET = 500
+
+#: SLICE-0096 independent review round 2 Finding E2: a real
+#: `statement_timeout` (`hullq.api.app._SEARCH_PAGE_STATEMENT_TIMEOUT_MS`)
+#: bounds any ONE SQL statement, but a bounded page may still issue many
+#: individually-fast statements in sequence -- one `fetch_boat_design` per
+#: DISTINCT BoatDesign among the scanned candidates, plus one
+#: classification (itself 1+ statements) per scanned candidate, up to
+#: `DEFAULT_CANDIDATE_SCAN_BUDGET` of them. No single statement ever
+#: exceeding its own timeout therefore does not, by itself, bound this
+#: function's own total wall-clock time. This is the ONE place that does:
+#: checked cooperatively at the top of every per-design/per-candidate loop
+#: iteration in `evaluate_native_inventory_requirements_page` (below),
+#: `hullq.application.power_inventory_query.evaluate_power_requirement_page`
+#: and `hullq.application.inventory_search.evaluate_draft_max_requirement_page`
+#: -- all three share this one constant/exception/helper so a future fourth
+#: bounded evaluator cannot silently omit the check.
+DEFAULT_REQUEST_DEADLINE_SECONDS = 8.0
+
+
+class SearchRequestDeadlineExceeded(RuntimeError):
+    """Raised when a bounded page evaluator's cumulative wall-clock time
+    exceeds its own request-level deadline, independent of any single SQL
+    statement's own `statement_timeout`. `hullq.api.app`'s request handlers
+    catch this exactly like `psycopg.errors.QueryCanceled`, producing the
+    same controlled 503 -- never an unhandled 500, and never a silently
+    truncated/smaller-than-requested page presented as a genuine result.
+    """
+
+
+def check_request_deadline(deadline: float) -> None:
+    """Raise `SearchRequestDeadlineExceeded` if the monotonic *deadline*
+    (an absolute `time.monotonic()` value, as returned by
+    `time.monotonic() + DEFAULT_REQUEST_DEADLINE_SECONDS`) has passed."""
+    if time.monotonic() > deadline:
+        raise SearchRequestDeadlineExceeded(
+            "bounded Search page evaluation exceeded its request-level deadline"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -1775,6 +1813,7 @@ def evaluate_native_inventory_requirements_page(
     after_native_listing_id: str | None,
     page_size: int,
     candidate_scan_budget: int = DEFAULT_CANDIDATE_SCAN_BUDGET,
+    request_deadline_seconds: float = DEFAULT_REQUEST_DEADLINE_SECONDS,
 ) -> NativeInventorySearchResultPage:
     """Evaluate one bounded page of the Sail mixed-requirement vertical --
     SLICE-0096's new public entrypoint.
@@ -1829,6 +1868,19 @@ def evaluate_native_inventory_requirements_page(
         raise ValueError(
             f"candidate_scan_budget must be a positive int; got {candidate_scan_budget!r}"
         )
+    if (
+        not isinstance(request_deadline_seconds, (int, float))
+        or isinstance(request_deadline_seconds, bool)
+        or request_deadline_seconds <= 0
+    ):
+        raise ValueError(
+            f"request_deadline_seconds must be a positive number; got {request_deadline_seconds!r}"
+        )
+
+    # Finding E2: starts here so it covers the design-fetch loop and the
+    # main per-candidate loop below -- the only two sites in this function
+    # that issue a variable, population-dependent number of SQL statements.
+    deadline = time.monotonic() + request_deadline_seconds
 
     query, active_definitions = build_mixed_requirement_query(
         draft_max=draft_max,
@@ -1894,6 +1946,7 @@ def evaluate_native_inventory_requirements_page(
         )
         boat_designs = []
         for design_id in distinct_design_ids:
+            check_request_deadline(deadline)
             raw_design = fetch_boat_design(conn, design_id)
             if raw_design is not None:
                 boat_designs.append(raw_design)
@@ -1926,6 +1979,7 @@ def evaluate_native_inventory_requirements_page(
     exhausted_batch = True
 
     for index, candidate in enumerate(batch):
+        check_request_deadline(deadline)
         last_examined_id = candidate.native_listing_id.value
         freshness = eligible_by_id.get(candidate.native_listing_id.value)
         if freshness is None:

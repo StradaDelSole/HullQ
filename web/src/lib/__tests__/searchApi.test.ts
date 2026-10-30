@@ -102,8 +102,31 @@ test("fetchSearch: keel-only 200 result body (SLICE-0055 typed-evidence shape) i
               publishing_organization_id: "ORG-1",
               freshness_status: "CONFIRMED",
               last_confirmed_at: null,
-              design_evaluation: { design_id: "BD-1", result_class: "CONFIRMED_MATCH", matching_configuration_ids: ["BD-1::baseline"], reason: null },
-              design_configuration_evidence: [],
+              discovery_token: "token-1",
+              design_evaluation: {
+                design_id: "BD-1",
+                result_class: "CONFIRMED_MATCH",
+                matching_configuration_ids: ["BD-1::baseline"],
+                reason: null,
+              },
+              design_configuration_evidence: [
+                {
+                  configuration_id: "BD-1::baseline",
+                  boat_design_id: "BD-1",
+                  named_variant_id: null,
+                  truth: "TRUE",
+                  criterion_evidence: [
+                    {
+                      criterion: { kind: "CATEGORICAL", field: "keel_configuration", equals: "FIN" },
+                      field: "keel_configuration",
+                      truth: "TRUE",
+                      reason: null,
+                      explanation: "design matches",
+                      observed_value: "FIN",
+                    },
+                  ],
+                },
+              ],
               criterion_evidence: [
                 {
                   criterion: { kind: "CATEGORICAL", field: "keel_configuration", equals: "FIN" },
@@ -118,6 +141,11 @@ test("fetchSearch: keel-only 200 result body (SLICE-0055 typed-evidence shape) i
           ],
           confirmed_match_count: 1,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
@@ -137,6 +165,270 @@ test("fetchSearch: keel-only 200 result body (SLICE-0055 typed-evidence shape) i
           observed_value: "FIN",
         },
       ]);
+    },
+  );
+});
+
+// ---------------------------------------------------------------------------
+// SLICE-0096 independent review round 2 Finding C1: `fetchSearch` must
+// collapse any malformed/incomplete/internally-inconsistent HTTP-200 body
+// to `status: 502`, never surface it as a genuine `result` -- exercised
+// here through `fetchSearch` itself (the actual consumption path a real
+// Astro page frontmatter calls), not only against the exported validator
+// functions in isolation.
+// ---------------------------------------------------------------------------
+
+function respondWithJson(res: http.ServerResponse, body: unknown): void {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(body));
+}
+
+function validDraftOnlyBody(): Record<string, unknown> {
+  return {
+    locale: "en",
+    active_requirement: { draft_max: "1.6" },
+    confirmed_matches: [
+      {
+        native_listing_id: "NL-1",
+        resolved_draft_m: "1.4",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        discovery_token: "token-1",
+      },
+    ],
+    confirmed_match_count: 1,
+    insufficient_data_count: 0,
+    publisher_claim_matches: [],
+    publisher_claim_match_count: 0,
+    page_size: 20,
+    evaluation_state: "COMPLETE",
+    next_cursor: null,
+  };
+}
+
+test("fetchSearch: a genuinely valid draft-only 200 body is surfaced as `result`", async () => {
+  await withServer(
+    (_req, res) => respondWithJson(res, validDraftOnlyBody()),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 200);
+      assert.equal(response.result?.confirmed_match_count, 1);
+    },
+  );
+});
+
+test("fetchSearch: a confirmed_match_count mismatched with the array length is 502", async () => {
+  const body = validDraftOnlyBody();
+  body.confirmed_match_count = 2;
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchSearch: a RESULT body missing page_size/evaluation_state/next_cursor is 502", async () => {
+  const body = validDraftOnlyBody();
+  delete body.page_size;
+  delete body.evaluation_state;
+  delete body.next_cursor;
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: PARTIAL with a null next_cursor is 502", async () => {
+  const body = validDraftOnlyBody();
+  body.evaluation_state = "PARTIAL";
+  body.next_cursor = null;
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: COMPLETE with a non-null next_cursor is 502", async () => {
+  const body = validDraftOnlyBody();
+  body.evaluation_state = "COMPLETE";
+  body.next_cursor = "should-not-be-here";
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: an active_requirement with an unrecognized key is 502", async () => {
+  const body = validDraftOnlyBody();
+  body.active_requirement = { draft_max: "1.6", not_a_real_field: "x" };
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: loa_min > loa_max in active_requirement is 502", async () => {
+  const body = validDraftOnlyBody();
+  body.active_requirement = { loa_min: "15", loa_max: "10" };
+  body.confirmed_matches = [];
+  body.confirmed_match_count = 0;
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "loa_min=15&loa_max=10");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: a resolved_draft_m exceeding the requested draft_max (violates MAXIMUM semantics) is 502", async () => {
+  const body = validDraftOnlyBody();
+  (body.confirmed_matches as Record<string, unknown>[])[0]!.resolved_draft_m = "1.9";
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: a BASE body carrying an extra key is 502", async () => {
+  await withServer(
+    (_req, res) => respondWithJson(res, { locale: "en", active_requirement: null, extra: "x" }),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+test("fetchSearch: a draft-only match in the typed-evidence shape (wrong shape for its own active requirement) is 502", async () => {
+  const body = validDraftOnlyBody();
+  body.confirmed_matches = [
+    {
+      native_listing_id: "NL-1",
+      publishing_organization_id: "ORG-1",
+      freshness_status: "CONFIRMED",
+      last_confirmed_at: null,
+      discovery_token: "token-1",
+      design_evaluation: {
+        design_id: "BD-1",
+        result_class: "CONFIRMED_MATCH",
+        matching_configuration_ids: ["BD-1::baseline"],
+        reason: null,
+      },
+      design_configuration_evidence: [],
+      criterion_evidence: [],
+    },
+  ];
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "draft_max=1.6");
+      assert.equal(response.status, 502);
+    },
+  );
+});
+
+// A genuine loa range request produces TWO independent criterion_evidence
+// leaves against the shared `loa_m` field (one MINIMUM, one MAXIMUM) --
+// never merged into one RANGE leaf. A valid positive-path proof that the
+// validator's dual-leaf handling for loa_m/beam_m actually accepts real
+// data, not only that it rejects malformed data.
+test("fetchSearch: a genuine loa-range match with two independent loa_m leaves is surfaced as `result`", async () => {
+  const body = {
+    locale: "en",
+    active_requirement: { loa_min: "10", loa_max: "15" },
+    confirmed_matches: [
+      {
+        native_listing_id: "NL-1",
+        publishing_organization_id: "ORG-1",
+        freshness_status: "CONFIRMED",
+        last_confirmed_at: null,
+        discovery_token: "token-1",
+        design_evaluation: {
+          design_id: "BD-1",
+          result_class: "CONFIRMED_MATCH",
+          matching_configuration_ids: ["BD-1::baseline"],
+          reason: null,
+        },
+        design_configuration_evidence: [
+          {
+            configuration_id: "BD-1::baseline",
+            boat_design_id: "BD-1",
+            named_variant_id: null,
+            truth: "TRUE",
+            criterion_evidence: [
+              {
+                criterion: { kind: "NUMERIC", field: "loa_m", comparison: "MINIMUM", threshold_min: "10", threshold_max: null },
+                field: "loa_m",
+                truth: "TRUE",
+                reason: null,
+                explanation: "design matches",
+                observed_value: "12",
+              },
+              {
+                criterion: { kind: "NUMERIC", field: "loa_m", comparison: "MAXIMUM", threshold_min: null, threshold_max: "15" },
+                field: "loa_m",
+                truth: "TRUE",
+                reason: null,
+                explanation: "design matches",
+                observed_value: "12",
+              },
+            ],
+          },
+        ],
+        criterion_evidence: [
+          {
+            criterion: { kind: "NUMERIC", field: "loa_m", comparison: "MINIMUM", threshold_min: "10", threshold_max: null },
+            field: "loa_m",
+            truth: "TRUE",
+            reason: null,
+            explanation: "matched",
+            observed_value: "12",
+          },
+          {
+            criterion: { kind: "NUMERIC", field: "loa_m", comparison: "MAXIMUM", threshold_min: null, threshold_max: "15" },
+            field: "loa_m",
+            truth: "TRUE",
+            reason: null,
+            explanation: "matched",
+            observed_value: "12",
+          },
+        ],
+      },
+    ],
+    confirmed_match_count: 1,
+    insufficient_data_count: 0,
+    publisher_claim_matches: [],
+    publisher_claim_match_count: 0,
+    page_size: 20,
+    evaluation_state: "COMPLETE",
+    next_cursor: null,
+  };
+  await withServer(
+    (_req, res) => respondWithJson(res, body),
+    async (baseUrl) => {
+      const response = await fetchSearch(baseUrl, "en", "loa_min=10&loa_max=15");
+      assert.equal(response.status, 200);
+      assert.equal(response.result?.confirmed_match_count, 1);
     },
   );
 });

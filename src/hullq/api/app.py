@@ -198,7 +198,9 @@ from hullq.application.media_gallery import (
     upload_image_for_organization,
 )
 from hullq.application.native_inventory_query import (
+    DEFAULT_REQUEST_DEADLINE_SECONDS,
     SearchPageEvaluationState,
+    SearchRequestDeadlineExceeded,
     evaluate_native_inventory_requirements_page,
 )
 from hullq.application.owner_direct_draft import (
@@ -743,6 +745,26 @@ _DEFAULT_PAGE_SIZE = 20
 _MAX_PAGE_SIZE = 50
 _PAGE_SIZE_RE = re.compile(r"[1-9][0-9]*")
 
+#: SLICE-0096 independent review round 2 Finding F1: both navigation inputs
+#: must be length-bounded BEFORE any decoding/conversion is attempted --
+#: never after. `page_size`'s only valid values are 1-50 digits (at most 2
+#: characters); without a length cap, an arbitrary-length all-digit string
+#: (e.g. 5000 digits) matches `_PAGE_SIZE_RE` and then `int(...)` raises an
+#: unhandled `ValueError` once past CPython's integer-string-conversion
+#: digit limit (`sys.set_int_max_str_digits`, default 4300) -- a bare digit
+#: count check below rejects it with a controlled 400 before `int()` is
+#: ever called. A genuine signed `page_after` cursor
+#: (`hullq.security.search_page_cursor`) is, even for the longest realistic
+#: combination of active criteria, well under 1024 bytes (see
+#: `tests/persistence/test_bounded_search_page_api_slice_0096.py`'s own
+#: direct measurement of a real minted cursor for the heaviest combination
+#: of accepted criteria) -- 4096 is a generous bound that rejects a
+#: pathologically long input before spending any base64/HMAC/JSON-decode
+#: work or opening a database connection on it, while never rejecting a
+#: cursor this server itself minted.
+_MAX_PAGE_SIZE_DIGITS = 10
+_MAX_PAGE_AFTER_LENGTH = 4096
+
 #: SLICE-0096 independent review Finding E: the bounded page evaluators
 #: cap the number of ACTIVE candidates they scan (DEFAULT_CANDIDATE_SCAN_BUDGET),
 #: but a bounded *candidate count* does not by itself prove a bounded
@@ -755,6 +777,19 @@ _PAGE_SIZE_RE = re.compile(r"[1-9][0-9]*")
 #: the statement (`psycopg.errors.QueryCanceled`) and the connection is
 #: still closed via the surrounding `finally: conn.close()`.
 _SEARCH_PAGE_STATEMENT_TIMEOUT_MS = 5_000
+
+#: SLICE-0096 independent review round 2 Finding E2: `_SEARCH_PAGE_STATEMENT_
+#: TIMEOUT_MS` bounds any ONE SQL statement, but a bounded page may issue
+#: many individually-fast statements in sequence (one per scanned candidate,
+#: up to `DEFAULT_CANDIDATE_SCAN_BUDGET` of them) whose total could still
+#: run far longer than any single statement's own timeout. Passed explicitly
+#: to every bounded page evaluator call below -- never relying on each
+#: evaluator function's own default parameter value, which is bound once at
+#: function-definition time and therefore would NOT pick up a value patched
+#: onto this module-level constant afterward (unlike
+#: `_SEARCH_PAGE_STATEMENT_TIMEOUT_MS` above, which is looked up by name
+#: inside `open_connection`'s caller at call time).
+_SEARCH_PAGE_REQUEST_DEADLINE_SECONDS = DEFAULT_REQUEST_DEADLINE_SECONDS
 
 
 def _parse_page_params(raw_query_params: dict[str, list[str]]) -> tuple[str | None, int] | None:
@@ -772,6 +807,11 @@ def _parse_page_params(raw_query_params: dict[str, list[str]]) -> tuple[str | No
     page_after = page_after_values[0] if page_after_values else None
     if page_after is not None and not page_after:
         return None
+    # Finding F1: bounded BEFORE this token is ever handed to
+    # `verify_search_page_cursor` (base64/HMAC/JSON decoding) -- a
+    # genuinely minted cursor is never remotely this long.
+    if page_after is not None and len(page_after) > _MAX_PAGE_AFTER_LENGTH:
+        return None
 
     page_size_values = raw_query_params.get(_PAGE_SIZE_KEY, [])
     if len(page_size_values) > 1:
@@ -779,6 +819,12 @@ def _parse_page_params(raw_query_params: dict[str, list[str]]) -> tuple[str | No
     if not page_size_values:
         return page_after, _DEFAULT_PAGE_SIZE
     raw_page_size = page_size_values[0]
+    # Finding F1: bounded BEFORE `int(...)` is ever called -- an all-digit
+    # string far longer than any valid 1-50 value (e.g. 5000 digits) would
+    # otherwise raise an unhandled `ValueError` once past CPython's
+    # integer-string-conversion digit limit.
+    if len(raw_page_size) > _MAX_PAGE_SIZE_DIGITS:
+        return None
     if not _PAGE_SIZE_RE.fullmatch(raw_page_size):
         return None
     page_size = int(raw_page_size)
@@ -1767,6 +1813,7 @@ def create_app(
                     as_of=_current_as_of(),
                     after_native_listing_id=after_native_listing_id,
                     page_size=page_size,
+                    request_deadline_seconds=_SEARCH_PAGE_REQUEST_DEADLINE_SECONDS,
                 )
                 page: Any = draft_page
             else:
@@ -1786,10 +1833,15 @@ def create_app(
                     as_of=_current_as_of(),
                     after_native_listing_id=after_native_listing_id,
                     page_size=page_size,
+                    request_deadline_seconds=_SEARCH_PAGE_REQUEST_DEADLINE_SECONDS,
                 )
-        except psycopg.errors.QueryCanceled:
-            # SLICE-0096 independent review Finding E: the bound statement
-            # timeout fired -- a controlled 503, never a hang or an opaque
+        except psycopg.errors.QueryCanceled, SearchRequestDeadlineExceeded:
+            # SLICE-0096 independent review Finding E/E2: either the bound
+            # per-statement timeout fired, or this request's own
+            # cumulative wall-clock deadline was exceeded across many
+            # individually-fast statements (Finding E2: no single
+            # statement's own timeout bounds that total) -- both collapse
+            # to the same controlled 503, never a hang or an opaque
             # unhandled 500. `finally` below still closes this connection.
             # The web layer classifies any non-200/308/400 status as
             # `unavailable` (searchApi.ts) regardless of this body's shape.
@@ -1971,10 +2023,11 @@ def create_app(
                 as_of=_current_as_of(),
                 after_native_listing_id=after_native_listing_id,
                 page_size=page_size,
+                request_deadline_seconds=_SEARCH_PAGE_REQUEST_DEADLINE_SECONDS,
             )
-        except psycopg.errors.QueryCanceled:
-            # SLICE-0096 independent review Finding E -- mirrors get_search's
-            # identical rationale above.
+        except psycopg.errors.QueryCanceled, SearchRequestDeadlineExceeded:
+            # SLICE-0096 independent review Finding E/E2 -- mirrors
+            # get_search's identical rationale above.
             return JSONResponse({"error": "search_timed_out"}, status_code=503)
         finally:
             conn.close()

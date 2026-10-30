@@ -65,6 +65,7 @@ that boundary).
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -76,12 +77,14 @@ from hullq.application.current_public_eligibility import (
 )
 from hullq.application.native_inventory_query import (
     DEFAULT_CANDIDATE_SCAN_BUDGET,
+    DEFAULT_REQUEST_DEADLINE_SECONDS,
     ConfigurationEvidence,
     PublisherClaimSourceBasis,
     PublisherClaimSourceEvidence,
     SearchCriterionEvidence,
     SearchPageEvaluationState,
     build_configuration_evidence,
+    check_request_deadline,
     classify_claim_only_candidate,
     classify_concrete_candidate,
     run_mixed_boat_design_configuration_query,
@@ -1115,6 +1118,7 @@ def evaluate_power_requirement_page(
     after_native_listing_id: str | None,
     page_size: int,
     candidate_scan_budget: int = DEFAULT_CANDIDATE_SCAN_BUDGET,
+    request_deadline_seconds: float = DEFAULT_REQUEST_DEADLINE_SECONDS,
 ) -> PowerSearchResultPage:
     """Evaluate one bounded page of the Power requirement vertical --
     SLICE-0096's new public entrypoint, the Power-domain mirror of
@@ -1138,6 +1142,18 @@ def evaluate_power_requirement_page(
         raise ValueError(
             f"candidate_scan_budget must be a positive int; got {candidate_scan_budget!r}"
         )
+    if (
+        not isinstance(request_deadline_seconds, (int, float))
+        or isinstance(request_deadline_seconds, bool)
+        or request_deadline_seconds <= 0
+    ):
+        raise ValueError(
+            f"request_deadline_seconds must be a positive number; got {request_deadline_seconds!r}"
+        )
+
+    # Finding E2 (round 2): see `evaluate_native_inventory_requirements_page`'s
+    # identical rationale.
+    deadline = time.monotonic() + request_deadline_seconds
 
     query, active_definitions = build_power_query(
         power_drive=power_drive, power_engine_count=power_engine_count
@@ -1193,6 +1209,7 @@ def evaluate_power_requirement_page(
         )
         boat_designs = []
         for design_id in distinct_design_ids:
+            check_request_deadline(deadline)
             raw_design = fetch_boat_design(conn, design_id)
             if raw_design is not None:
                 boat_designs.append(raw_design)
@@ -1223,6 +1240,7 @@ def evaluate_power_requirement_page(
     exhausted_batch = True
 
     for index, candidate in enumerate(batch):
+        check_request_deadline(deadline)
         last_examined_id = candidate.native_listing_id.value
         freshness = eligible_by_id.get(candidate.native_listing_id.value)
         if freshness is None:

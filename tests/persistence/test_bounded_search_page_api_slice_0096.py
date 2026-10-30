@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Generator
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import patch
@@ -84,6 +85,10 @@ from hullq.persistence.physical_boat_claims import write_physical_boat_claim_rev
 from hullq.security.search_page_cursor import SearchPageCursorDomain, mint_search_page_cursor
 
 VA = AssertionKind.VALUE_ASSERTION
+
+
+def _as_of() -> datetime:
+    return datetime.now(UTC)
 
 
 def _with_search_path(base_url: str, schema_name: str) -> str:
@@ -360,10 +365,84 @@ def test_page_size_on_base_request_is_400(client: TestClient) -> None:
     assert response.status_code == 400
 
 
-@pytest.mark.parametrize("page_size", ["0", "51", "-1", "abc", "1.5", "01"])
+@pytest.mark.parametrize(
+    "page_size",
+    [
+        "0",
+        "51",
+        "-1",
+        "abc",
+        "1.5",
+        "01",
+        pytest.param("9" * 5000, id="5000-digit-overlong"),
+    ],
+)
 def test_malformed_page_size_is_400(client: TestClient, page_size: str) -> None:
     response = client.get("/api/search/en", params={"draft_max": "1.60", "page_size": page_size})
     assert response.status_code == 400
+
+
+def test_overlong_page_size_on_power_route_is_400(client: TestClient) -> None:
+    # SLICE-0096 independent review round 2 Finding F1: the shared
+    # `_parse_page_params` bound applies identically on the Power route --
+    # a 5000-digit value must never reach `int(...)` (which would otherwise
+    # raise an unhandled `ValueError` once past CPython's integer-string-
+    # conversion digit limit) on this surface either.
+    response = client.get(
+        "/api/search/en/power", params={"power_drive": "SHAFT", "page_size": "9" * 5000}
+    )
+    assert response.status_code == 400
+
+
+def test_overlong_page_after_on_sail_is_400(client: TestClient) -> None:
+    # Finding F1: a `page_after` far longer than any real minted cursor
+    # must fail closed on length alone, before `verify_search_page_cursor`
+    # ever attempts to base64/HMAC/JSON-decode it.
+    response = client.get("/api/search/en", params={"draft_max": "1.6", "page_after": "a" * 5000})
+    assert response.status_code == 400
+
+
+def test_overlong_page_after_on_power_is_400(client: TestClient) -> None:
+    response = client.get(
+        "/api/search/en/power", params={"power_drive": "SHAFT", "page_after": "a" * 5000}
+    )
+    assert response.status_code == 400
+
+
+def test_a_genuinely_minted_cursor_for_the_heaviest_active_requirement_stays_valid() -> None:
+    # Finding F1: `_MAX_PAGE_AFTER_LENGTH` must never reject a cursor this
+    # server itself minted -- measured directly against the heaviest
+    # realistic combination of active Sail criteria (every accepted key
+    # active at once), which produces the longest `query_identity` this
+    # cursor's payload can ever carry.
+    from hullq.api.app import _MAX_PAGE_AFTER_LENGTH
+    from hullq.application.search_read import build_canonical_search_path
+
+    query_identity = build_canonical_search_path(
+        "en",
+        draft_max=Decimal("1.60"),
+        keel_configuration="FIN_WITH_BULB",
+        loa_min=Decimal("10.00"),
+        loa_max=Decimal("15.00"),
+        rudder_configuration="TRANSOM_HUNG",
+        hull_configuration="CATAMARAN",
+        cockpit_position="MULTIPLE",
+        deck_saloon="PILOTHOUSE",
+        beam_min=Decimal("3.20"),
+        beam_max=Decimal("4.40"),
+        hull_material="GRP_FIBERGLASS",
+    )
+    cursor = mint_search_page_cursor(
+        domain=SearchPageCursorDomain.SAIL,
+        query_identity=query_identity,
+        page_size=50,
+        last_native_listing_id="NL-00000000000000000000000000000000",
+        secret=_SECRET,
+    )
+    assert len(cursor) <= _MAX_PAGE_AFTER_LENGTH, (
+        f"a genuinely minted cursor ({len(cursor)} chars) must stay under "
+        f"the {_MAX_PAGE_AFTER_LENGTH}-char bound"
+    )
 
 
 def test_duplicate_page_size_is_400(client: TestClient) -> None:
@@ -869,4 +948,93 @@ def test_search_request_returns_503_and_releases_its_connection_when_the_stateme
     assert still_present == 0, (
         f"backend pid {opened_pid} (opened for the timed-out request) is still "
         "visible in pg_stat_activity -- the connection must be fully released"
+    )
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0096 independent review round 2 Finding E2: a real `statement_timeout`
+# bounds any ONE SQL statement, but a bounded page may issue many
+# individually-fast statements in sequence (one per scanned candidate, up to
+# the candidate_scan_budget) whose cumulative total could still run far
+# longer than any single statement's own timeout, with no single statement
+# ever slow enough to trip `_SEARCH_PAGE_STATEMENT_TIMEOUT_MS`. These tests
+# prove the separate, cumulative `request_deadline_seconds` budget
+# (`hullq.application.native_inventory_query.check_request_deadline`) is
+# real: it fires against a genuine population of REAL, individually-fast
+# statements (never a `pg_sleep`-faked single slow one), the connection is
+# still cleanly released, and the public HTTP path returns the same
+# controlled 503.
+# ---------------------------------------------------------------------------
+
+
+def test_evaluator_raises_when_many_fast_statements_exceed_the_request_deadline(
+    api_conn: Any,
+) -> None:
+    from hullq.application.native_inventory_query import (
+        SearchRequestDeadlineExceeded,
+        evaluate_native_inventory_requirements_page,
+    )
+
+    # A zero-match, never-early-stopping population (none of these
+    # candidates ever claimed keel_configuration at all) forces a full
+    # scan of every seeded candidate -- real measured evidence
+    # (`tests/persistence/test_bounded_search_page_performance_slice_0096.py`)
+    # shows a 200-candidate scan takes roughly 0.2s of real, individually-
+    # fast statements; a 0.05s deadline is comfortably below that, with
+    # ample margin for slower CI hardware.
+    _seed_sail_mixed_population(api_conn, 200)
+
+    with pytest.raises(Exception) as exc_info:
+        evaluate_native_inventory_requirements_page(
+            api_conn,
+            draft_max=None,
+            keel_configuration="FIN",
+            as_of=_as_of(),
+            after_native_listing_id=None,
+            page_size=20,
+            request_deadline_seconds=0.05,
+        )
+    assert isinstance(exc_info.value, SearchRequestDeadlineExceeded)
+
+
+def test_search_request_returns_503_and_releases_its_connection_when_the_request_deadline_fires(
+    client: TestClient, api_conn: Any
+) -> None:
+    import hullq.api.app as app_module
+
+    real_open_connection = app_module.open_connection
+    opened_backend_pids: list[int] = []
+
+    def _pid_capturing_open_connection(url: str, **kwargs: Any) -> Any:
+        conn = real_open_connection(url, **kwargs)
+        opened_backend_pids.append(conn.info.backend_pid)
+        return conn
+
+    # Same zero-match, never-early-stopping population as the direct-
+    # evaluator proof above, exercised through the real public HTTP route
+    # this time -- no `pg_sleep`, no patched evaluator: every one of these
+    # statements is genuinely fast on its own.
+    _seed_sail_mixed_population(api_conn, 200)
+
+    with (
+        patch.object(app_module, "_SEARCH_PAGE_REQUEST_DEADLINE_SECONDS", 0.05),
+        patch.object(app_module, "open_connection", side_effect=_pid_capturing_open_connection),
+    ):
+        response = client.get(
+            "/api/search/en", params={"keel_configuration": "FIN", "page_size": "20"}
+        )
+
+    assert response.status_code == 503, response.text
+    assert response.json() == {"error": "search_timed_out"}
+    assert len(opened_backend_pids) == 1, opened_backend_pids
+    (opened_pid,) = opened_backend_pids
+
+    with api_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM pg_stat_activity WHERE pid = %(pid)s", {"pid": opened_pid}
+        )
+        (still_present,) = cur.fetchone()
+    assert still_present == 0, (
+        f"backend pid {opened_pid} (opened for the deadline-exceeded request) is "
+        "still visible in pg_stat_activity -- the connection must be fully released"
     )

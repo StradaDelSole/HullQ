@@ -72,6 +72,11 @@ test("loadSearchPageData: a valid 200 result is classified as `ok`, distinct fro
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
@@ -97,6 +102,11 @@ test("loadSearchPageData: a keel-only 200 result carries only keel_configuration
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
@@ -121,6 +131,11 @@ test("loadSearchPageData: a mixed 200 result carries both draft_max and keel_con
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
@@ -182,11 +197,23 @@ test("loadSearchPageData: a 200 result carries publisher_claim_matches through v
               freshness_status: "CONFIRMED",
               last_confirmed_at: null,
               source_basis: "PUBLISHER_CLAIM",
-              criterion_evidence: [],
+              criterion_evidence: [
+                {
+                  criterion: { kind: "NUMERIC", field: "draft_max_m", comparison: "MAXIMUM", threshold_min: null, threshold_max: "1.6" },
+                  field: "draft_max_m",
+                  truth: "TRUE",
+                  reason: null,
+                  explanation: "matched",
+                  observed_value: "1.4",
+                },
+              ],
               discovery_token: "token-1",
             },
           ],
           publisher_claim_match_count: 1,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
@@ -203,7 +230,14 @@ test("loadSearchPageData: a 200 result carries publisher_claim_matches through v
   );
 });
 
-test("loadSearchPageData: a 200 result without publisher_claim_matches defaults to empty", async () => {
+// SLICE-0096 independent review round 2 Finding C1: a RESULT body missing
+// `publisher_claim_matches`/`publisher_claim_match_count` (or any other
+// mandatory result-surface field) is a service/contract failure -- never
+// silently treated as "no publisher claims" via a default. This used to
+// assert the opposite (a defaulted-to-empty `ok` result); the fix for
+// Finding C1 is precisely that this incomplete body must now collapse to
+// `unavailable`.
+test("loadSearchPageData: a 200 result missing publisher_claim_matches is `unavailable`, never a defaulted-empty `ok`", async () => {
   await withServer(
     (_req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -214,16 +248,15 @@ test("loadSearchPageData: a 200 result without publisher_claim_matches defaults 
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
     async (baseUrl) => {
       const data = await loadSearchPageData(baseUrl, "en", "draft_max=1.6");
-      assert.equal(data.kind, "ok");
-      if (data.kind === "ok") {
-        assert.equal(data.publisherClaimMatchCount, 0);
-        assert.deepEqual(data.publisherClaimMatches, []);
-      }
+      assert.equal(data.kind, "unavailable");
     },
   );
 });
@@ -371,6 +404,8 @@ test("loadSearchPageData: a PARTIAL result builds a nextPageQueryString carrying
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
           page_size: 1,
           evaluation_state: "PARTIAL",
           next_cursor: "opaque-cursor-token",
@@ -402,6 +437,8 @@ test("loadSearchPageData: a COMPLETE result has no nextPageQueryString", async (
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
           page_size: 20,
           evaluation_state: "COMPLETE",
           next_cursor: null,
@@ -430,6 +467,11 @@ test("loadSearchPageData: a loa-only 200 result carries only loa_min/loa_max in 
           confirmed_matches: [],
           confirmed_match_count: 0,
           insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },

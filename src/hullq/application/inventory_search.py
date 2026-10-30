@@ -51,6 +51,7 @@ web surface can disclose the due state.
 
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -62,9 +63,11 @@ from hullq.application.current_public_eligibility import (
 )
 from hullq.application.native_inventory_query import (
     DEFAULT_CANDIDATE_SCAN_BUDGET,
+    DEFAULT_REQUEST_DEADLINE_SECONDS,
     PublisherClaimCandidateEvaluation,
     SearchPageEvaluationState,
     build_mixed_requirement_query,
+    check_request_deadline,
     classify_claim_only_page_candidate,
     evaluate_claim_only_candidates,
 )
@@ -410,6 +413,7 @@ def evaluate_draft_max_requirement_page(
     after_native_listing_id: str | None,
     page_size: int,
     candidate_scan_budget: int = DEFAULT_CANDIDATE_SCAN_BUDGET,
+    request_deadline_seconds: float = DEFAULT_REQUEST_DEADLINE_SECONDS,
 ) -> DraftMaxSearchResultPage:
     """Evaluate one bounded page of the PURE `draft_max`-only vertical --
     SLICE-0096's new public entrypoint for the legacy SLICE-0051 shape. See
@@ -431,6 +435,18 @@ def evaluate_draft_max_requirement_page(
         raise ValueError(
             f"candidate_scan_budget must be a positive int; got {candidate_scan_budget!r}"
         )
+    if (
+        not isinstance(request_deadline_seconds, (int, float))
+        or isinstance(request_deadline_seconds, bool)
+        or request_deadline_seconds <= 0
+    ):
+        raise ValueError(
+            f"request_deadline_seconds must be a positive number; got {request_deadline_seconds!r}"
+        )
+
+    # Finding E2 (round 2): see `hullq.application.native_inventory_query
+    # .evaluate_native_inventory_requirements_page`'s identical rationale.
+    deadline = time.monotonic() + request_deadline_seconds
 
     claim_only_query, claim_only_definitions = build_mixed_requirement_query(
         draft_max=draft_max, keel_configuration=None
@@ -485,6 +501,7 @@ def evaluate_draft_max_requirement_page(
         )
         boat_designs = []
         for design_id in distinct_design_ids:
+            check_request_deadline(deadline)
             raw_design = fetch_boat_design(conn, design_id)
             if raw_design is not None:
                 boat_designs.append(raw_design)
@@ -504,6 +521,7 @@ def evaluate_draft_max_requirement_page(
     exhausted_batch = True
 
     for index, candidate in enumerate(batch):
+        check_request_deadline(deadline)
         last_examined_id = candidate.native_listing_id.value
         freshness = eligible_by_id.get(candidate.native_listing_id.value)
         if freshness is None:
