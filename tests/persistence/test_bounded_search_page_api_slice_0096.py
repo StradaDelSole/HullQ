@@ -821,6 +821,14 @@ def test_search_request_returns_503_and_releases_its_connection_when_the_stateme
 ) -> None:
     import hullq.api.app as app_module
 
+    real_open_connection = app_module.open_connection
+    opened_backend_pids: list[int] = []
+
+    def _pid_capturing_open_connection(url: str, **kwargs: Any) -> Any:
+        conn = real_open_connection(url, **kwargs)
+        opened_backend_pids.append(conn.info.backend_pid)
+        return conn
+
     real_evaluator = app_module.evaluate_draft_max_requirement_page
 
     def _artificially_slow_evaluator(conn: Any, *args: Any, **kwargs: Any) -> Any:
@@ -833,6 +841,7 @@ def test_search_request_returns_503_and_releases_its_connection_when_the_stateme
 
     with (
         patch.object(app_module, "_SEARCH_PAGE_STATEMENT_TIMEOUT_MS", 200),
+        patch.object(app_module, "open_connection", side_effect=_pid_capturing_open_connection),
         patch.object(
             app_module,
             "evaluate_draft_max_requirement_page",
@@ -843,15 +852,21 @@ def test_search_request_returns_503_and_releases_its_connection_when_the_stateme
 
     assert response.status_code == 503, response.text
     assert response.json() == {"error": "search_timed_out"}
+    assert len(opened_backend_pids) == 1, opened_backend_pids
+    (opened_pid,) = opened_backend_pids
 
+    # SLICE-0096 Finding E: check the EXACT backend pid this request's own
+    # connection used -- never a database-wide "any idle-in-transaction
+    # session" count, which would also see OTHER concurrently running
+    # tests' own, entirely legitimate, in-flight transactions under
+    # `pytest -n auto` parallel execution (observed causing a false
+    # failure under CI's real parallel shard run).
     with api_conn.cursor() as cur:
         cur.execute(
-            "SELECT count(*) FROM pg_stat_activity "
-            "WHERE datname = current_database() AND pid <> pg_backend_pid() "
-            "AND state = 'idle in transaction'"
+            "SELECT count(*) FROM pg_stat_activity WHERE pid = %(pid)s", {"pid": opened_pid}
         )
-        (idle_in_transaction_count,) = cur.fetchone()
-    assert idle_in_transaction_count == 0, (
-        "the connection opened for the timed-out request must be fully "
-        "released, never left idle-in-transaction"
+        (still_present,) = cur.fetchone()
+    assert still_present == 0, (
+        f"backend pid {opened_pid} (opened for the timed-out request) is still "
+        "visible in pg_stat_activity -- the connection must be fully released"
     )
