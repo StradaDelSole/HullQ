@@ -93,7 +93,9 @@ from hullq.search.criteria_registry import (
 __all__ = [
     "SearchOutcomeKind",
     "SearchRequestOutcome",
+    "SearchRequestShape",
     "build_canonical_search_path",
+    "decide_search_request_shape",
     "evaluate_requirement_search_outcome",
     "evaluate_search_request",
 ]
@@ -178,6 +180,65 @@ class SearchRequestOutcome:
             raise ValueError(
                 "Only a RESULT outcome may carry an active criterion value/search_outcome"
             )
+
+
+@dataclass(frozen=True, slots=True)
+class SearchRequestShape:
+    """SLICE-0096 (independent review Finding A): the decided request
+    STATE/SHAPE only -- `BASE`/`REDIRECT`/`INVALID`/`RESULT` plus the exact
+    canonical active-criterion values for a `RESULT` -- never running Search
+    evaluation.
+
+    Factored out of `evaluate_search_request` so the public bounded-page
+    routes can decide `BASE`/`REDIRECT`/`INVALID`/`RESULT` and read the
+    canonical criteria WITHOUT `evaluate_requirement_search_outcome`'s
+    complete unbounded evaluation ever running on that path (contract:
+    "no unbounded ACTIVE-candidate enumeration ... on a publicly reachable
+    path"). `evaluate_search_request` below remains externally unchanged
+    for its existing callers (unit tests and any other consumer that still
+    wants the complete legacy evaluated outcome, e.g. a future non-paginated
+    diagnostic) by composing this pure decision with
+    `evaluate_requirement_search_outcome`.
+    """
+
+    kind: SearchOutcomeKind
+    canonical_path: str | None = None
+    draft_max: Decimal | None = None
+    keel_configuration: str | None = None
+    loa_min: Decimal | None = None
+    loa_max: Decimal | None = None
+    rudder_configuration: str | None = None
+    hull_configuration: str | None = None
+    cockpit_position: str | None = None
+    deck_saloon: str | None = None
+    beam_min: Decimal | None = None
+    beam_max: Decimal | None = None
+    hull_material: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.kind is SearchOutcomeKind.REDIRECT and self.canonical_path is None:
+            raise ValueError("A REDIRECT shape must carry canonical_path")
+        if self.kind is not SearchOutcomeKind.REDIRECT and self.canonical_path is not None:
+            raise ValueError("Only a REDIRECT shape may carry canonical_path")
+        is_result = self.kind is SearchOutcomeKind.RESULT
+        active_values = (
+            self.draft_max,
+            self.keel_configuration,
+            self.loa_min,
+            self.loa_max,
+            self.rudder_configuration,
+            self.hull_configuration,
+            self.cockpit_position,
+            self.deck_saloon,
+            self.beam_min,
+            self.beam_max,
+            self.hull_material,
+        )
+        if is_result:
+            if all(value is None for value in active_values):
+                raise ValueError("A RESULT shape must carry at least one active criterion")
+        elif any(value is not None for value in active_values):
+            raise ValueError("Only a RESULT shape may carry an active criterion value")
 
 
 def build_canonical_search_path(
@@ -302,10 +363,14 @@ def evaluate_requirement_search_outcome(
     )
 
 
-def evaluate_search_request(
-    conn: Any, *, locale: str, query_params: Mapping[str, Sequence[str]], as_of: datetime
-) -> SearchRequestOutcome:
-    """Decide the request state for one locale-prefixed Search request.
+def decide_search_request_shape(
+    *, locale: str, query_params: Mapping[str, Sequence[str]]
+) -> SearchRequestShape:
+    """Decide the request STATE/SHAPE for one locale-prefixed Search request
+    -- `BASE`/`REDIRECT`/`INVALID`/`RESULT` plus canonical criterion values,
+    never touching the database and never running Search evaluation
+    (SLICE-0096 independent review Finding A: this is the exact pure
+    decision step the public bounded-page routes use).
 
     *query_params* maps each raw query key to every raw value it carried
     (preserving duplicates) -- callers must not pre-collapse duplicate keys
@@ -317,7 +382,7 @@ def evaluate_search_request(
 
     unknown_keys = set(query_params) - _ALLOWED_PARAM_KEYS
     if unknown_keys:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
 
     draft_raw_values = list(query_params.get(_DRAFT_MAX_KEY, ()))
     keel_raw_values = list(query_params.get(_KEEL_CONFIGURATION_KEY, ()))
@@ -344,7 +409,7 @@ def evaluate_search_request(
         or beam_max_raw_values
         or hull_material_raw_values
     ):
-        return SearchRequestOutcome(kind=SearchOutcomeKind.BASE)
+        return SearchRequestShape(kind=SearchOutcomeKind.BASE)
 
     # Independent review Finding 2: `docs/OQ_018_SEARCH_PARAMETER_ORDERING_DECISION_2026-09-11.md`
     # requires the canonical URL to order active technical parameters
@@ -375,69 +440,69 @@ def evaluate_search_request(
     # trigger this function already required.
     draft_result = parse_numeric_param(DRAFT_MAX_DEFINITION, draft_raw_values)
     if draft_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     draft_max, draft_is_single_canonical = draft_result
 
     keel_result = parse_categorical_param(KEEL_CONFIGURATION_DEFINITION, keel_raw_values)
     if keel_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     keel_configuration, keel_is_single_canonical = keel_result
 
     loa_min_result = parse_numeric_param(LOA_DEFINITION, loa_min_raw_values)
     if loa_min_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     loa_min, loa_min_is_single_canonical = loa_min_result
 
     loa_max_result = parse_numeric_param(LOA_DEFINITION, loa_max_raw_values)
     if loa_max_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     loa_max, loa_max_is_single_canonical = loa_max_result
 
     if loa_min is not None and loa_max is not None and loa_min > loa_max:
         # Slice normative LOA semantics: "Require loa_min <= loa_max
         # whenever both supplied" -- never silently swapped or clamped.
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
 
     rudder_result = parse_categorical_param(RUDDER_CONFIGURATION_DEFINITION, rudder_raw_values)
     if rudder_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     rudder_configuration, rudder_is_single_canonical = rudder_result
 
     hull_result = parse_categorical_param(HULL_CONFIGURATION_DEFINITION, hull_raw_values)
     if hull_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     hull_configuration, hull_is_single_canonical = hull_result
 
     cockpit_result = parse_categorical_param(COCKPIT_POSITION_DEFINITION, cockpit_raw_values)
     if cockpit_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     cockpit_position, cockpit_is_single_canonical = cockpit_result
 
     deck_saloon_result = parse_categorical_param(DECK_SALOON_DEFINITION, deck_saloon_raw_values)
     if deck_saloon_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     deck_saloon, deck_saloon_is_single_canonical = deck_saloon_result
 
     beam_min_result = parse_numeric_param(BEAM_DEFINITION, beam_min_raw_values)
     if beam_min_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     beam_min, beam_min_is_single_canonical = beam_min_result
 
     beam_max_result = parse_numeric_param(BEAM_DEFINITION, beam_max_raw_values)
     if beam_max_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     beam_max, beam_max_is_single_canonical = beam_max_result
 
     if beam_min is not None and beam_max is not None and beam_min > beam_max:
         # Slice normative beam semantics: require beam_min <= beam_max
         # whenever both supplied -- never silently swapped or clamped.
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
 
     hull_material_result = parse_categorical_param(
         HULL_MATERIAL_DEFINITION, hull_material_raw_values
     )
     if hull_material_result is None:
-        return SearchRequestOutcome(kind=SearchOutcomeKind.INVALID)
+        return SearchRequestShape(kind=SearchOutcomeKind.INVALID)
     hull_material, hull_material_is_single_canonical = hull_material_result
 
     if not (
@@ -454,7 +519,7 @@ def evaluate_search_request(
         and hull_material_is_single_canonical
         and order_is_canonical
     ):
-        return SearchRequestOutcome(
+        return SearchRequestShape(
             kind=SearchOutcomeKind.REDIRECT,
             canonical_path=build_canonical_search_path(
                 locale,
@@ -472,22 +537,7 @@ def evaluate_search_request(
             ),
         )
 
-    search_outcome = evaluate_requirement_search_outcome(
-        conn,
-        draft_max=draft_max,
-        keel_configuration=keel_configuration,
-        loa_min=loa_min,
-        loa_max=loa_max,
-        rudder_configuration=rudder_configuration,
-        hull_configuration=hull_configuration,
-        cockpit_position=cockpit_position,
-        deck_saloon=deck_saloon,
-        beam_min=beam_min,
-        beam_max=beam_max,
-        hull_material=hull_material,
-        as_of=as_of,
-    )
-    return SearchRequestOutcome(
+    return SearchRequestShape(
         kind=SearchOutcomeKind.RESULT,
         draft_max=draft_max,
         keel_configuration=keel_configuration,
@@ -500,5 +550,55 @@ def evaluate_search_request(
         beam_min=beam_min,
         beam_max=beam_max,
         hull_material=hull_material,
+    )
+
+
+def evaluate_search_request(
+    conn: Any, *, locale: str, query_params: Mapping[str, Sequence[str]], as_of: datetime
+) -> SearchRequestOutcome:
+    """Decide the request state for one locale-prefixed Search request AND,
+    for a `RESULT`, run the complete unbounded
+    `evaluate_requirement_search_outcome` evaluation -- externally unchanged
+    behavior from before SLICE-0096, now composed from the pure
+    `decide_search_request_shape` decision plus that evaluation, so this
+    function's own existing callers (unit tests; any other consumer that
+    still wants the complete legacy evaluated outcome) observe byte-
+    identical results. The public bounded-page routes do NOT call this
+    function -- they call `decide_search_request_shape` directly and then
+    the SLICE-0096 bounded page evaluators instead (independent review
+    Finding A).
+    """
+    shape = decide_search_request_shape(locale=locale, query_params=query_params)
+    if shape.kind is not SearchOutcomeKind.RESULT:
+        return SearchRequestOutcome(kind=shape.kind, canonical_path=shape.canonical_path)
+
+    search_outcome = evaluate_requirement_search_outcome(
+        conn,
+        draft_max=shape.draft_max,
+        keel_configuration=shape.keel_configuration,
+        loa_min=shape.loa_min,
+        loa_max=shape.loa_max,
+        rudder_configuration=shape.rudder_configuration,
+        hull_configuration=shape.hull_configuration,
+        cockpit_position=shape.cockpit_position,
+        deck_saloon=shape.deck_saloon,
+        beam_min=shape.beam_min,
+        beam_max=shape.beam_max,
+        hull_material=shape.hull_material,
+        as_of=as_of,
+    )
+    return SearchRequestOutcome(
+        kind=SearchOutcomeKind.RESULT,
+        draft_max=shape.draft_max,
+        keel_configuration=shape.keel_configuration,
+        loa_min=shape.loa_min,
+        loa_max=shape.loa_max,
+        rudder_configuration=shape.rudder_configuration,
+        hull_configuration=shape.hull_configuration,
+        cockpit_position=shape.cockpit_position,
+        deck_saloon=shape.deck_saloon,
+        beam_min=shape.beam_min,
+        beam_max=shape.beam_max,
+        hull_material=shape.hull_material,
         search_outcome=search_outcome,
     )

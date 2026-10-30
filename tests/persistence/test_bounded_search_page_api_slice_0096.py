@@ -26,6 +26,7 @@ import uuid
 from collections.abc import Generator
 from decimal import Decimal
 from typing import Any
+from unittest.mock import patch
 from urllib.parse import quote, urlsplit, urlunsplit
 
 import psycopg
@@ -487,3 +488,370 @@ def test_cursor_minted_for_sail_rejected_on_power_route(client: TestClient, api_
         params={"power_drive": "SHAFT", "page_after": sail_cursor},
     )
     assert response.status_code == 400
+
+
+# ---------------------------------------------------------------------------
+# Independent review Finding A: prove the complete public HTTP request path
+# never invokes the old unbounded evaluation functions, real end-to-end,
+# at 0/40/200 and a larger sparse/negative-heavy population. A patched
+# function that fires raises immediately through `TestClient` (default
+# `raise_server_exceptions=True`), failing the test with a clear traceback
+# rather than merely a silently-passing call count.
+# ---------------------------------------------------------------------------
+
+
+def _seed_sail_claim_only(conn: Any, *, index: int, draft: str, category: VesselCategory) -> str:
+    listing_id = f"NL-0096API-BOUND-{index:05d}"
+    account = AccountId(f"ACC-{listing_id}")
+    org = _org(f"ORG-{listing_id}")
+    membership = _membership(org, account, f"OM-{listing_id}")
+    physical_boat_id = f"PB-{listing_id}"
+    market_episode_id = f"ME-{listing_id}"
+
+    create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
+    create_market_episode(
+        conn,
+        market_episode=MarketEpisode(
+            id=MarketEpisodeId(market_episode_id), physical_boat_id=PhysicalBoatId(physical_boat_id)
+        ),
+    )
+    create_native_listing(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        listing=NativeListing(
+            id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(market_episode_id)
+        ),
+    )
+    write_native_listing_offer_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=NativeListingOfferRevisionId(f"REV-{listing_id}"),
+        expected_current_revision_id=None,
+        offer=NativeListingOfferSnapshot(
+            asking_price_mode=AskingPriceMode.AMOUNT,
+            location_country="FR",
+            broker_description="Synthetic SLICE-0096 bounded-evaluation fixture listing.",
+            asking_price_amount=Decimal("90000.00"),
+            currency="EUR",
+        ),
+    )
+    write_physical_boat_claim_revision(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+        revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-{listing_id}"),
+        expected_current_revision_id=None,
+        claims=PhysicalBoatClaimSnapshot(
+            marketed_brand_claim="Unbranded",
+            model_designation_claim="Synthetic",
+            build_year=BuildYearClaim(assertion_kind=VA, value=2015),
+            vessel_category=VesselCategoryClaim(assertion_kind=VA, value=category),
+            draft=DraftClaim(assertion_kind=VA, value=Decimal(draft)),
+        ),
+    )
+    _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
+    result = publish_native_listing(
+        conn,
+        account_id=account,
+        candidate_organization=org,
+        membership=membership,
+        native_listing_id=NativeListingId(listing_id),
+    )
+    assert result.status.value == "transitioned", result
+    return listing_id
+
+
+def _seed_sail_mixed_population(conn: Any, population_size: int) -> None:
+    for index in range(1, population_size + 1):
+        # Alternate shallow (confirmed match)/deep (non-match) draft, all
+        # SAIL -- never a single CONFIRMED_MATCH when queried on a field
+        # (e.g. keel_configuration) none of them have claimed at all.
+        draft = "1.10" if index % 2 == 0 else "1.90"
+        _seed_sail_claim_only(conn, index=index, draft=draft, category=VesselCategory.SAIL)
+    if population_size:
+        conn.commit()
+
+
+@pytest.mark.parametrize("population_size", [0, 40, 200])
+def test_sail_bounded_endpoint_never_calls_old_unbounded_evaluators(
+    client: TestClient, api_conn: Any, population_size: int
+) -> None:
+    import hullq.application.native_inventory_query as native_inventory_query_module
+    import hullq.application.search_read as search_read_module
+
+    _seed_sail_mixed_population(api_conn, population_size)
+
+    def _forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError(
+            "old unbounded Sail evaluator must never be called from a bounded page request"
+        )
+
+    with (
+        patch.object(search_read_module, "evaluate_draft_max_requirement", side_effect=_forbidden),
+        patch.object(
+            search_read_module, "evaluate_native_inventory_requirements", side_effect=_forbidden
+        ),
+        patch.object(
+            native_inventory_query_module,
+            "evaluate_native_inventory_requirements",
+            side_effect=_forbidden,
+        ),
+    ):
+        # (a) a query with real matches among the population (even-indexed
+        # candidates are shallow-draft matches for draft_max=1.6).
+        match_response = client.get(
+            "/api/search/en", params={"draft_max": "1.6", "page_size": "20"}
+        )
+        assert match_response.status_code == 200, match_response.text
+
+        # (b) a query matching NOTHING in this population at all (none of
+        # these candidates ever claimed a keel_configuration) -- the
+        # sparse/negative-heavy, zero-match PARTIAL/COMPLETE case.
+        zero_match_response = client.get(
+            "/api/search/en", params={"keel_configuration": "FIN", "page_size": "20"}
+        )
+        assert zero_match_response.status_code == 200, zero_match_response.text
+        assert zero_match_response.json()["confirmed_match_count"] == 0
+
+
+def _seed_power_mixed_population(conn: Any, population_size: int) -> None:
+    for index in range(1, population_size + 1):
+        listing_id = f"NL-0096API-PBOUND-{index:05d}"
+        account = AccountId(f"ACC-{listing_id}")
+        org = _org(f"ORG-{listing_id}")
+        membership = _membership(org, account, f"OM-{listing_id}")
+        physical_boat_id = f"PB-{listing_id}"
+        market_episode_id = f"ME-{listing_id}"
+        create_physical_boat(conn, physical_boat=PhysicalBoat(id=PhysicalBoatId(physical_boat_id)))
+        create_market_episode(
+            conn,
+            market_episode=MarketEpisode(
+                id=MarketEpisodeId(market_episode_id),
+                physical_boat_id=PhysicalBoatId(physical_boat_id),
+            ),
+        )
+        create_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            listing=NativeListing(
+                id=NativeListingId(listing_id), market_episode_id=MarketEpisodeId(market_episode_id)
+            ),
+        )
+        write_native_listing_offer_revision(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+            revision_id=NativeListingOfferRevisionId(f"REV-{listing_id}"),
+            expected_current_revision_id=None,
+            offer=NativeListingOfferSnapshot(
+                asking_price_mode=AskingPriceMode.AMOUNT,
+                location_country="FR",
+                broker_description="Synthetic SLICE-0096 bounded-evaluation fixture listing.",
+                asking_price_amount=Decimal("90000.00"),
+                currency="EUR",
+            ),
+        )
+        # Alternate SHAFT (match for power_drive=SHAFT)/POD (non-match),
+        # all publisher-owned POWER.
+        drive = PowerDriveConfiguration.SHAFT if index % 2 == 0 else PowerDriveConfiguration.POD
+        write_physical_boat_claim_revision(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+            revision_id=PhysicalBoatClaimRevisionId(f"PBCREV-{listing_id}"),
+            expected_current_revision_id=None,
+            claims=PhysicalBoatClaimSnapshot(
+                marketed_brand_claim="Unbranded",
+                model_designation_claim="Synthetic",
+                build_year=BuildYearClaim(assertion_kind=VA, value=2015),
+                vessel_category=VesselCategoryClaim(assertion_kind=VA, value=VesselCategory.POWER),
+                power_drive_configuration=PowerDriveConfigurationClaim(
+                    assertion_kind=VA, value=drive
+                ),
+            ),
+        )
+        _attach_ready_cover_image(conn, listing_id=listing_id, org=org, account=account)
+        result = publish_native_listing(
+            conn,
+            account_id=account,
+            candidate_organization=org,
+            membership=membership,
+            native_listing_id=NativeListingId(listing_id),
+        )
+        assert result.status.value == "transitioned", result
+    if population_size:
+        conn.commit()
+
+
+@pytest.mark.parametrize("population_size", [0, 40, 200])
+def test_power_bounded_endpoint_never_calls_old_unbounded_evaluators(
+    client: TestClient, api_conn: Any, population_size: int
+) -> None:
+    import hullq.application.power_inventory_query as power_inventory_query_module
+    import hullq.application.power_search_read as power_search_read_module
+
+    _seed_power_mixed_population(api_conn, population_size)
+
+    def _forbidden(*args: Any, **kwargs: Any) -> Any:
+        raise AssertionError(
+            "old unbounded Power evaluator must never be called from a bounded page request"
+        )
+
+    with (
+        patch.object(
+            power_search_read_module, "evaluate_power_requirement", side_effect=_forbidden
+        ),
+        patch.object(
+            power_inventory_query_module, "evaluate_power_drive_requirement", side_effect=_forbidden
+        ),
+    ):
+        match_response = client.get(
+            "/api/search/en/power", params={"power_drive": "SHAFT", "page_size": "20"}
+        )
+        assert match_response.status_code == 200, match_response.text
+
+        # power_engine_count none of these candidates ever claimed --
+        # zero-match PARTIAL/COMPLETE case.
+        zero_match_response = client.get(
+            "/api/search/en/power", params={"power_engine_count": "7", "page_size": "20"}
+        )
+        assert zero_match_response.status_code == 200, zero_match_response.text
+        assert zero_match_response.json()["design_linked_match_count"] == 0
+
+
+def test_complete_http_request_sql_statement_count_is_bounded(
+    client: TestClient, api_conn: Any
+) -> None:
+    """Finding A: SQL counts/candidate bounds for the COMPLETE HTTP request
+    path, not only the isolated new page-evaluator helper -- patches the
+    app's own `open_connection` to return a statement-counting proxy around
+    the SAME real connection a genuine request would open."""
+    import hullq.api.app as app_module
+
+    _seed_sail_mixed_population(api_conn, 200)
+
+    class _CountingCursor:
+        def __init__(self, inner: Any, counter: list[int]) -> None:
+            self._inner = inner
+            self._counter = counter
+
+        def __enter__(self) -> _CountingCursor:
+            self._inner.__enter__()
+            return self
+
+        def __exit__(self, *exc_info: Any) -> None:
+            self._inner.__exit__(*exc_info)
+
+        def execute(self, *args: Any, **kwargs: Any) -> Any:
+            self._counter[0] += 1
+            return self._inner.execute(*args, **kwargs)
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._inner, name)
+
+    class _CountingConnProxy:
+        def __init__(self, conn: Any, counter: list[int]) -> None:
+            self._conn = conn
+            self._counter = counter
+
+        def cursor(self, *args: Any, **kwargs: Any) -> _CountingCursor:
+            return _CountingCursor(self._conn.cursor(*args, **kwargs), self._counter)
+
+        def close(self) -> None:
+            # The request opens its OWN connection via `open_connection` --
+            # a separate connection from the `api_conn` fixture's -- so this
+            # must actually release it, never a no-op (a no-op here would
+            # leak a real idle-in-transaction backend for the rest of this
+            # test session, exactly the class of incident Finding E's own
+            # tests guard against).
+            self._conn.close()
+
+        def __getattr__(self, name: str) -> Any:
+            return getattr(self._conn, name)
+
+    counter = [0]
+    real_open_connection = app_module.open_connection
+
+    def _counting_open_connection(url: str, **kwargs: Any) -> Any:
+        return _CountingConnProxy(real_open_connection(url, **kwargs), counter)
+
+    with patch.object(app_module, "open_connection", side_effect=_counting_open_connection):
+        response = client.get("/api/search/en", params={"draft_max": "1.6", "page_size": "20"})
+    assert response.status_code == 200, response.text
+    print(
+        f"\n[SLICE-0096 Finding A complete-HTTP-request measured evidence] "
+        f"population=200, total_sql_statements={counter[0]}"
+    )
+    # Linear-bounded (mirrors the already-measured claim-only plane shape),
+    # never scaling unboundedly with an untouched population beyond this
+    # request's own candidate_scan_budget-capped page.
+    assert counter[0] < 200 * 12, (
+        f"expected a bounded statement count for one complete HTTP request, got {counter[0]}"
+    )
+
+
+# ---------------------------------------------------------------------------
+# SLICE-0096 independent review Finding E: a real end-to-end proof that the
+# public bounded Search request path actually enforces a server-side
+# statement deadline and cleanly releases its connection on expiry -- never
+# a hang, never an opaque 500, and never a leaked idle-in-transaction
+# backend for a later request to block on (see
+# `tests/persistence/test_connection_statement_timeout_slice_0096.py` for
+# the equivalent proof at the `open_connection` primitive level; this test
+# proves the same thing through the real FastAPI handler, including its
+# `except psycopg.errors.QueryCanceled` recovery path).
+# ---------------------------------------------------------------------------
+
+
+def test_search_request_returns_503_and_releases_its_connection_when_the_statement_timeout_fires(
+    client: TestClient, api_conn: Any
+) -> None:
+    import hullq.api.app as app_module
+
+    real_evaluator = app_module.evaluate_draft_max_requirement_page
+
+    def _artificially_slow_evaluator(conn: Any, *args: Any, **kwargs: Any) -> Any:
+        # Forces the REAL connection this request opened to spend real wall
+        # time against the REAL database, so the real `statement_timeout`
+        # this request bound to it can be observed actually firing --
+        # never a faked Search outcome.
+        conn.execute("SELECT pg_sleep(2)")
+        return real_evaluator(conn, *args, **kwargs)
+
+    with (
+        patch.object(app_module, "_SEARCH_PAGE_STATEMENT_TIMEOUT_MS", 200),
+        patch.object(
+            app_module,
+            "evaluate_draft_max_requirement_page",
+            side_effect=_artificially_slow_evaluator,
+        ),
+    ):
+        response = client.get("/api/search/en", params={"draft_max": "1.6"})
+
+    assert response.status_code == 503, response.text
+    assert response.json() == {"error": "search_timed_out"}
+
+    with api_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM pg_stat_activity "
+            "WHERE datname = current_database() AND pid <> pg_backend_pid() "
+            "AND state = 'idle in transaction'"
+        )
+        (idle_in_transaction_count,) = cur.fetchone()
+    assert idle_in_transaction_count == 0, (
+        "the connection opened for the timed-out request must be fully "
+        "released, never left idle-in-transaction"
+    )

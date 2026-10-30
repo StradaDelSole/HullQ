@@ -68,6 +68,7 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import urlsplit
 
+import psycopg
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, RedirectResponse, Response
 
@@ -222,7 +223,7 @@ from hullq.application.power_inventory_query import (
 from hullq.application.power_search_read import (
     PowerSearchOutcomeKind,
     build_canonical_power_search_path,
-    evaluate_power_search_request,
+    decide_power_search_request_shape,
 )
 from hullq.application.preview_read import get_preview_read_model
 from hullq.application.professional_listing_draft import (
@@ -248,7 +249,7 @@ from hullq.application.public_media_read import (
 from hullq.application.search_read import (
     SearchOutcomeKind,
     build_canonical_search_path,
-    evaluate_search_request,
+    decide_search_request_shape,
 )
 from hullq.application.search_sensitivity import (
     SensitivityOutcomeKind,
@@ -741,6 +742,19 @@ _PAGE_SIZE_KEY = "page_size"
 _DEFAULT_PAGE_SIZE = 20
 _MAX_PAGE_SIZE = 50
 _PAGE_SIZE_RE = re.compile(r"[1-9][0-9]*")
+
+#: SLICE-0096 independent review Finding E: the bounded page evaluators
+#: cap the number of ACTIVE candidates they scan (DEFAULT_CANDIDATE_SCAN_BUDGET),
+#: but a bounded *candidate count* does not by itself prove a bounded
+#: *server-side execution time* -- a pathological plan (e.g. an unindexed
+#: scan under contention) could still run arbitrarily long. This binds a
+#: real PostgreSQL `statement_timeout` to the one connection opened for a
+#: genuine RESULT bounded-page request only (both Sail and Power) -- no
+#: other existing endpoint's `open_connection()` call is touched, so no
+#: other workload's behavior changes. On expiry PostgreSQL itself aborts
+#: the statement (`psycopg.errors.QueryCanceled`) and the connection is
+#: still closed via the surrounding `finally: conn.close()`.
+_SEARCH_PAGE_STATEMENT_TIMEOUT_MS = 5_000
 
 
 def _parse_page_params(raw_query_params: dict[str, list[str]]) -> tuple[str | None, int] | None:
@@ -1631,8 +1645,8 @@ def create_app(
         # SLICE-0096: page_after/page_size are navigation-only (contract §2 --
         # never part of the canonical technical-query identity), so they are
         # parsed/validated and stripped BEFORE the existing technical-query
-        # boundary (`evaluate_search_request`) ever sees the remaining keys --
-        # that boundary's own unknown-key allowlist is completely unchanged.
+        # boundary ever sees the remaining keys -- that boundary's own
+        # unknown-key allowlist is completely unchanged.
         page_params = _parse_page_params(raw_query_params)
         if page_params is None:
             return JSONResponse(invalid_message, status_code=400)
@@ -1643,35 +1657,43 @@ def create_app(
             if key not in (_PAGE_AFTER_KEY, _PAGE_SIZE_KEY)
         }
 
-        conn = open_connection(resolved_database_url)
-        try:
-            outcome = evaluate_search_request(
-                conn, locale=locale, query_params=technical_query_params, as_of=_current_as_of()
-            )
+        # Independent review Finding A: `decide_search_request_shape` is a
+        # pure decision -- it never touches the database and never runs
+        # `evaluate_requirement_search_outcome`'s complete unbounded
+        # evaluation. BASE/INVALID/REDIRECT are therefore decided (and a
+        # REDIRECT/400 returned) without ever opening a connection; only a
+        # genuine RESULT proceeds to open one, and only the SLICE-0096
+        # bounded page evaluator below ever reads ACTIVE inventory for this
+        # route.
+        outcome = decide_search_request_shape(locale=locale, query_params=technical_query_params)
 
-            if outcome.kind is SearchOutcomeKind.INVALID:
+        if outcome.kind is SearchOutcomeKind.INVALID:
+            return JSONResponse(invalid_message, status_code=400)
+
+        if outcome.kind is SearchOutcomeKind.REDIRECT:
+            assert outcome.canonical_path is not None
+            if page_after is not None:
+                # Contract §2: "If a request carries a cursor and
+                # noncanonical technical query syntax, reject instead of
+                # redirecting that would accidentally discard or
+                # rebinds the cursor" -- fail closed rather than
+                # 308-ing to a URL the cursor was never minted for.
                 return JSONResponse(invalid_message, status_code=400)
+            return RedirectResponse(url=outcome.canonical_path, status_code=308)
 
-            if outcome.kind is SearchOutcomeKind.REDIRECT:
-                assert outcome.canonical_path is not None
-                if page_after is not None:
-                    # Contract §2: "If a request carries a cursor and
-                    # noncanonical technical query syntax, reject instead of
-                    # redirecting that would accidentally discard or
-                    # rebinds the cursor" -- fail closed rather than
-                    # 308-ing to a URL the cursor was never minted for.
-                    return JSONResponse(invalid_message, status_code=400)
-                return RedirectResponse(url=outcome.canonical_path, status_code=308)
+        if outcome.kind is SearchOutcomeKind.BASE:
+            if page_after is not None or _PAGE_SIZE_KEY in raw_query_params:
+                # Contract §2: "A navigation-only parameter without any
+                # active technical requirement is invalid (no paginated
+                # BASE query)."
+                return JSONResponse(invalid_message, status_code=400)
+            return JSONResponse({"locale": locale, "active_requirement": None})
 
-            if outcome.kind is SearchOutcomeKind.BASE:
-                if page_after is not None or _PAGE_SIZE_KEY in raw_query_params:
-                    # Contract §2: "A navigation-only parameter without any
-                    # active technical requirement is invalid (no paginated
-                    # BASE query)."
-                    return JSONResponse(invalid_message, status_code=400)
-                return JSONResponse({"locale": locale, "active_requirement": None})
-
-            assert outcome.kind is SearchOutcomeKind.RESULT
+        assert outcome.kind is SearchOutcomeKind.RESULT
+        conn = open_connection(
+            resolved_database_url, statement_timeout_ms=_SEARCH_PAGE_STATEMENT_TIMEOUT_MS
+        )
+        try:
             active_requirement = _build_active_requirement(
                 draft_max=outcome.draft_max,
                 keel_configuration=outcome.keel_configuration,
@@ -1765,6 +1787,13 @@ def create_app(
                     after_native_listing_id=after_native_listing_id,
                     page_size=page_size,
                 )
+        except psycopg.errors.QueryCanceled:
+            # SLICE-0096 independent review Finding E: the bound statement
+            # timeout fired -- a controlled 503, never a hang or an opaque
+            # unhandled 500. `finally` below still closes this connection.
+            # The web layer classifies any non-200/308/400 status as
+            # `unavailable` (searchApi.ts) regardless of this body's shape.
+            return JSONResponse({"error": "search_timed_out"}, status_code=503)
         finally:
             conn.close()
 
@@ -1891,27 +1920,32 @@ def create_app(
             if key not in (_PAGE_AFTER_KEY, _PAGE_SIZE_KEY)
         }
 
-        conn = open_connection(resolved_database_url)
-        try:
-            outcome = evaluate_power_search_request(
-                conn, locale=locale, query_params=technical_query_params, as_of=_current_as_of()
-            )
+        # Independent review Finding A: pure decision, no DB access and no
+        # unbounded `evaluate_power_requirement` evaluation -- mirrors the
+        # Sail route's identical rationale above.
+        outcome = decide_power_search_request_shape(
+            locale=locale, query_params=technical_query_params
+        )
 
-            if outcome.kind is PowerSearchOutcomeKind.INVALID:
+        if outcome.kind is PowerSearchOutcomeKind.INVALID:
+            return JSONResponse(invalid_message, status_code=400)
+
+        if outcome.kind is PowerSearchOutcomeKind.REDIRECT:
+            assert outcome.canonical_path is not None
+            if page_after is not None:
                 return JSONResponse(invalid_message, status_code=400)
+            return RedirectResponse(url=outcome.canonical_path, status_code=308)
 
-            if outcome.kind is PowerSearchOutcomeKind.REDIRECT:
-                assert outcome.canonical_path is not None
-                if page_after is not None:
-                    return JSONResponse(invalid_message, status_code=400)
-                return RedirectResponse(url=outcome.canonical_path, status_code=308)
+        if outcome.kind is PowerSearchOutcomeKind.BASE:
+            if page_after is not None or _PAGE_SIZE_KEY in raw_query_params:
+                return JSONResponse(invalid_message, status_code=400)
+            return JSONResponse({"locale": locale, "active_requirement": None})
 
-            if outcome.kind is PowerSearchOutcomeKind.BASE:
-                if page_after is not None or _PAGE_SIZE_KEY in raw_query_params:
-                    return JSONResponse(invalid_message, status_code=400)
-                return JSONResponse({"locale": locale, "active_requirement": None})
-
-            assert outcome.kind is PowerSearchOutcomeKind.RESULT
+        assert outcome.kind is PowerSearchOutcomeKind.RESULT
+        conn = open_connection(
+            resolved_database_url, statement_timeout_ms=_SEARCH_PAGE_STATEMENT_TIMEOUT_MS
+        )
+        try:
             query_identity = build_canonical_power_search_path(
                 locale,
                 power_drive=outcome.power_drive,
@@ -1938,6 +1972,10 @@ def create_app(
                 after_native_listing_id=after_native_listing_id,
                 page_size=page_size,
             )
+        except psycopg.errors.QueryCanceled:
+            # SLICE-0096 independent review Finding E -- mirrors get_search's
+            # identical rationale above.
+            return JSONResponse({"error": "search_timed_out"}, status_code=503)
         finally:
             conn.close()
 

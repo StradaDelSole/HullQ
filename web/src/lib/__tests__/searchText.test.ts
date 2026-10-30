@@ -240,6 +240,41 @@ test("every supported locale has a complete hullMaterialLabels mapping", () => {
   }
 });
 
+// SLICE-0096 independent review Finding D: the PARTIAL-page zero-result
+// wording must exist, be non-empty, interpolate its argument, and must
+// never collapse to the exact same text as the COMPLETE-page wording --
+// a buyer reading a PARTIAL zero-match page must never see a message that
+// could equally describe a final/exhaustive absence.
+test("every supported locale has complete, distinct PARTIAL-page zero-result text (Finding D)", () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    const t = searchText[locale];
+    assert.ok(t.noConfirmedMatchesPartial.length > 0, `${locale}.noConfirmedMatchesPartial`);
+    assert.ok(
+      t.noConfirmedMatchesGenericPartial.length > 0,
+      `${locale}.noConfirmedMatchesGenericPartial`,
+    );
+    assert.ok(
+      t.noDesignConfirmedMatchesButPublisherClaimsExistPartial(3).includes("3"),
+      `${locale}.noDesignConfirmedMatchesButPublisherClaimsExistPartial must interpolate its count`,
+    );
+    assert.notEqual(
+      t.noConfirmedMatchesPartial,
+      t.noConfirmedMatches,
+      `${locale}: a PARTIAL zero-match page must never read like the COMPLETE "no matches" claim`,
+    );
+    assert.notEqual(
+      t.noConfirmedMatchesGenericPartial,
+      t.noConfirmedMatchesGeneric,
+      `${locale}: a PARTIAL zero-match page must never read like the COMPLETE generic "no matches" claim`,
+    );
+    assert.notEqual(
+      t.noDesignConfirmedMatchesButPublisherClaimsExistPartial(3),
+      t.noDesignConfirmedMatchesButPublisherClaimsExist(3),
+      `${locale}: the PARTIAL publisher-claims-exist wording must differ from the COMPLETE wording`,
+    );
+  }
+});
+
 test("SLICE-0087 beam/hull-material requirement phrases and resolved-evidence text interpolate their arguments", () => {
   for (const locale of SUPPORTED_LOCALES) {
     const t = searchText[locale];

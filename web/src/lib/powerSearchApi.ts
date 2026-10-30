@@ -692,39 +692,34 @@ export function validatePowerSearchResultBody(
     return null;
   }
 
-  // SLICE-0096 bounded-page envelope. Optional (mirrors every other
-  // RESULT-surface field in this validator being `?:` on
-  // `PowerSearchResultBody`) so pre-0096 fixtures/tests exercising the
-  // older response shape remain valid; the REAL backend always sends all
-  // three together, and whenever ANY of them is present, the full
-  // consistency invariant below still applies -- never partially trusted.
-  // page_size: a safe integer in [1, 50]; evaluation_state: exactly
-  // "PARTIAL"/"COMPLETE"; next_cursor: present (a non-empty string) if and
-  // only if PARTIAL -- the identical hard invariant
-  // `hullq.application.power_inventory_query.PowerSearchResultPage
-  // .__post_init__` already enforces server-side.
-  const hasPageEnvelope =
-    "page_size" in v || "evaluation_state" in v || "next_cursor" in v;
-  if (hasPageEnvelope) {
-    if (
-      !isNonNegativeSafeInteger(v.page_size) ||
-      (v.page_size as number) < 1 ||
-      (v.page_size as number) > 50
-    ) {
-      return null;
-    }
-    if (v.evaluation_state !== "PARTIAL" && v.evaluation_state !== "COMPLETE") {
-      return null;
-    }
-    if (!("next_cursor" in v) || !(v.next_cursor === null || typeof v.next_cursor === "string")) {
-      return null;
-    }
-    if (v.evaluation_state === "PARTIAL" && (v.next_cursor === null || v.next_cursor === "")) {
-      return null;
-    }
-    if (v.evaluation_state === "COMPLETE" && v.next_cursor !== null) {
-      return null;
-    }
+  // SLICE-0096 bounded-page envelope (independent review Finding C):
+  // mandatory on every genuine RESULT response, mirroring the identical
+  // hard invariant `hullq.application.power_inventory_query
+  // .PowerSearchResultPage.__post_init__` already enforces server-side --
+  // the real backend always sends all three together, so a RESULT body
+  // missing any one of them, or internally inconsistent, is a service/
+  // contract failure, never a successful empty Search or a stalled
+  // partial result. page_size: a safe integer in [1, 50]; evaluation_state:
+  // exactly "PARTIAL"/"COMPLETE"; next_cursor: a non-empty string if and
+  // only if PARTIAL, `null` if and only if COMPLETE.
+  if (
+    !isNonNegativeSafeInteger(v.page_size) ||
+    (v.page_size as number) < 1 ||
+    (v.page_size as number) > 50
+  ) {
+    return null;
+  }
+  if (v.evaluation_state !== "PARTIAL" && v.evaluation_state !== "COMPLETE") {
+    return null;
+  }
+  if (!("next_cursor" in v) || !(v.next_cursor === null || typeof v.next_cursor === "string")) {
+    return null;
+  }
+  if (v.evaluation_state === "PARTIAL" && (v.next_cursor === null || v.next_cursor === "")) {
+    return null;
+  }
+  if (v.evaluation_state === "COMPLETE" && v.next_cursor !== null) {
+    return null;
   }
 
   return {
@@ -735,9 +730,9 @@ export function validatePowerSearchResultBody(
     design_linked_insufficient_data_count: v.design_linked_insufficient_data_count,
     publisher_claim_matches: v.publisher_claim_matches as PowerClaimOnlyMatch[],
     publisher_claim_match_count: v.publisher_claim_match_count,
-    page_size: v.page_size as number | undefined,
-    evaluation_state: v.evaluation_state as "PARTIAL" | "COMPLETE" | undefined,
-    next_cursor: v.next_cursor as string | null | undefined,
+    page_size: v.page_size as number,
+    evaluation_state: v.evaluation_state as "PARTIAL" | "COMPLETE",
+    next_cursor: v.next_cursor as string | null,
   };
 }
 
@@ -758,6 +753,32 @@ export function validatePowerSearchResultBody(
  * as "no filter was requested" or "the filter was requested and must be
  * matched against the first duplicate". Exported for direct unit testing.
  */
+/**
+ * SLICE-0096 independent review Finding B (BLOCKER): `page_after`/
+ * `page_size` are navigation-only (never part of the canonical technical-
+ * query identity -- mirrors `hullq.search.criteria_registry
+ * .SUPPORTED_PARAM_KEYS` excluding them). Strips exactly those two keys
+ * before the technical-criteria string ever reaches
+ * `parseCanonicalPowerSearchQuery`, so a genuinely paginated continuation
+ * request (`page_after=<cursor>`) is never mistaken for an unrecognized-key
+ * request and collapsed to a false 502. This never widens
+ * `parseCanonicalPowerSearchQuery` itself -- that parser stays exactly as
+ * strict for `power_drive`/`power_engine_count` and still rejects any OTHER
+ * unknown key, duplicate or invalid token.
+ *
+ * A malformed/duplicate/empty `page_after`/`page_size` is never silently
+ * tolerated here either: the real backend already rejects that with its
+ * own 400 (`hullq.api.app._parse_page_params`), which this module's
+ * `fetchPowerSearch` handles via its existing `status === 400` branch
+ * before this 200-only helper is ever reached.
+ */
+function _stripPageNavigationParams(queryString: string): string {
+  const params = new URLSearchParams(queryString);
+  params.delete("page_after");
+  params.delete("page_size");
+  return params.toString();
+}
+
 export function parseCanonicalPowerSearchQuery(
   queryString: string,
 ):
@@ -844,7 +865,10 @@ export async function fetchPowerSearch(
     // query (invalid/duplicated/unrecognized `power_drive` keys) must
     // never be treated as "no filter" -- no HTTP-200 body can ever be a
     // valid answer to an ambiguous request, regardless of its own shape.
-    const canonicalQuery = parseCanonicalPowerSearchQuery(queryString);
+    // SLICE-0096 independent review Finding B: page_after/page_size are
+    // stripped first -- they are navigation-only, never part of the
+    // canonical technical-query identity this parser checks.
+    const canonicalQuery = parseCanonicalPowerSearchQuery(_stripPageNavigationParams(queryString));
     if (!canonicalQuery.ok) {
       return { status: 502, location: null, result: null, invalid: null };
     }

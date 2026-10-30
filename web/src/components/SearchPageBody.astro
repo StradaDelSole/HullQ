@@ -559,12 +559,25 @@ const publisherClaimMatchCount: number = data.kind === "ok" ? data.publisherClai
                 // publisher-claim-only matches are shown in the separate
                 // section below -- never two mutually contradictory
                 // no-results claims on the same page.
+                //
+                // SLICE-0096 independent review Finding D: a PARTIAL page's
+                // zero-result message must never read as a final/exhaustive
+                // absence -- unchecked candidates remain, so a dedicated
+                // "among those checked so far" wording is used instead of
+                // the COMPLETE-only phrasing above whenever this page is
+                // PARTIAL.
                 <p>
-                  {publisherClaimMatchCount > 0
-                    ? t.noDesignConfirmedMatchesButPublisherClaimsExist(publisherClaimMatchCount)
-                    : isKeelActive
-                      ? t.noConfirmedMatchesGeneric
-                      : t.noConfirmedMatches}
+                  {data.kind === "ok" && data.evaluationState === "PARTIAL"
+                    ? publisherClaimMatchCount > 0
+                      ? t.noDesignConfirmedMatchesButPublisherClaimsExistPartial(publisherClaimMatchCount)
+                      : isKeelActive
+                        ? t.noConfirmedMatchesGenericPartial
+                        : t.noConfirmedMatchesPartial
+                    : publisherClaimMatchCount > 0
+                      ? t.noDesignConfirmedMatchesButPublisherClaimsExist(publisherClaimMatchCount)
+                      : isKeelActive
+                        ? t.noConfirmedMatchesGeneric
+                        : t.noConfirmedMatches}
                 </p>
               ) : isKeelActive ? (
                 <ul>
