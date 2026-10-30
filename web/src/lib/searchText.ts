@@ -150,6 +150,16 @@ export interface SearchText {
    * since its wording specifically names "draft".
    */
   noConfirmedMatchesGeneric: string;
+  /**
+   * SLICE-0096 independent review Finding D: shown INSTEAD of
+   * `noConfirmedMatches` whenever the current page is `PARTIAL` -- unlike
+   * `noConfirmedMatches`, this never claims a final/exhaustive absence,
+   * since unchecked candidates remain (contract: "none among candidates
+   * evaluated so far", never "no matching boats").
+   */
+  noConfirmedMatchesPartial: string;
+  /** SLICE-0096 Finding D: the `noConfirmedMatchesGeneric` PARTIAL counterpart. */
+  noConfirmedMatchesGenericPartial: string;
   resolvedDraftText: (resolvedDraftM: string) => string;
   /** SLICE-0056 concrete keel evidence on a confirmed keel/mixed match. */
   resolvedKeelText: (keelLabel: string) => string;
@@ -160,6 +170,16 @@ export interface SearchText {
    * missing field, mirroring `insufficientDataText`'s draft-only wording.
    */
   insufficientDataTextGeneric: (count: number) => string;
+  /**
+   * SLICE-0096: shown whenever the current bounded result page is
+   * `PARTIAL` -- truthfully distinct from "no matching boats": unchecked
+   * candidates remain, including the possibility of a zero-match page
+   * (contract §1: "the UI MUST say the search is incomplete and allow
+   * continuation. It must NEVER present that as 'no matching boats'").
+   */
+  partialResultsNote: string;
+  /** Label for the continuation control show only while the page is PARTIAL. */
+  showMoreResultsLabel: string;
   viewListing: string;
   /** SLICE-0052: badge/label text distinguishing CONFIRMED from DUE_FOR_CONFIRMATION. */
   freshnessConfirmedLabel: string;
@@ -183,6 +203,11 @@ export interface SearchText {
    * page.
    */
   noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount: number) => string;
+  /**
+   * SLICE-0096 Finding D: the `noDesignConfirmedMatchesButPublisherClaimsExist`
+   * PARTIAL counterpart -- never claims the design-confirmed absence is final.
+   */
+  noDesignConfirmedMatchesButPublisherClaimsExistPartial: (publisherClaimCount: number) => string;
 
   // SLICE-0057: buyer-requirement-sensitivity text. Factual and
   // decision-neutral throughout (contract §12/§19) -- never "recommended",
@@ -347,6 +372,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "No listing currently has broker-confirmed evidence that its draft meets this requirement.",
     noConfirmedMatchesGeneric:
       "No listing currently has broker-confirmed evidence that it meets this requirement.",
+    noConfirmedMatchesPartial:
+      "No listing among those checked so far has broker-confirmed evidence that its draft meets this requirement. This is not the full result.",
+    noConfirmedMatchesGenericPartial:
+      "No listing among those checked so far has broker-confirmed evidence that it meets this requirement. This is not the full result.",
     resolvedDraftText: (resolvedDraftM) =>
       `broker-declared draft: ${resolvedDraftM} m (not independently verified)`,
     resolvedKeelText: (keelLabel) =>
@@ -355,6 +384,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} additional listing(s) could satisfy this requirement but are not shown as a match: the broker's draft is missing, unknown, or conflicts with another organization's current statement.`,
     insufficientDataTextGeneric: (count) =>
       `${count} additional listing(s) could satisfy this requirement but are not shown as a match: the broker's evidence is missing, unknown, or conflicts with another organization's current statement.`,
+    partialResultsNote:
+      "This search is not yet complete. More listings may still be checked -- this is not the full result.",
+    showMoreResultsLabel: "Show more results",
     viewListing: "View listing",
     freshnessConfirmedLabel: "Confirmed current",
     freshnessDueLabel: "Reconfirmation due",
@@ -368,6 +400,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "No additional broker-stated listing currently meets this requirement.",
     noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
       `No design-confirmed matches. ${publisherClaimCount} additional match(es) based on the broker's own statement are shown below.`,
+    noDesignConfirmedMatchesButPublisherClaimsExistPartial: (publisherClaimCount) =>
+      `No design-confirmed matches among those checked so far. ${publisherClaimCount} additional match(es) based on the broker's own statement are shown below. This is not the full result.`,
     sensitivityFormNote:
       "See how many confirmed matches change if you try a different value for one requirement. This does not change your current search.",
     sensitivityUnavailableWithNewCriteria:
@@ -524,6 +558,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Für kein Angebot liegt derzeit eine maklerbestätigte Bestätigung vor, dass der Tiefgang diese Anforderung erfüllt.",
     noConfirmedMatchesGeneric:
       "Für kein Angebot liegt derzeit eine maklerbestätigte Bestätigung vor, dass es diese Anforderung erfüllt.",
+    noConfirmedMatchesPartial:
+      "Unter den bisher geprüften Angeboten erfüllt keines nachweislich diese Tiefgangsanforderung. Dies ist nicht das vollständige Ergebnis.",
+    noConfirmedMatchesGenericPartial:
+      "Unter den bisher geprüften Angeboten erfüllt keines nachweislich diese Anforderung. Dies ist nicht das vollständige Ergebnis.",
     resolvedDraftText: (resolvedDraftM) =>
       `vom Makler angegebener Tiefgang: ${resolvedDraftM} m (nicht unabhängig verifiziert)`,
     resolvedKeelText: (keelLabel) =>
@@ -532,6 +570,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} weitere(s) Angebot(e) könnten diese Anforderung erfüllen, werden aber nicht als Treffer angezeigt: Der Tiefgang fehlt, ist unbekannt oder widerspricht der aktuellen Angabe einer anderen Organisation.`,
     insufficientDataTextGeneric: (count) =>
       `${count} weitere(s) Angebot(e) könnten diese Anforderung erfüllen, werden aber nicht als Treffer angezeigt: Die Angaben des Maklers fehlen, sind unbekannt oder widersprechen der aktuellen Angabe einer anderen Organisation.`,
+    partialResultsNote:
+      "Diese Suche ist noch nicht abgeschlossen. Es können noch weitere Angebote geprüft werden -- dies ist nicht das vollständige Ergebnis.",
+    showMoreResultsLabel: "Weitere Ergebnisse anzeigen",
     viewListing: "Angebot ansehen",
     freshnessConfirmedLabel: "Aktuell bestätigt",
     freshnessDueLabel: "Bestätigung ausstehend",
@@ -544,6 +585,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Derzeit erfüllt kein zusätzliches, laut Anbieterangabe geführtes Angebot diese Anforderung.",
     noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
       `Keine konstruktionsbestätigten Treffer. ${publisherClaimCount} weitere(r) Treffer laut Anbieterangabe werden unten angezeigt.`,
+    noDesignConfirmedMatchesButPublisherClaimsExistPartial: (publisherClaimCount) =>
+      `Unter den bisher geprüften Angeboten keine konstruktionsbestätigten Treffer. ${publisherClaimCount} weitere(r) Treffer laut Anbieterangabe werden unten angezeigt. Dies ist nicht das vollständige Ergebnis.`,
     sensitivityFormNote:
       "Sehen Sie, wie viele bestätigte Treffer sich ändern, wenn Sie für eine Anforderung einen anderen Wert ausprobieren. Dies ändert Ihre aktuelle Suche nicht.",
     sensitivityUnavailableWithNewCriteria:
@@ -702,6 +745,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Aucune annonce ne dispose actuellement d'une confirmation du courtier attestant que son tirant d'eau respecte cette exigence.",
     noConfirmedMatchesGeneric:
       "Aucune annonce ne dispose actuellement d'une confirmation du courtier attestant qu'elle respecte cette exigence.",
+    noConfirmedMatchesPartial:
+      "Parmi les annonces examinées jusqu'à présent, aucune ne dispose d'une confirmation du courtier attestant que son tirant d'eau respecte cette exigence. Ceci n'est pas le résultat complet.",
+    noConfirmedMatchesGenericPartial:
+      "Parmi les annonces examinées jusqu'à présent, aucune ne dispose d'une confirmation du courtier attestant qu'elle respecte cette exigence. Ceci n'est pas le résultat complet.",
     resolvedDraftText: (resolvedDraftM) =>
       `tirant d'eau déclaré par le courtier : ${resolvedDraftM} m (non vérifié de manière indépendante)`,
     resolvedKeelText: (keelLabel) =>
@@ -710,6 +757,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} annonce(s) supplémentaire(s) pourraient satisfaire cette exigence mais ne sont pas affichées comme correspondance : le tirant d'eau est manquant, inconnu, ou contredit la déclaration actuelle d'une autre organisation.`,
     insufficientDataTextGeneric: (count) =>
       `${count} annonce(s) supplémentaire(s) pourraient satisfaire cette exigence mais ne sont pas affichées comme correspondance : les informations du courtier sont manquantes, inconnues, ou contredisent la déclaration actuelle d'une autre organisation.`,
+    partialResultsNote:
+      "Cette recherche n'est pas encore terminée. D'autres annonces peuvent encore être vérifiées -- ceci n'est pas le résultat complet.",
+    showMoreResultsLabel: "Afficher plus de résultats",
     viewListing: "Voir l'annonce",
     freshnessConfirmedLabel: "Confirmé à jour",
     freshnessDueLabel: "Reconfirmation attendue",
@@ -723,6 +773,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Aucune annonce supplémentaire déclarée par le courtier ne répond actuellement à cette exigence.",
     noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
       `Aucun résultat confirmé par la conception. ${publisherClaimCount} résultat(s) supplémentaire(s) selon la déclaration du courtier sont affichés ci-dessous.`,
+    noDesignConfirmedMatchesButPublisherClaimsExistPartial: (publisherClaimCount) =>
+      `Parmi les annonces examinées jusqu'à présent, aucun résultat confirmé par la conception. ${publisherClaimCount} résultat(s) supplémentaire(s) selon la déclaration du courtier sont affichés ci-dessous. Ceci n'est pas le résultat complet.`,
     sensitivityFormNote:
       "Découvrez combien de résultats confirmés changent si vous essayez une valeur différente pour une exigence. Cela ne modifie pas votre recherche actuelle.",
     sensitivityUnavailableWithNewCriteria:
@@ -880,6 +932,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Nenhum anúncio tem atualmente confirmação do corretor de que o calado cumpre este requisito.",
     noConfirmedMatchesGeneric:
       "Nenhum anúncio tem atualmente confirmação do corretor de que cumpre este requisito.",
+    noConfirmedMatchesPartial:
+      "Entre os anúncios verificados até agora, nenhum tem confirmação do corretor de que o calado cumpre este requisito. Este não é o resultado completo.",
+    noConfirmedMatchesGenericPartial:
+      "Entre os anúncios verificados até agora, nenhum tem confirmação do corretor de que cumpre este requisito. Este não é o resultado completo.",
     resolvedDraftText: (resolvedDraftM) =>
       `calado declarado pelo corretor: ${resolvedDraftM} m (não verificado de forma independente)`,
     resolvedKeelText: (keelLabel) =>
@@ -888,6 +944,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} anúncio(s) adicional(is) poderiam satisfazer este requisito mas não são apresentados como correspondência: o calado está em falta, é desconhecido, ou entra em conflito com a declaração atual de outra organização.`,
     insufficientDataTextGeneric: (count) =>
       `${count} anúncio(s) adicional(is) poderiam satisfazer este requisito mas não são apresentados como correspondência: a informação do corretor está em falta, é desconhecida, ou entra em conflito com a declaração atual de outra organização.`,
+    partialResultsNote:
+      "Esta pesquisa ainda não está concluída. Mais anúncios podem ainda ser verificados -- este não é o resultado completo.",
+    showMoreResultsLabel: "Mostrar mais resultados",
     viewListing: "Ver anúncio",
     freshnessConfirmedLabel: "Confirmado atual",
     freshnessDueLabel: "Reconfirmação pendente",
@@ -901,6 +960,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Atualmente, nenhum anúncio adicional declarado pelo corretor cumpre este requisito.",
     noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
       `Nenhuma correspondência confirmada pelo projeto. ${publisherClaimCount} correspondência(s) adicional(is) com base na declaração do corretor são mostradas abaixo.`,
+    noDesignConfirmedMatchesButPublisherClaimsExistPartial: (publisherClaimCount) =>
+      `Entre os anúncios verificados até agora, nenhuma correspondência confirmada pelo projeto. ${publisherClaimCount} correspondência(s) adicional(is) com base na declaração do corretor são mostradas abaixo. Este não é o resultado completo.`,
     sensitivityFormNote:
       "Veja quantas correspondências confirmadas mudam se experimentar um valor diferente para um requisito. Isto não altera a sua pesquisa atual.",
     sensitivityUnavailableWithNewCriteria:
@@ -1058,6 +1119,10 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Ningún anuncio cuenta actualmente con confirmación del bróker de que su calado cumple este requisito.",
     noConfirmedMatchesGeneric:
       "Ningún anuncio cuenta actualmente con confirmación del bróker de que cumple este requisito.",
+    noConfirmedMatchesPartial:
+      "Entre los anuncios revisados hasta ahora, ninguno cuenta con confirmación del bróker de que su calado cumple este requisito. Este no es el resultado completo.",
+    noConfirmedMatchesGenericPartial:
+      "Entre los anuncios revisados hasta ahora, ninguno cuenta con confirmación del bróker de que cumple este requisito. Este no es el resultado completo.",
     resolvedDraftText: (resolvedDraftM) =>
       `calado declarado por el bróker: ${resolvedDraftM} m (no verificado de forma independiente)`,
     resolvedKeelText: (keelLabel) =>
@@ -1066,6 +1131,9 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       `${count} anuncio(s) adicional(es) podrían cumplir este requisito pero no se muestran como coincidencia: falta el calado, es desconocido, o entra en conflicto con la declaración actual de otra organización.`,
     insufficientDataTextGeneric: (count) =>
       `${count} anuncio(s) adicional(es) podrían cumplir este requisito pero no se muestran como coincidencia: falta información del bróker, es desconocida, o entra en conflicto con la declaración actual de otra organización.`,
+    partialResultsNote:
+      "Esta búsqueda aún no se ha completado. Es posible que se sigan comprobando más anuncios -- este no es el resultado completo.",
+    showMoreResultsLabel: "Mostrar más resultados",
     viewListing: "Ver anuncio",
     freshnessConfirmedLabel: "Confirmado vigente",
     freshnessDueLabel: "Reconfirmación pendiente",
@@ -1079,6 +1147,8 @@ export const searchText: Record<SupportedLocale, SearchText> = {
       "Actualmente ningún anuncio adicional declarado por el corredor cumple este requisito.",
     noDesignConfirmedMatchesButPublisherClaimsExist: (publisherClaimCount) =>
       `Ninguna coincidencia confirmada por el diseño. Se muestran ${publisherClaimCount} coincidencia(s) adicional(es) según la declaración del corredor más abajo.`,
+    noDesignConfirmedMatchesButPublisherClaimsExistPartial: (publisherClaimCount) =>
+      `Entre los anuncios revisados hasta ahora, ninguna coincidencia confirmada por el diseño. Se muestran ${publisherClaimCount} coincidencia(s) adicional(es) según la declaración del corredor más abajo. Este no es el resultado completo.`,
     sensitivityFormNote:
       "Vea cuántas coincidencias confirmadas cambian si prueba un valor diferente para un requisito. Esto no modifica su búsqueda actual.",
     sensitivityUnavailableWithNewCriteria:

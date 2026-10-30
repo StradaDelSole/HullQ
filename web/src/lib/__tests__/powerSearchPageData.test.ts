@@ -100,6 +100,9 @@ test("loadPowerSearchPageData: a 200 result carries design_linked_matches and pu
             },
           ],
           publisher_claim_match_count: 1,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
         }),
       );
     },
@@ -128,6 +131,69 @@ test("loadPowerSearchPageData: base state has null activeRequirement", async () 
       assert.equal(data.kind, "ok");
       if (data.kind === "ok") {
         assert.equal(data.activeRequirement, null);
+      }
+    },
+  );
+});
+
+test("loadPowerSearchPageData: a PARTIAL result builds a nextPageQueryString carrying the real cursor", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { power_drive: "POD" },
+          design_linked_matches: [],
+          design_linked_match_count: 0,
+          design_linked_insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 1,
+          evaluation_state: "PARTIAL",
+          next_cursor: "opaque-cursor-token",
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadPowerSearchPageData(baseUrl, "en", "power_drive=POD&page_size=1");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.equal(data.evaluationState, "PARTIAL");
+        assert.equal(
+          data.nextPageQueryString,
+          "power_drive=POD&page_size=1&page_after=opaque-cursor-token",
+        );
+      }
+    },
+  );
+});
+
+test("loadPowerSearchPageData: a COMPLETE result has no nextPageQueryString", async () => {
+  await withServer(
+    (_req, res) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          locale: "en",
+          active_requirement: { power_drive: "POD" },
+          design_linked_matches: [],
+          design_linked_match_count: 0,
+          design_linked_insufficient_data_count: 0,
+          publisher_claim_matches: [],
+          publisher_claim_match_count: 0,
+          page_size: 20,
+          evaluation_state: "COMPLETE",
+          next_cursor: null,
+        }),
+      );
+    },
+    async (baseUrl) => {
+      const data = await loadPowerSearchPageData(baseUrl, "en", "power_drive=POD");
+      assert.equal(data.kind, "ok");
+      if (data.kind === "ok") {
+        assert.equal(data.evaluationState, "COMPLETE");
+        assert.equal(data.nextPageQueryString, null);
       }
     },
   );

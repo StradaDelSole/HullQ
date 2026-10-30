@@ -62,6 +62,9 @@ test("validatePowerSearchResultBody: a genuine empty RESULT body (all zero/empty
       design_linked_insufficient_data_count: 0,
       publisher_claim_matches: [],
       publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "COMPLETE",
+      next_cursor: null,
     },
     _POD_EXPECTED,
   );
@@ -204,6 +207,9 @@ test("validatePowerSearchResultBody: a valid non-empty result with a genuine PUB
         },
       ],
       publisher_claim_match_count: 1,
+      page_size: 20,
+      evaluation_state: "COMPLETE",
+      next_cursor: null,
     },
     _POD_EXPECTED,
   );
@@ -476,10 +482,151 @@ test("validatePowerSearchResultBody: a genuine empty RESULT with integer-typed z
       design_linked_insufficient_data_count: 0,
       publisher_claim_matches: [],
       publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "COMPLETE",
+      next_cursor: null,
     },
     _POD_EXPECTED,
   );
   assert.notEqual(result, null);
+});
+
+// ---------------------------------------------------------------------------
+// SLICE-0096 independent review Finding C: the bounded-page envelope is
+// MANDATORY (not merely consistent-when-present) on a genuine RESULT body.
+// ---------------------------------------------------------------------------
+
+test("validatePowerSearchResultBody: a RESULT body missing the entire page envelope is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      // page_size/evaluation_state/next_cursor deliberately absent.
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: page_size out of [1, 50] range is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      page_size: 51,
+      evaluation_state: "COMPLETE",
+      next_cursor: null,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: an unrecognized evaluation_state is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "DONE",
+      next_cursor: null,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: PARTIAL with a null next_cursor is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "PARTIAL",
+      next_cursor: null,
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: PARTIAL with an empty-string next_cursor is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "PARTIAL",
+      next_cursor: "",
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: COMPLETE with a non-null next_cursor is rejected", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "COMPLETE",
+      next_cursor: "stale-cursor",
+    },
+    _POD_EXPECTED,
+  );
+  assert.equal(result, null);
+});
+
+test("validatePowerSearchResultBody: a genuine PARTIAL RESULT with a real cursor is accepted", () => {
+  const result = validatePowerSearchResultBody(
+    {
+      locale: "en",
+      active_requirement: { power_drive: "POD" },
+      design_linked_matches: [],
+      design_linked_match_count: 0,
+      design_linked_insufficient_data_count: 0,
+      publisher_claim_matches: [],
+      publisher_claim_match_count: 0,
+      page_size: 1,
+      evaluation_state: "PARTIAL",
+      next_cursor: "opaque-cursor-token",
+    },
+    _POD_EXPECTED,
+  );
+  assert.notEqual(result, null);
+  assert.equal(result?.evaluation_state, "PARTIAL");
+  assert.equal(result?.next_cursor, "opaque-cursor-token");
 });
 
 // ---------------------------------------------------------------------------
@@ -593,11 +740,97 @@ test("fetchPowerSearch: a genuine valid 200 result is surfaced as `result`", asy
         design_linked_insufficient_data_count: 0,
         publisher_claim_matches: [],
         publisher_claim_match_count: 0,
+        page_size: 20,
+        evaluation_state: "COMPLETE",
+        next_cursor: null,
       }),
     async (baseUrl) => {
       const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
       assert.equal(response.status, 200);
       assert.notEqual(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: SLICE-0096 independent review Finding B -- a paginated continuation request (page_after/page_size present) is surfaced as `result`, never a false 502", async () => {
+  await withServer(
+    (req, res) => {
+      // Finding B's exact failure mode: before the fix, `page_after`/
+      // `page_size` on the query string made `parseCanonicalPowerSearchQuery`
+      // treat this as an unrecognized-key request and collapse a genuine
+      // 200 to 502. Assert the real request URL actually carries both
+      // navigation params, so this test would have caught the bug.
+      assert.ok(req.url?.includes("page_after=opaque-cursor-token"));
+      assert.ok(req.url?.includes("page_size=1"));
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+        page_size: 1,
+        evaluation_state: "PARTIAL",
+        next_cursor: "opaque-cursor-token-2",
+      });
+    },
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(
+        baseUrl,
+        "en",
+        "power_drive=POD&page_after=opaque-cursor-token&page_size=1",
+      );
+      assert.equal(response.status, 200);
+      assert.notEqual(response.result, null);
+      assert.equal(response.result?.evaluation_state, "PARTIAL");
+      assert.equal(response.result?.next_cursor, "opaque-cursor-token-2");
+    },
+  );
+});
+
+test("fetchPowerSearch: SLICE-0096 Finding C -- PARTIAL with a null next_cursor collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+        page_size: 20,
+        evaluation_state: "PARTIAL",
+        next_cursor: null,
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
+    },
+  );
+});
+
+test("fetchPowerSearch: SLICE-0096 Finding C -- COMPLETE with a non-null next_cursor collapses to 502", async () => {
+  await withServer(
+    (_req, res) =>
+      respondJson(res, {
+        locale: "en",
+        active_requirement: { power_drive: "POD" },
+        design_linked_matches: [],
+        design_linked_match_count: 0,
+        design_linked_insufficient_data_count: 0,
+        publisher_claim_matches: [],
+        publisher_claim_match_count: 0,
+        page_size: 20,
+        evaluation_state: "COMPLETE",
+        next_cursor: "stale-cursor",
+      }),
+    async (baseUrl) => {
+      const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
+      assert.equal(response.status, 502);
+      assert.equal(response.result, null);
     },
   );
 });
@@ -817,6 +1050,9 @@ test("fetchPowerSearch: a genuinely valid empty RESULT response is still accepte
         design_linked_insufficient_data_count: 0,
         publisher_claim_matches: [],
         publisher_claim_match_count: 0,
+        page_size: 20,
+        evaluation_state: "COMPLETE",
+        next_cursor: null,
       }),
     async (baseUrl) => {
       const response = await fetchPowerSearch(baseUrl, "en", "power_drive=POD");
@@ -857,6 +1093,9 @@ test("validatePowerSearchResultBody: a count-only active_requirement is valid", 
       design_linked_insufficient_data_count: 0,
       publisher_claim_matches: [],
       publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "COMPLETE",
+      next_cursor: null,
     },
     _COUNT_EXPECTED,
   );
@@ -873,6 +1112,9 @@ test("validatePowerSearchResultBody: a combined drive+count active_requirement i
       design_linked_insufficient_data_count: 0,
       publisher_claim_matches: [],
       publisher_claim_match_count: 0,
+      page_size: 20,
+      evaluation_state: "COMPLETE",
+      next_cursor: null,
     },
     _COMBINED_EXPECTED,
   );
@@ -961,6 +1203,9 @@ test("fetchPowerSearch: a genuine count-only 200 result is surfaced as result", 
         design_linked_insufficient_data_count: 0,
         publisher_claim_matches: [],
         publisher_claim_match_count: 0,
+        page_size: 20,
+        evaluation_state: "COMPLETE",
+        next_cursor: null,
       }),
     async (baseUrl) => {
       const response = await fetchPowerSearch(baseUrl, "en", "power_engine_count=2");
@@ -981,6 +1226,9 @@ test("fetchPowerSearch: a genuine combined drive+count 200 result is surfaced as
         design_linked_insufficient_data_count: 0,
         publisher_claim_matches: [],
         publisher_claim_match_count: 0,
+        page_size: 20,
+        evaluation_state: "COMPLETE",
+        next_cursor: null,
       }),
     async (baseUrl) => {
       const response = await fetchPowerSearch(
@@ -1047,6 +1295,9 @@ function countOnlyBody(evidence: unknown) {
       },
     ],
     publisher_claim_match_count: 1,
+    page_size: 20,
+    evaluation_state: "COMPLETE",
+    next_cursor: null,
   };
 }
 
@@ -1217,6 +1468,9 @@ function combinedBody(evidenceList: unknown[]) {
       },
     ],
     publisher_claim_match_count: 1,
+    page_size: 20,
+    evaluation_state: "COMPLETE",
+    next_cursor: null,
   };
 }
 
@@ -1245,6 +1499,9 @@ function designLinkedMatchBody(criterionEvidence: unknown[], configEvidence: unk
     design_linked_insufficient_data_count: 0,
     publisher_claim_matches: [],
     publisher_claim_match_count: 0,
+    page_size: 20,
+    evaluation_state: "COMPLETE",
+    next_cursor: null,
   };
 }
 

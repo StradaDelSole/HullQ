@@ -29,6 +29,20 @@ export type SearchPageData =
       /** SLICE-0092: entirely separate, additive design-unresolved claim-only result surface. */
       publisherClaimMatches: PublisherClaimMatch[];
       publisherClaimMatchCount: number;
+      /**
+       * SLICE-0096: `"PARTIAL"` when the real FastAPI response did not
+       * declare `evaluation_state` at all (should not happen for a genuine
+       * `kind: "ok"` RESULT body, but never silently claimed COMPLETE by
+       * this module's own default). `nextPageQueryString` is the exact
+       * query string (no leading `?`) a "show more" link should navigate
+       * to -- `null` whenever there is no further page, built by appending
+       * `page_after`/`page_size` to the CURRENT request's own query string
+       * (never reconstructed from `activeRequirement`, which would risk
+       * silently dropping an active criterion this page's own request
+       * already carried).
+       */
+      evaluationState: "PARTIAL" | "COMPLETE";
+      nextPageQueryString: string | null;
     };
 
 export async function loadSearchPageData(
@@ -44,6 +58,14 @@ export async function loadSearchPageData(
 
   if (response.status === 200 && response.result !== null) {
     const result = response.result;
+    const nextCursor = result.next_cursor ?? null;
+    let nextPageQueryString: string | null = null;
+    if (nextCursor !== null) {
+      const params = new URLSearchParams(queryString);
+      params.delete("page_after");
+      params.set("page_after", nextCursor);
+      nextPageQueryString = params.toString();
+    }
     return {
       kind: "ok",
       activeRequirement: result.active_requirement,
@@ -52,6 +74,8 @@ export async function loadSearchPageData(
       insufficientDataCount: result.insufficient_data_count ?? 0,
       publisherClaimMatches: result.publisher_claim_matches ?? [],
       publisherClaimMatchCount: result.publisher_claim_match_count ?? 0,
+      evaluationState: result.evaluation_state ?? "PARTIAL",
+      nextPageQueryString,
     };
   }
 

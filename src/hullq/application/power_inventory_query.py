@@ -65,7 +65,8 @@ that boundary).
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import time
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -75,11 +76,15 @@ from hullq.application.current_public_eligibility import (
     resolve_current_public_eligibility_for_many,
 )
 from hullq.application.native_inventory_query import (
+    DEFAULT_CANDIDATE_SCAN_BUDGET,
+    DEFAULT_REQUEST_DEADLINE_SECONDS,
     ConfigurationEvidence,
     PublisherClaimSourceBasis,
     PublisherClaimSourceEvidence,
     SearchCriterionEvidence,
+    SearchPageEvaluationState,
     build_configuration_evidence,
+    check_request_deadline,
     classify_claim_only_candidate,
     classify_concrete_candidate,
     run_mixed_boat_design_configuration_query,
@@ -101,14 +106,18 @@ from hullq.persistence.identity_readback import fetch_boat_design
 from hullq.persistence.inventory_search import (
     ActiveDesignLinkedListing,
     ActiveDesignUnresolvedListing,
+    ActiveNativeListingCandidate,
+    active_native_listing_candidate_exists_after,
     list_active_design_linked_listings,
     list_active_design_unresolved_listings,
+    list_active_native_listing_candidates_page,
 )
 from hullq.persistence.physical_boat_claims import (
     CurrentPhysicalBoatClaimObservation,
     list_current_physical_boat_claim_observations_for_many,
 )
 from hullq.persistence.power_category_drive_snapshot import fetch_power_category_drive_snapshot
+from hullq.search.configuration import ResolvedConfiguration
 from hullq.search.configuration_engine import DesignQueryEvaluation
 from hullq.search.criteria import (
     CategoricalLeafCriterion,
@@ -130,11 +139,13 @@ __all__ = [
     "PowerClaimOnlyMatch",
     "PowerDesignLinkedMatch",
     "PowerSearchOutcome",
+    "PowerSearchResultPage",
     "build_power_drive_query",
     "build_power_query",
     "downgrade_mixed_non_match_to_insufficient_data",
     "evaluate_power_drive_requirement",
     "evaluate_power_requirement",
+    "evaluate_power_requirement_page",
     "resolve_power_category_admission",
     "resolve_power_claim_only_category_from_observations",
 ]
@@ -339,6 +350,45 @@ class PowerSearchOutcome:
     claim_only_matches: tuple[PowerClaimOnlyMatch, ...]
     claim_only_non_matches: tuple[PowerClaimOnlyMatch, ...]
     claim_only_insufficient_data: tuple[PowerClaimOnlyMatch, ...]
+
+    @property
+    def design_linked_match_count(self) -> int:
+        return len(self.design_linked_matches)
+
+    @property
+    def claim_only_match_count(self) -> int:
+        return len(self.claim_only_matches)
+
+
+@dataclass(frozen=True, slots=True)
+class PowerSearchResultPage:
+    """One bounded page of the Power requirement vertical -- SLICE-0096,
+    mirrors `hullq.application.native_inventory_query
+    .NativeInventorySearchResultPage`'s identical page-local/invariant
+    discipline (same `__post_init__` PARTIAL-must-carry-cursor /
+    COMPLETE-must-not rule), bounded to the Power domain's two match
+    surfaces instead of the Sail ones. `design_linked_insufficient_data_count`/
+    `claim_only_insufficient_data_count` are kept separate, mirroring the
+    pre-0096 public API exactly: the existing `/api/search/{locale}/power`
+    route only ever serialized the design-linked plane's insufficient count
+    (`design_linked_insufficient_data_count`); the claim-only plane's own
+    insufficient data was never exposed as a count at all.
+    """
+
+    query: MixedAndQuery
+    evaluation_state: SearchPageEvaluationState
+    next_after_native_listing_id: str | None
+    design_linked_matches: tuple[PowerDesignLinkedMatch, ...]
+    claim_only_matches: tuple[PowerClaimOnlyMatch, ...]
+    design_linked_insufficient_data_count: int
+    claim_only_insufficient_data_count: int
+
+    def __post_init__(self) -> None:
+        is_partial = self.evaluation_state is SearchPageEvaluationState.PARTIAL
+        if is_partial and self.next_after_native_listing_id is None:
+            raise ValueError("A PARTIAL page must carry next_after_native_listing_id")
+        if not is_partial and self.next_after_native_listing_id is not None:
+            raise ValueError("A COMPLETE page must not carry next_after_native_listing_id")
 
     @property
     def design_linked_match_count(self) -> int:
@@ -905,4 +955,352 @@ def evaluate_power_requirement(
         claim_only_matches=claim_only_matches,
         claim_only_non_matches=claim_only_non_matches,
         claim_only_insufficient_data=claim_only_insufficient_data,
+    )
+
+
+def _classify_power_design_linked_page_candidate(
+    conn: Any,
+    candidate: ActiveNativeListingCandidate,
+    freshness: CurrentFreshness,
+    *,
+    query: MixedAndQuery,
+    active_definitions: Sequence[CriterionDefinition],
+    design_evaluation_by_id: Mapping[str, DesignQueryEvaluation],
+    configurations_by_id: Mapping[str, ResolvedConfiguration],
+) -> PowerDesignLinkedMatch | None:
+    """One design-linked candidate's Power classification for the bounded
+    page path -- byte-identical decision logic to
+    `evaluate_power_design_linked_candidates`'s own per-candidate loop body
+    (review amendment Finding G's one-combined-snapshot-statement rule
+    included), factored out so the bounded page evaluator can call it from
+    a single global-order walk. `None` for a dangling `BoatDesignRef`.
+    """
+    assert candidate.boat_design_ref is not None
+    design_evaluation = design_evaluation_by_id.get(candidate.boat_design_ref.value)
+    if design_evaluation is None:
+        return None
+
+    design_configuration_evidence = tuple(
+        build_configuration_evidence(
+            query,
+            configuration_evaluation,
+            configurations_by_id[configuration_evaluation.configuration_id],
+        )
+        for configuration_evaluation in design_evaluation.configuration_evaluations
+    )
+
+    concrete_evidence: tuple[SearchCriterionEvidence, ...]
+    category_exclusion: PowerCategoryExclusionEvidence | None
+    if design_evaluation.result_class is ResultClass.CONFIRMED_MATCH:
+        snapshot = fetch_power_category_drive_snapshot(
+            conn,
+            physical_boat_id=candidate.physical_boat_id,
+            boat_design_id=candidate.boat_design_ref.value,
+        )
+        category_resolution = resolve_vessel_category(
+            design_evidence=snapshot.design_evidence, concrete_evidence=snapshot.concrete_evidence
+        )
+        admitted, category_exclusion = resolve_power_category_admission(
+            category_resolution, candidate.publishing_organization_id
+        )
+        if admitted:
+            result_class, concrete_evidence = classify_concrete_candidate(
+                conn,
+                native_listing_id=candidate.native_listing_id,
+                publishing_organization_id=candidate.publishing_organization_id,
+                physical_boat_id=candidate.physical_boat_id,
+                boat_design_id=candidate.boat_design_ref.value,
+                query=query,
+                active_definitions=active_definitions,
+                observations=snapshot.observations,
+            )
+            result_class, concrete_evidence = downgrade_mixed_non_match_to_insufficient_data(
+                result_class, concrete_evidence
+            )
+        elif category_exclusion is not None:
+            result_class = ResultClass.CONFIRMED_NON_MATCH
+            concrete_evidence = ()
+        else:
+            result_class = ResultClass.INSUFFICIENT_DATA
+            concrete_evidence = ()
+    else:
+        result_class = design_evaluation.result_class
+        concrete_evidence = ()
+        category_exclusion = None
+
+    return PowerDesignLinkedMatch(
+        native_listing_id=candidate.native_listing_id,
+        result_class=result_class,
+        design_evaluation=design_evaluation,
+        design_configuration_evidence=design_configuration_evidence,
+        concrete_criterion_evidence=concrete_evidence,
+        category_exclusion=category_exclusion,
+        publishing_organization_id=candidate.publishing_organization_id,
+        freshness_status=freshness.status,
+        last_confirmed_at=freshness.last_confirmed_at,
+    )
+
+
+def _classify_power_claim_only_page_candidate(
+    candidate: ActiveNativeListingCandidate,
+    freshness: CurrentFreshness,
+    *,
+    query: MixedAndQuery,
+    active_definitions: Sequence[CriterionDefinition],
+    observations: Sequence[CurrentPhysicalBoatClaimObservation],
+) -> PowerClaimOnlyMatch:
+    """One design-unresolved candidate's Power classification for the
+    bounded page path -- byte-identical decision logic to
+    `evaluate_power_claim_only_candidates`'s own per-candidate loop body.
+    """
+    assert candidate.boat_design_ref is None
+    category_resolution = resolve_power_claim_only_category_from_observations(observations)
+    admitted, exclusion = resolve_power_category_admission(
+        category_resolution, candidate.publishing_organization_id
+    )
+
+    publisher_observation = next(
+        (
+            obs
+            for obs in observations
+            if obs.claiming_organization_id == candidate.publishing_organization_id
+        ),
+        None,
+    )
+    source_evidence = (
+        PublisherClaimSourceEvidence(
+            revision_id=publisher_observation.revision_id,
+            recorded_by_account_id=publisher_observation.recorded_by_account_id,
+            recorded_at=publisher_observation.recorded_at,
+            category_claim=publisher_observation.vessel_category,
+        )
+        if publisher_observation is not None
+        else None
+    )
+
+    criterion_evidence: tuple[SearchCriterionEvidence, ...]
+    if exclusion is not None:
+        result_class = ResultClass.CONFIRMED_NON_MATCH
+        criterion_evidence = ()
+    elif not admitted:
+        result_class = ResultClass.INSUFFICIENT_DATA
+        criterion_evidence = ()
+    else:
+        result_class, criterion_evidence = classify_claim_only_candidate(
+            observations,
+            publishing_organization_id=candidate.publishing_organization_id,
+            query=query,
+            active_definitions=active_definitions,
+        )
+        result_class, criterion_evidence = downgrade_mixed_non_match_to_insufficient_data(
+            result_class, criterion_evidence
+        )
+
+    return PowerClaimOnlyMatch(
+        native_listing_id=candidate.native_listing_id,
+        result_class=result_class,
+        criterion_evidence=criterion_evidence,
+        category_exclusion=exclusion,
+        publishing_organization_id=candidate.publishing_organization_id,
+        freshness_status=freshness.status,
+        last_confirmed_at=freshness.last_confirmed_at,
+        source_basis=PublisherClaimSourceBasis.PUBLISHER_CLAIM,
+        source_evidence=source_evidence,
+    )
+
+
+def evaluate_power_requirement_page(
+    conn: Any,
+    *,
+    power_drive: str | None,
+    power_engine_count: Decimal | None,
+    as_of: datetime,
+    after_native_listing_id: str | None,
+    page_size: int,
+    candidate_scan_budget: int = DEFAULT_CANDIDATE_SCAN_BUDGET,
+    request_deadline_seconds: float = DEFAULT_REQUEST_DEADLINE_SECONDS,
+) -> PowerSearchResultPage:
+    """Evaluate one bounded page of the Power requirement vertical --
+    SLICE-0096's new public entrypoint, the Power-domain mirror of
+    `hullq.application.native_inventory_query
+    .evaluate_native_inventory_requirements_page`. See that function's
+    docstring for the shared bounded-scan/early-stop/exact-fill-lookahead
+    rationale -- identical here, just dispatching to the Power-domain
+    per-candidate classifiers above instead of the Sail ones.
+    """
+    if not isinstance(page_size, int) or isinstance(page_size, bool) or not (1 <= page_size <= 50):
+        raise ValueError(f"page_size must be an int in [1, 50]; got {page_size!r}")
+    # Mirrors hullq.application.native_inventory_query
+    # .evaluate_native_inventory_requirements_page's identical rationale:
+    # candidate_scan_budget is an internal safety cap independent of
+    # page_size, never required to be >= it.
+    if (
+        not isinstance(candidate_scan_budget, int)
+        or isinstance(candidate_scan_budget, bool)
+        or (candidate_scan_budget < 1)
+    ):
+        raise ValueError(
+            f"candidate_scan_budget must be a positive int; got {candidate_scan_budget!r}"
+        )
+    if (
+        not isinstance(request_deadline_seconds, (int, float))
+        or isinstance(request_deadline_seconds, bool)
+        or request_deadline_seconds <= 0
+    ):
+        raise ValueError(
+            f"request_deadline_seconds must be a positive number; got {request_deadline_seconds!r}"
+        )
+
+    # Finding E2 (round 2): see `evaluate_native_inventory_requirements_page`'s
+    # identical rationale.
+    deadline = time.monotonic() + request_deadline_seconds
+
+    query, active_definitions = build_power_query(
+        power_drive=power_drive, power_engine_count=power_engine_count
+    )
+
+    batch = list_active_native_listing_candidates_page(
+        conn, after_native_listing_id=after_native_listing_id, limit=candidate_scan_budget
+    )
+    if not batch:
+        return PowerSearchResultPage(
+            query=query,
+            evaluation_state=SearchPageEvaluationState.COMPLETE,
+            next_after_native_listing_id=None,
+            design_linked_matches=(),
+            claim_only_matches=(),
+            design_linked_insufficient_data_count=0,
+            claim_only_insufficient_data_count=0,
+        )
+
+    bulk_eligibility = resolve_current_public_eligibility_for_many(
+        conn, [candidate.native_listing_id for candidate in batch], as_of=as_of
+    )
+    eligible_by_id: dict[str, CurrentFreshness] = {}
+    for candidate in batch:
+        bulk_result = bulk_eligibility.get(candidate.native_listing_id.value)
+        if (
+            bulk_result is not None
+            and bulk_result.eligibility.status is CurrentPublicEligibilityStatus.ELIGIBLE
+        ):
+            eligible_by_id[candidate.native_listing_id.value] = bulk_result.freshness
+
+    design_linked_eligible = [
+        candidate
+        for candidate in batch
+        if candidate.boat_design_ref is not None
+        and candidate.native_listing_id.value in eligible_by_id
+    ]
+    claim_only_eligible = [
+        candidate
+        for candidate in batch
+        if candidate.boat_design_ref is None and candidate.native_listing_id.value in eligible_by_id
+    ]
+
+    design_evaluation_by_id: dict[str, DesignQueryEvaluation] = {}
+    configurations_by_id: Mapping[str, ResolvedConfiguration] = {}
+    if design_linked_eligible:
+        distinct_design_ids = sorted(
+            {
+                candidate.boat_design_ref.value
+                for candidate in design_linked_eligible
+                if candidate.boat_design_ref is not None
+            }
+        )
+        boat_designs = []
+        for design_id in distinct_design_ids:
+            check_request_deadline(deadline)
+            raw_design = fetch_boat_design(conn, design_id)
+            if raw_design is not None:
+                boat_designs.append(raw_design)
+        design_result = run_mixed_boat_design_configuration_query(
+            conn, query, boat_designs, active_definitions
+        )
+        design_evaluation_by_id = {
+            evaluation.design_id: evaluation
+            for evaluation in (
+                design_result.outcome.confirmed_matches
+                + design_result.outcome.confirmed_non_matches
+                + design_result.outcome.insufficient_data
+            )
+        }
+        configurations_by_id = design_result.configurations_by_id
+
+    claim_only_observations_by_boat: dict[Any, list[CurrentPhysicalBoatClaimObservation]] = {}
+    if claim_only_eligible:
+        claim_only_observations_by_boat = list_current_physical_boat_claim_observations_for_many(
+            conn, [candidate.physical_boat_id for candidate in claim_only_eligible]
+        )
+
+    design_linked_matches: list[PowerDesignLinkedMatch] = []
+    claim_only_matches: list[PowerClaimOnlyMatch] = []
+    design_linked_insufficient_data_count = 0
+    claim_only_insufficient_data_count = 0
+    last_examined_id: str | None = None
+    exhausted_batch = True
+
+    for index, candidate in enumerate(batch):
+        check_request_deadline(deadline)
+        last_examined_id = candidate.native_listing_id.value
+        freshness = eligible_by_id.get(candidate.native_listing_id.value)
+        if freshness is None:
+            continue
+
+        if candidate.boat_design_ref is not None:
+            design_match = _classify_power_design_linked_page_candidate(
+                conn,
+                candidate,
+                freshness,
+                query=query,
+                active_definitions=active_definitions,
+                design_evaluation_by_id=design_evaluation_by_id,
+                configurations_by_id=configurations_by_id,
+            )
+            if design_match is None:
+                continue
+            if design_match.result_class is ResultClass.CONFIRMED_MATCH:
+                design_linked_matches.append(design_match)
+            elif design_match.result_class is ResultClass.INSUFFICIENT_DATA:
+                design_linked_insufficient_data_count += 1
+        else:
+            observations = claim_only_observations_by_boat.get(candidate.physical_boat_id, [])
+            claim_match = _classify_power_claim_only_page_candidate(
+                candidate,
+                freshness,
+                query=query,
+                active_definitions=active_definitions,
+                observations=observations,
+            )
+            if claim_match.result_class is ResultClass.CONFIRMED_MATCH:
+                claim_only_matches.append(claim_match)
+            elif claim_match.result_class is ResultClass.INSUFFICIENT_DATA:
+                claim_only_insufficient_data_count += 1
+
+        if len(design_linked_matches) + len(claim_only_matches) >= page_size:
+            exhausted_batch = index == len(batch) - 1
+            break
+
+    assert last_examined_id is not None
+    if exhausted_batch and len(batch) < candidate_scan_budget:
+        evaluation_state = SearchPageEvaluationState.COMPLETE
+        next_after_native_listing_id = None
+    elif exhausted_batch:
+        if active_native_listing_candidate_exists_after(conn, last_examined_id):
+            evaluation_state = SearchPageEvaluationState.PARTIAL
+            next_after_native_listing_id = last_examined_id
+        else:
+            evaluation_state = SearchPageEvaluationState.COMPLETE
+            next_after_native_listing_id = None
+    else:
+        evaluation_state = SearchPageEvaluationState.PARTIAL
+        next_after_native_listing_id = last_examined_id
+
+    return PowerSearchResultPage(
+        query=query,
+        evaluation_state=evaluation_state,
+        next_after_native_listing_id=next_after_native_listing_id,
+        design_linked_matches=tuple(design_linked_matches),
+        claim_only_matches=tuple(claim_only_matches),
+        design_linked_insufficient_data_count=design_linked_insufficient_data_count,
+        claim_only_insufficient_data_count=claim_only_insufficient_data_count,
     )

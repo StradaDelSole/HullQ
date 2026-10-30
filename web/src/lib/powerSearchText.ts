@@ -47,7 +47,18 @@ export interface PowerSearchText {
   designLinkedHeading: (count: number) => string;
   noDesignLinkedMatches: string;
   noDesignLinkedMatchesButPublisherClaimsExist: (count: number) => string;
+  /**
+   * SLICE-0096 independent review Finding D -- see `SearchText.
+   * noConfirmedMatchesPartial` in `searchText.ts` for the identical
+   * discipline: never claim a final/exhaustive absence while this page is
+   * PARTIAL.
+   */
+  noDesignLinkedMatchesPartial: string;
+  noDesignLinkedMatchesButPublisherClaimsExistPartial: (count: number) => string;
   insufficientDataText: (count: number) => string;
+  /** SLICE-0096 -- see `SearchText.partialResultsNote` in `searchText.ts`. */
+  partialResultsNote: string;
+  showMoreResultsLabel: string;
   publisherClaimHeading: (count: number) => string;
   publisherClaimDisclaimer: string;
   viewListing: string;
@@ -118,8 +129,15 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     noDesignLinkedMatches: "No design-confirmed matches for this drive arrangement.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
       `No design-confirmed matches, but ${count} publisher-claimed listing(s) below.`,
+    noDesignLinkedMatchesPartial:
+      "No design-confirmed matches among those checked so far for this drive arrangement. This is not the full result.",
+    noDesignLinkedMatchesButPublisherClaimsExistPartial: (count) =>
+      `No design-confirmed matches among those checked so far, but ${count} publisher-claimed listing(s) below. This is not the full result.`,
     insufficientDataText: (count) =>
       `${count} listing(s) have insufficient data to confirm or exclude this drive arrangement.`,
+    partialResultsNote:
+      "This search is not yet complete. More listings may still be checked -- this is not the full result.",
+    showMoreResultsLabel: "Show more results",
     publisherClaimHeading: (count) => `Publisher-claimed matches (${count})`,
     publisherClaimDisclaimer:
       "These listings are shown on the publishing broker's own current statement, not independently verified.",
@@ -176,8 +194,15 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     noDesignLinkedMatches: "Keine design-bestätigten Treffer für diese Antriebsart.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
       `Keine design-bestätigten Treffer, aber ${count} Angebot(e) laut Anbieterangabe unten.`,
+    noDesignLinkedMatchesPartial:
+      "Unter den bisher geprüften Angeboten keine design-bestätigten Treffer für diese Antriebsart. Dies ist nicht das vollständige Ergebnis.",
+    noDesignLinkedMatchesButPublisherClaimsExistPartial: (count) =>
+      `Unter den bisher geprüften Angeboten keine design-bestätigten Treffer, aber ${count} Angebot(e) laut Anbieterangabe unten. Dies ist nicht das vollständige Ergebnis.`,
     insufficientDataText: (count) =>
       `${count} Angebot(e) haben keine ausreichenden Daten, um diese Antriebsart zu bestätigen oder auszuschließen.`,
+    partialResultsNote:
+      "Diese Suche ist noch nicht abgeschlossen. Es können noch weitere Angebote geprüft werden -- dies ist nicht das vollständige Ergebnis.",
+    showMoreResultsLabel: "Weitere Ergebnisse anzeigen",
     publisherClaimHeading: (count) => `Treffer laut Anbieterangabe (${count})`,
     publisherClaimDisclaimer:
       "Diese Angebote beruhen auf der aktuellen Angabe des anbietenden Maklers, nicht auf unabhängiger Prüfung.",
@@ -234,8 +259,15 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     noDesignLinkedMatches: "Aucun résultat confirmé par le design pour cette configuration.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
       `Aucun résultat confirmé par le design, mais ${count} annonce(s) ci-dessous selon le vendeur.`,
+    noDesignLinkedMatchesPartial:
+      "Parmi les annonces examinées jusqu'à présent, aucun résultat confirmé par le design pour cette configuration. Ceci n'est pas le résultat complet.",
+    noDesignLinkedMatchesButPublisherClaimsExistPartial: (count) =>
+      `Parmi les annonces examinées jusqu'à présent, aucun résultat confirmé par le design, mais ${count} annonce(s) ci-dessous selon le vendeur. Ceci n'est pas le résultat complet.`,
     insufficientDataText: (count) =>
       `${count} annonce(s) ne disposent pas de données suffisantes pour confirmer ou exclure cette configuration.`,
+    partialResultsNote:
+      "Cette recherche n'est pas encore terminée. D'autres annonces peuvent encore être vérifiées -- ceci n'est pas le résultat complet.",
+    showMoreResultsLabel: "Afficher plus de résultats",
     publisherClaimHeading: (count) => `Résultats selon le vendeur (${count})`,
     publisherClaimDisclaimer:
       "Ces annonces reposent sur la déclaration actuelle du courtier vendeur, non vérifiée indépendamment.",
@@ -292,8 +324,15 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     noDesignLinkedMatches: "Sem resultados confirmados pelo design para esta configuração.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
       `Sem resultados confirmados pelo design, mas ${count} anúncio(s) abaixo segundo o vendedor.`,
+    noDesignLinkedMatchesPartial:
+      "Entre os anúncios verificados até agora, nenhum resultado confirmado pelo design para esta configuração. Este não é o resultado completo.",
+    noDesignLinkedMatchesButPublisherClaimsExistPartial: (count) =>
+      `Entre os anúncios verificados até agora, nenhum resultado confirmado pelo design, mas ${count} anúncio(s) abaixo segundo o vendedor. Este não é o resultado completo.`,
     insufficientDataText: (count) =>
       `${count} anúncio(s) não têm dados suficientes para confirmar ou excluir esta configuração.`,
+    partialResultsNote:
+      "Esta pesquisa ainda não está concluída. Mais anúncios podem ainda ser verificados -- este não é o resultado completo.",
+    showMoreResultsLabel: "Mostrar mais resultados",
     publisherClaimHeading: (count) => `Resultados segundo o vendedor (${count})`,
     publisherClaimDisclaimer:
       "Estes anúncios baseiam-se na declaração atual do corretor anunciante, não verificada de forma independente.",
@@ -350,8 +389,15 @@ export const powerSearchText: Record<SupportedLocale, PowerSearchText> = {
     noDesignLinkedMatches: "No hay resultados confirmados por diseño para esta configuración.",
     noDesignLinkedMatchesButPublisherClaimsExist: (count) =>
       `No hay resultados confirmados por diseño, pero ${count} anuncio(s) a continuación según el vendedor.`,
+    noDesignLinkedMatchesPartial:
+      "Entre los anuncios revisados hasta ahora, no hay resultados confirmados por diseño para esta configuración. Este no es el resultado completo.",
+    noDesignLinkedMatchesButPublisherClaimsExistPartial: (count) =>
+      `Entre los anuncios revisados hasta ahora, no hay resultados confirmados por diseño, pero ${count} anuncio(s) a continuación según el vendedor. Este no es el resultado completo.`,
     insufficientDataText: (count) =>
       `${count} anuncio(s) no tienen datos suficientes para confirmar o excluir esta configuración.`,
+    partialResultsNote:
+      "Esta búsqueda aún no se ha completado. Es posible que se sigan comprobando más anuncios -- este no es el resultado completo.",
+    showMoreResultsLabel: "Mostrar más resultados",
     publisherClaimHeading: (count) => `Resultados según el vendedor (${count})`,
     publisherClaimDisclaimer:
       "Estos anuncios se basan en la declaración actual del corredor anunciante, no verificada de forma independiente.",

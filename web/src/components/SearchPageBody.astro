@@ -559,12 +559,25 @@ const publisherClaimMatchCount: number = data.kind === "ok" ? data.publisherClai
                 // publisher-claim-only matches are shown in the separate
                 // section below -- never two mutually contradictory
                 // no-results claims on the same page.
+                //
+                // SLICE-0096 independent review Finding D: a PARTIAL page's
+                // zero-result message must never read as a final/exhaustive
+                // absence -- unchecked candidates remain, so a dedicated
+                // "among those checked so far" wording is used instead of
+                // the COMPLETE-only phrasing above whenever this page is
+                // PARTIAL.
                 <p>
-                  {publisherClaimMatchCount > 0
-                    ? t.noDesignConfirmedMatchesButPublisherClaimsExist(publisherClaimMatchCount)
-                    : isKeelActive
-                      ? t.noConfirmedMatchesGeneric
-                      : t.noConfirmedMatches}
+                  {data.kind === "ok" && data.evaluationState === "PARTIAL"
+                    ? publisherClaimMatchCount > 0
+                      ? t.noDesignConfirmedMatchesButPublisherClaimsExistPartial(publisherClaimMatchCount)
+                      : isKeelActive
+                        ? t.noConfirmedMatchesGenericPartial
+                        : t.noConfirmedMatchesPartial
+                    : publisherClaimMatchCount > 0
+                      ? t.noDesignConfirmedMatchesButPublisherClaimsExist(publisherClaimMatchCount)
+                      : isKeelActive
+                        ? t.noConfirmedMatchesGeneric
+                        : t.noConfirmedMatches}
                 </p>
               ) : isKeelActive ? (
                 <ul>
@@ -680,6 +693,23 @@ const publisherClaimMatchCount: number = data.kind === "ok" ? data.publisherClai
                     : t.insufficientDataText(data.insufficientDataCount)}
                 </p>
               )}
+
+              {
+                // SLICE-0096: truthfully distinct from "no matching boats" --
+                // a PARTIAL page may legitimately show zero matches above
+                // while unchecked candidates remain. Never rendered as a
+                // second, contradictory "no results" state.
+                data.kind === "ok" && data.evaluationState === "PARTIAL" && (
+                  <p aria-label="partial results">
+                    {t.partialResultsNote}{" "}
+                    {data.nextPageQueryString !== null && (
+                      <a href={`/${locale}/search?${data.nextPageQueryString}`}>
+                        {t.showMoreResultsLabel}
+                      </a>
+                    )}
+                  </p>
+                )
+              }
 
               {
                 // SLICE-0092: entirely separate, additive design-unresolved

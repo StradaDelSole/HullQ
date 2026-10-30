@@ -194,10 +194,17 @@ const requirementSummary = requirementSummaryText();
 
               <h2>{t.designLinkedHeading(data.designLinkedMatchCount)}</h2>
               {data.designLinkedMatchCount === 0 ? (
+                // SLICE-0096 independent review Finding D: a PARTIAL page's
+                // zero-result message must never read as a final/exhaustive
+                // absence -- see SearchPageBody.astro's identical discipline.
                 <p>
-                  {data.publisherClaimMatchCount > 0
-                    ? t.noDesignLinkedMatchesButPublisherClaimsExist(data.publisherClaimMatchCount)
-                    : t.noDesignLinkedMatches}
+                  {data.kind === "ok" && data.evaluationState === "PARTIAL"
+                    ? data.publisherClaimMatchCount > 0
+                      ? t.noDesignLinkedMatchesButPublisherClaimsExistPartial(data.publisherClaimMatchCount)
+                      : t.noDesignLinkedMatchesPartial
+                    : data.publisherClaimMatchCount > 0
+                      ? t.noDesignLinkedMatchesButPublisherClaimsExist(data.publisherClaimMatchCount)
+                      : t.noDesignLinkedMatches}
                 </p>
               ) : (
                 <ul>
@@ -298,6 +305,21 @@ const requirementSummary = requirementSummaryText();
                   {t.insufficientDataText(data.designLinkedInsufficientDataCount)}
                 </p>
               )}
+
+              {
+                // SLICE-0096: see SearchPageBody.astro's identical rationale --
+                // truthfully distinct from "no matching boats".
+                data.kind === "ok" && data.evaluationState === "PARTIAL" && (
+                  <p aria-label="partial results">
+                    {t.partialResultsNote}{" "}
+                    {data.nextPageQueryString !== null && (
+                      <a href={`/${locale}/power/search?${data.nextPageQueryString}`}>
+                        {t.showMoreResultsLabel}
+                      </a>
+                    )}
+                  </p>
+                )
+              }
 
               {data.publisherClaimMatchCount > 0 && (
                 <section aria-label="publisher claim matches">
